@@ -16,3 +16,7 @@ tmp/
 .ruff_cache
 
 .baton-pass/
+
+# mkdocs build output — artifact-only, never committed (build with
+# `nix build .#documentation` or `mkdocs build` locally and discard)
+documentation/site/

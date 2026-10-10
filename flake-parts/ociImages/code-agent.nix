@@ -340,6 +340,9 @@
       # Env values; a shell that scrubbed its env still gets them, but
       # an existing value is never re-appended to).
       cat > $out/etc/profile <<'EOF'
+      # Login shells default to a sane umask regardless of what the
+      # spawning process (supervisor, sshd, vscodium server) inherited.
+      umask 022
       case ":$PATH:" in
         *:/usr/local/bin:*) ;;
         *) export PATH="/usr/local/bin:$PATH" ;;
@@ -411,8 +414,46 @@
 
       printf '%s\n' 'NAME="code-agent"' 'ID="code-agent"' > $out/etc/os-release
 
+      # Name-resolution contracts, baked explicitly instead of left to
+      # per-resolver built-in defaults: without /etc/nsswitch.conf,
+      # glibc's hosts default is "dns [!UNAVAIL=return] files" (dns
+      # FIRST, /etc/hosts unreachable when DNS fails) and go's pure
+      # resolver picks its own order — two resolvers, two behaviors.
+      # "files dns" makes /etc/hosts authoritative everywhere and keeps
+      # localhost working when DNS is denied. passwd/group/shadow are
+      # files-only (the baked /etc/passwd set is the whole database).
+      cat > $out/etc/nsswitch.conf <<'EOF'
+      passwd: files
+      group: files
+      shadow: files
+      hosts: files dns
+      networks: files
+      protocols: files
+      services: files
+      ethers: files
+      rpc: files
+      netgroup: files
+      sudoers: files
+      aliases: files
+      publickey: files
+      automount: files
+      bootparams: files
+      EOF
+
+      # /etc/hosts fallback: container runtimes (docker, the OpenShell
+      # VM driver) bind-mount their own /etc/hosts over this file, so
+      # the baked copy only serves runtimes that don't. localhost must
+      # resolve even then — the vscodium server binds loopback and
+      # agents' local tools assume it.
+      cat > $out/etc/hosts <<'EOF'
+      127.0.0.1 localhost
+      ::1 localhost ip6-localhost ip6-loopback
+      EOF
+
       # Git defaults: the org bot identity (andrewthomaslee-agent, per
-      # the external-systems org — per-repo config can still override)
+      # the external-systems org — per-repo config can still override),
+      # main as the default init branch (agents create scratch repos
+      # constantly; the 'master' default + hint noise trips scripts),
       # and a credential helper scoped to github.com that feeds git the
       # provider-injected $GITHUB_TOKEN — without it git prompts for
       # credentials on every https push. Scoped by URL on purpose: only
@@ -422,6 +463,8 @@
       [user]
       	name = andrewthomaslee-agent
       	email = andrewthomaslee-agent@users.noreply.github.com
+      [init]
+      	defaultBranch = main
       [credential "https://github.com"]
       	helper = "!f() { echo username=x-access-token; echo password=$GITHUB_TOKEN; }; f"
       EOF
@@ -905,6 +948,16 @@
       config = {
         User = "agent";
         WorkingDir = "/sandbox";
+        # OCI provenance labels: which repo (and which commit of it)
+        # built this image. `docker inspect` / skopeo answer the
+        # provenance question without the in-image briefing.
+        Labels = {
+          "org.opencontainers.image.title" = "code-agent";
+          "org.opencontainers.image.description" = "General-purpose OpenShell coding sandbox image (nix + agent CLIs + baked toolset), built with nix2container from external-systems/home.";
+          "org.opencontainers.image.source" = "https://github.com/external-systems/home";
+          "org.opencontainers.image.revision" = imageRev;
+          "org.opencontainers.image.licenses" = "GPL-3.0-only";
+        };
         Env = [
           "HOME=/home/agent"
           "NIX_CONFIG=${nixConfig}"

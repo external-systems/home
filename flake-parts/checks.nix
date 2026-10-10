@@ -43,10 +43,23 @@
       # a wildcard binary pin is an egress forge vector — mint a
       # matching store path and inherit its hosts. The exact-pin
       # default is enforced here.
+      #
+      # Also gated: every allow-rule PATH in the policy AND in the
+      # rendered github-agent profile. OpenShell matches rule paths as
+      # globs (openshell-core endpoint_path.rs), so a typo like
+      # "/>/git-upload-pack" ('>' is a glob LITERAL, not a separator)
+      # compiles fine but matches no real request — the rule goes dead
+      # while everything still works in provider-attached sandboxes,
+      # which carry their own git-transport rules. The gate: a rule
+      # path is "**" or starts with "/" and uses only RFC3986 pchar
+      # characters plus glob metacharacters (* ? [ ] { }) — anything
+      # else (">", "<", space, quotes, '#') is invalid in a URL
+      # path and therefore always a typo.
       code-agent-policy =
         pkgs.runCommand "check-code-agent-policy" {
-          nativeBuildInputs = [pkgs.gawk pkgs.gnugrep pkgs.yq];
+          nativeBuildInputs = [pkgs.gawk pkgs.gnugrep pkgs.python3 pkgs.yq-go];
           policy = self'.packages.code-agent-policy;
+          profile = self'.packages.github-agent-profile;
         } ''
           # Parses as YAML, placeholder-free.
           yq -e . "$policy" >/dev/null
@@ -78,6 +91,45 @@
             echo "$wildcards" >&2
             exit 1
           fi
+
+          # Allow-rule path sanity for BOTH rendered configs (see the
+          # header comment): walk every rules[].allow.path and reject
+          # characters that can never appear in a URL path.
+          for rendered in "$policy" "$profile"; do
+            yq -o=json . "$rendered" | python3 ${pkgs.writeText "check-rule-paths.py" ''
+            import json
+            import re
+            import sys
+
+            # "**", or an absolute path of RFC3986 pchar characters
+            # (unreserved / sub-delims / ':' / '@') plus '/' and the
+            # glob metacharacters OpenShell honors (* ? [ ] { }).
+            ALLOWED = re.compile(r"^(\*\*|/[A-Za-z0-9._~!$&'()*+,;=:@/?*{}\[\]-]*)$")
+
+            def rule_paths(node, trail):
+                if isinstance(node, dict):
+                    for key, value in node.items():
+                        if key == "allow" and isinstance(value, dict) and "path" in value:
+                            yield ".".join(trail), value["path"]
+                        else:
+                            yield from rule_paths(value, trail + [str(key)])
+                elif isinstance(node, list):
+                    for index, item in enumerate(node):
+                        yield from rule_paths(item, trail + [str(index)])
+
+            doc = json.load(sys.stdin)
+            failed = False
+            for where, path in rule_paths(doc, []):
+                if not isinstance(path, str) or not ALLOWED.match(path):
+                    print(
+                        f"FAIL: rule path {path!r} at {where} is not '**' or an "
+                        "absolute path of URL-path + glob characters",
+                        file=sys.stderr,
+                    )
+                    failed = True
+            sys.exit(1 if failed else 0)
+          ''} || exit 1
+          done
           touch $out
         '';
 

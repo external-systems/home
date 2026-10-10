@@ -85,11 +85,22 @@ architecture and the lessons that shaped the design, see the
   pi/kimi). Deep-dive repo knowledge (the former `/opt/references`
   bundles) now lives as skills in the same tree.
 - **Baked git identity + credentials**: commits are authored as the org
-  bot (`andrewthomaslee-agent`), and a github.com-scoped credential
-  helper feeds git the provider-injected `$GITHUB_TOKEN` — `git push`
-  over https works without prompting. Nothing secret is in the image.
+  bot (`andrewthomaslee-agent`), `git init` defaults to a `main`
+  branch, and a github.com-scoped credential helper feeds git the
+  provider-injected `$GITHUB_TOKEN` — `git push` over https works
+  without prompting. Nothing secret is in the image.
+- **Deterministic identity + name resolution**: baked
+  `/etc/passwd`/`group`/`shadow` (root + uid 1000 agent only),
+  `/etc/nsswitch.conf` with `hosts: files dns` (glibc's built-in
+  fallback is dns-FIRST, so `/etc/hosts` went unreachable when DNS
+  failed; the explicit file makes it authoritative everywhere) and a
+  fallback `/etc/hosts` — container runtimes bind-mount their own over
+  it, so the baked copy only serves runtimes that don't. Login shells
+  also get a sane `umask 022` from `/etc/profile`.
 - **nix with flakes**, pre-initialized store db, and baked substituters:
-  FlakeHub caches + the clan niks3 cache (`cache.geninf.io`, keys baked).
+  the repo's cachix caches (openshell, devenv, nix-community,
+  chaotic-nyx) + the clan niks3 cache (`cache.geninf.io` /
+  `cache.clan.lol`, both keys baked).
   The config lives at `/etc/nix/nix.conf` (not just `$NIX_CONFIG`), so it
   holds in every shell — including VSCodium-server-spawned ones. The
   flake registry is pinned in-image: `nixpkgs` resolves to
@@ -110,7 +121,10 @@ nix run .#load-code-agent-image    # builds + copies into the host docker store
 
 The VM driver resolves the host docker store first; an OCI registry pull
 is the fallback. The flake evaluates from the git tree — `git add` new
-`.nix` files before building.
+`.nix` files before building. The image config carries OCI provenance
+labels (`org.opencontainers.image.source` / `.revision` — the flake
+commit, `dirty` on uncommitted builds), so `docker inspect` answers
+"which tree built this" without booting the image.
 
 ## Create a sandbox
 

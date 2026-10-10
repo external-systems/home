@@ -155,6 +155,11 @@ network_policies:
 
   # Public GitHub: smart-HTTP clone/fetch (git + curl + nix fetchers).
   # Pushing to private repos rides an attached github provider instead.
+  # The POST rule MUST be "/**/git-upload-pack" — OpenShell matches rule
+  # paths as globs where '>' is a LITERAL, so the earlier "/>/…" form
+  # matched nothing and silently depended on the attached provider's own
+  # git-transport rules (provider-less sandboxes failed clone at the
+  # POST). Upstream regression-tests this exact rule set as #1769.
   github:
     name: github
     endpoints:
@@ -174,7 +179,7 @@ network_policies:
               path: "**"
           - allow:
               method: POST
-              path: "/>/git-upload-pack"
+              path: "/**/git-upload-pack"
       - host: codeload.github.com
         port: 443
         protocol: rest
