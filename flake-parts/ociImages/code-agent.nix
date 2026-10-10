@@ -193,6 +193,14 @@
         # egress — admitted read-only in the sandbox policy — has a
         # pinned binary; pip itself ships inside `python3 -m venv`).
         uv
+        # The clan CLI: baked because it can never be obtained
+        # in-sandbox — clan-cli's clan-runtime dependency builds with a
+        # nested `nix flake update --store ./.` inside the builder,
+        # which the sandbox supervisor's egress and the overlayfs
+        # rename assert cannot support (verified: exit 134 in-sandbox).
+        # On the image-build host the derivation substitutes/builds
+        # normally, and in-sandbox the finished closure runs fine.
+        clan-cli
         # AI coding agents (all from the llm-agents flake input, see
         # overlays/default.nix): pi runs on bun, kimi-code and
         # claude-code are bundled node/bun apps — closures carry their
@@ -249,6 +257,7 @@
       ln -s ${pkgs.pi-coding-agent}/bin/pi          $out/usr/local/bin/pi
       ln -s ${pkgs.kimi-code}/bin/kimi              $out/usr/local/bin/kimi
       ln -s ${pkgs.claude-code}/bin/claude          $out/usr/local/bin/claude
+      ln -s ${pkgs.clan-cli}/bin/clan               $out/usr/local/bin/clan
       ln -s ${pkgs.nixd}/bin/nixd                   $out/usr/local/bin/nixd
       ln -s ${pkgs.alejandra}/bin/alejandra         $out/usr/local/bin/alejandra
       ln -s ${pkgs.statix}/bin/statix               $out/usr/local/bin/statix
@@ -282,11 +291,29 @@
       # and NIX_LD_LIBRARY_PATH append rather than overwrite. (Quoted
       # heredoc: Nix interpolates the store paths at eval time; the
       # runtime $ expansions stay literal for the sourcing shell.)
+      # Idempotent under repeat sourcing: nested `bash -l` shells
+      # re-read this file, and the pre-fix version appended on every
+      # pass — tripling PATH, LD_LIBRARY_PATH and NIX_LD_LIBRARY_PATH
+      # in long agent sessions (observed live). PATH and
+      # LD_LIBRARY_PATH get a membership test; NIX_LD and
+      # NIX_LD_LIBRARY_PATH are set only when absent (they are image
+      # Env values; a shell that scrubbed its env still gets them, but
+      # an existing value is never re-appended to).
       cat > $out/etc/profile <<'EOF'
-      export PATH="/usr/local/bin:$PATH"
-      export LD_LIBRARY_PATH="/usr/lib/wheel-deps''${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
-      export NIX_LD="${pkgs.glibc}/lib/ld-linux-x86-64.so.2"
-      export NIX_LD_LIBRARY_PATH="${nixLdLibs}''${NIX_LD_LIBRARY_PATH:+:$NIX_LD_LIBRARY_PATH}"
+      case ":$PATH:" in
+        *:/usr/local/bin:*) ;;
+        *) export PATH="/usr/local/bin:$PATH" ;;
+      esac
+      case ":$LD_LIBRARY_PATH:" in
+        *:/usr/lib/wheel-deps:*) ;;
+        *) export LD_LIBRARY_PATH="/usr/lib/wheel-deps''${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}" ;;
+      esac
+      if [ -z "''${NIX_LD:-}" ]; then
+        export NIX_LD="${pkgs.glibc}/lib/ld-linux-x86-64.so.2"
+      fi
+      if [ -z "''${NIX_LD_LIBRARY_PATH:-}" ]; then
+        export NIX_LD_LIBRARY_PATH="${nixLdLibs}"
+      fi
       EOF
 
       # nix config on disk (see nixConfig above): unlike $NIX_CONFIG in
@@ -651,15 +678,25 @@
         You are ${agentName}, running inside an OpenShell code-agent sandbox: an isolated microVM with deny-by-default network egress, running as uid 1000 (agent), workdir /sandbox, HOME=/home/agent. Image: code-agent @ ${imageRev}.
 
         ## Toolset
-        A full toolset is pre-baked on PATH (/bin, /usr/bin, /usr/local/bin): shell + coreutils, git/gh, curl/wget/jq/yq, python3, ripgrep/fd/sd/tmux/less, archive + foreign-ELF tools (file/readelf/objdump/ldd), kubectl/helm, shellcheck/shfmt, nix (+ nixd/alejandra/statix/deadnix), and the pi/kimi/claude CLIs.
+        A full toolset is pre-baked on PATH (/bin, /usr/bin, /usr/local/bin): shell + coreutils, git/gh, curl/wget/jq/yq, python3, ripgrep/fd/sd/tmux/less, archive + foreign-ELF tools (file/readelf/objdump/ldd), kubectl/helm, shellcheck/shfmt, nix (+ nixd/alejandra/statix/deadnix), the clan CLI, and the pi/kimi/claude CLIs.
 
-        - Use baked tools directly. NEVER `nix run` or `nix profile install` a package that is already installed (a TCG build of an available tool is pure waste).
-        - Treat the nix store as read-only: do NOT start `nix build` of
-          unbaked packages, `nixos-rebuild`, or any other heavy nix
-          operation. There is no /dev/kvm here — real builds crawl under
-          software emulation — so abort and report instead. Lightweight
-          nix queries (`nix eval`, option search, registry lookups) are
-          fine.
+        - Use baked tools directly. NEVER `nix run` or `nix profile install` a package that is already installed.
+        - The nix store is single-user and WRITABLE by design
+          (`nixUid`/`nixGid` 1000 in the image spec, and the sandbox
+          filesystem policy marks /nix read_write): additions through
+          nix itself (`nix build`, `nix profile install`, substitutions)
+          are normal and expected. Never add or remove store paths
+          BEHIND nix's back — raw `cp`/`rm` in /nix/store desyncs the
+          db and breaks later nix runs; repair is a sandbox restart.
+        - Plain nix builds run at NATIVE speed — the microVM is
+          KVM-backed on the host (the repo's `checks.lint` builds here
+          in seconds). The hard limits are: no /dev/kvm in the guest
+          (NixOS VM tests and nested VMs are CI's job — never
+          `nix run .#vm-test`), no `nixos-rebuild`, and FOD/source
+          fetches are policy-gated to the admitted hosts. If nix starts
+          building a LARGE package from source (llvm/rustc-class), stop
+          it — substitute instead; big source builds also eat the 32 GiB
+          overlay.
         - nix ALWAYS warns "you don't have Internet access" in this
           sandbox — that is a `getifaddrs()` heuristic (the microVM has
           no routable interface), NOT a network failure. Substitution to
@@ -676,8 +713,9 @@
           `statix check`, `deadnix --fail`, or the flake's `checks.lint`
           via `nix build --option substitute true .#checks.<system>.lint
           -L`), then the lightest real build/eval that covers the
-          change. Full `nix flake check` and NixOS VM tests need KVM —
-          CI's job here; flag the gap rather than running them.
+          change. Full `nix flake check` is allowed (checks only; VM
+          tests are legacyPackages and never part of it) but evaluates
+          every output — prefer the targeted gate when iterating.
         - Python: `python3` ships WITHOUT global pip — bootstrap it with
           `python3 -m venv`, or prefer the baked `uv` (wheel-first).
           PyPI (`pypi.org` + `files.pythonhosted.org`) is admitted
@@ -691,7 +729,7 @@
         - Foreign glibc binaries (downloaded FHS ELFs) run via the
           nix-ld shim: /lib64/ld-linux-x86-64.so.2 reads NIX_LD and
           NIX_LD_LIBRARY_PATH from the env.
-        - Do NOT run `nix flake check` or the NixOS VM tests (`nix run .#vm-test`): they build heavy derivations and need KVM. Checks, builds and VM tests are CI's job — the fleet CI is not wired up yet, so flag the gap rather than running them.
+        - Do NOT run the NixOS VM tests (`nix run .#vm-test`): they need /dev/kvm, which the guest does not have. VM tests are CI's job — flag the gap rather than running them.
 
         ## MCP servers
         Pre-configured in every agent's user-level MCP config (pi ~/.pi/agent/mcp.json, kimi ~/.kimi-code/mcp.json, claude ~/.claude/settings.json): **headroom** (context compression), **nixos** (NixOS / Home Manager option search), **github** (repos / issues / PRs — only functional when the sandbox was created with the github-agent provider attached). There is deliberately NO kubernetes MCP server; use kubectl/helm directly.
@@ -700,7 +738,7 @@
         /opt/skills holds the repo's merged skill tree (repo skills/ + external sources), wired into pi, kimi and claude. Load with /skill:<name>; read a SKILL.md before relying on a skill. The **sandbox-environment** skill carries this sandbox's deep reference (full egress list, cache keys, recipes).
 
         ## Network
-        Egress is deny-by-default. Admitted: github.com (read + api), the nix cache estates (*.nixos.org, *.cachix.org, FlakeHub + clan caches), git.clan.lol (read-write git), api.kimi.com, api.anthropic.com, platform.claude.com. Everything else is DENIED — do not retry dead hosts in a loop; report the blocked host. Full host/rule list: **sandbox-environment** skill.
+        Egress is deny-by-default and matches (binary, host) PAIRS. Admitted: github.com (read + api), the nix cache estates (*.nixos.org, *.cachix.org, clan's cache.geninf.io/cache.clan.lol), flake-input hosts for nix/git fetches (git.clan.lol read-write, code.m3ta.dev read-only, api.flakehub.io/api.flakehub.com, files.pythonhosted.org for the headroom wheel input), api.kimi.com, api.anthropic.com, platform.claude.com. A host admitted for ONE binary is not admitted for others (e.g. PyPI is python3/uv/nix-only; curl is refused). Everything else is DENIED — do not retry dead hosts in a loop; report the blocked host. Full host/rule list: **sandbox-environment** skill.
 
         ## Identity and secrets
         - Git commits are authored as the andrewthomaslee-agent bot.
@@ -710,7 +748,10 @@
         ## Troubleshooting
         - github MCP errors at startup → the sandbox was created without the github-agent provider attached; headroom/nixos are unaffected.
         - nix starts building a package from source → stop it; use the baked tool (or a substituter key is missing — report it).
-        - A host is DENIED → report it instead of retrying; the policy hot-reloads (`openshell policy set` from the host), no sandbox recreation needed.
+        - A host is DENIED → report it instead of retrying; the policy hot-reloads (`openshell policy set` from the host), no sandbox recreation needed. Host-side diagnosis: `openshell logs <sandbox> --source sandbox | grep -iE 'denied|reject|block|forbidden'` (plain `openshell logs <name>` is flooded by known upstream supervisor ssh WARNs — `data on unknown channel` — ignore those).
+        - An admitted-LOOKING host refusing connections instantly (`Could not connect to server`) usually means the (binary, host) PAIR is missing from the policy, not a network failure — and the deny log is not authoritative (observed 2026-10: nix→files.pythonhosted.org refused with NO deny line; that host was admitted only for python3/uv, fixed in this policy revision). Check the pair against the sandbox's composed policy from the host before concluding drift. Rare one-off refuses on genuinely admitted pairs (observed once for nix→github.com) are proxy-level flakes: retry once or twice (self-recovers within minutes), then report.
+        - `error: killing process ...: Operation not permitted` during nix builds is the supervisor's seccomp blocking nix→builder signals — cosmetic; the build result stands.
+        - `ls /` fails (EACCES): the sandbox filesystem policy marks /bin /usr /lib /lib64 /etc /opt /proc read_only and /sandbox /tmp /nix /home read_write, and `/` itself is in neither list — deny by default, so it cannot be listed. Every real path below it works normally.
 
         ## Agent notes
 
@@ -729,20 +770,28 @@
     # boundary and the OpenShell supervisor's seccomp stack blocks nix's
     # builder-child filter ("unable to load seccomp BPF program:
     # Operation not permitted"), so builders skip their own filter.
-    # FlakeHub substituters mirror the host caches (public keys only),
-    # plus clan-core's niks3 cache (cache.geninf.io; objects may be
-    # signed under either cache.geninf.io-1 or cache.clan.lol-1, so both
-    # keys are trusted — keys verbatim from the cache's own usage page).
-    # Baked at BOTH /etc/nix/nix.conf (rootfs below, picked up by every
-    # nix invocation including sshd-spawned shells that drop env) and
-    # $NIX_CONFIG (image Env below) — nix.conf alone would suffice, but
-    # NIX_CONFIG wins when set, so both carry the same content.
+    # Substituters: the repo's own cachix caches (openshell — this
+    # flake's closure — plus devenv/nix-community/chaotic-nyx,
+    # mirroring flake.nix's nixConfig minus cache.numtide.com, whose
+    # host the sandbox policy does not admit) and clan-core's niks3
+    # cache (cache.geninf.io; objects may be signed under either
+    # cache.geninf.io-1 or cache.clan.lol-1, so both keys are trusted —
+    # keys verbatim from the cache's own usage page). The FlakeHub
+    # binary caches were dropped: they answer nix-cache-info with 401
+    # Unauthorized anonymously, so they were dead substituters adding
+    # warning noise to every nix invocation (api.flakehub.io stays
+    # admitted in the sandbox policy for flakehub: inputs — verified
+    # 401-in-sandbox, 2026-10). Baked at BOTH /etc/nix/nix.conf (rootfs
+    # below, picked up by every nix invocation including sshd-spawned
+    # shells that drop env) and $NIX_CONFIG (image Env below) —
+    # nix.conf alone would suffice, but NIX_CONFIG wins when set, so
+    # both carry the same content.
     nixConfig = lib.concatStringsSep "\n" [
       "experimental-features = nix-command flakes"
       "sandbox = false"
       "filter-syscalls = false"
-      "extra-substituters = https://cache.flakehub.com/ https://edge.cache.flakehub.com/ https://cache.geninf.io/"
-      "extra-trusted-public-keys = cache.flakehub.com-3:hJuILl5sVK4iKm86JzgdXW12Y2Hwd5G07qKtHTOcDCM= cache.flakehub.com-4:Asi8qIv291s0aYLyH6IOnr5Kf6+OF14WVjkE6t3xMio= cache.flakehub.com-5:zB96CRlL7tiPtzA9/WKyPkp3A2vqxqgdgyTVNGShPDU= cache.flakehub.com-6:W4EGFwAGgBj3he7c5fNh9NkOXw0PUVaxygCVKeuvaqU= cache.flakehub.com-7:mvxJ2DZVHn/kRxlIaxYNMuDG1OvMckZu32um1TadOR8= cache.flakehub.com-8:moO+OVS0mnTjBTcOUh2kYLQEd59ExzyoW1QgQ8XAARQ= cache.flakehub.com-9:wChaSeTI6TeCuV/Sg2513ZIM9i0qJaYsF+lZCXg0J6o= cache.flakehub.com-10:2GqeNlIp6AKp4EF2MVbE1kBOp9iBSyo0UPR9KoR0o1Y= cache.geninf.io-1:uhEViaczNKSoerYM+w7uqXUzlAhnbEBKsFzgg9n3cvI= cache.clan.lol-1:3KztgSAB5R1M+Dz7vzkBGzXdodizbgLXGXKXlcQLA28="
+      "extra-substituters = https://openshell.cachix.org/ https://devenv.cachix.org/ https://nix-community.cachix.org/ https://chaotic-nyx.cachix.org/ https://cache.geninf.io/"
+      "extra-trusted-public-keys = openshell.cachix.org-1:OAr5MunsfH5PZvUsfD08OtGx5RtcwdNZGJdU5FqLm5w= devenv.cachix.org-1:w1cLUi8dv3hnoSPGAuibQv+f9TZLr6cv/Hm9XgU50cw= nix-community.cachix.org-1:mB9FSh9qf2dCimDSUo8Zy7bkq5CX+/rkCWyvRCYg3Fs= chaotic-nyx.cachix.org-1:HfnXSw4pj95iI/n8ae7W70yP3m9y9633ndgliTLGsQI= cache.geninf.io-1:uhEViaczNKSoerYM+w7uqXUzlAhnbEBKsFzgg9n3cvI= cache.clan.lol-1:3KztgSAB5R1M+Dz7vzkBGzXdodizbgLXGXKXlcQLA28="
     ];
   in {
     packages.code-agent-image = n2c.buildImage {

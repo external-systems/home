@@ -21,11 +21,18 @@ three instances (below), so every entry point behaves identically.
 | `homeSpec.programs.openshell.codeSandbox.enable` (default `true`) | the wrapper on `home.packages` for every user with the OpenShell home-manager module | this repo's source store path |
 | `inputs.home.flakeModules.code-sandbox` in another flake | `packages`/`apps.code-sandbox` configured by `perSystem.codeSandbox.*` options | the consumer's choice |
 
-Host prerequisites (all checked with a fix hint, not assumed): the
-`openshell` CLI registered against a gateway, and the configured
-providers created on that gateway (the `github-agent` profile and its
-provider must exist — `code-sandbox sync` prints the exact
-`openshell provider create …` line when one is missing).
+Host prerequisites: a Nix store (the wrapper builds the image with
+`nix`), `git` (remote HEAD resolution), `yq` (profile canonicalization
+in `sync`/`doctor`), and the host container engine's CLI (`docker` —
+the loader copies the image into its store, then tags it). Plus,
+checked with a fix hint rather than assumed: the `openshell` CLI
+registered against a gateway, and the configured providers created on
+that gateway (the `github-agent` profile and its provider must exist —
+`code-sandbox sync` prints the exact `openshell provider create …`
+line when one is missing). On the fleet's NixOS machines all of this
+is in place (`pkgs.code-sandbox` rides the repo overlay; the gateway
+module installs the openshell CLI and docker access for the VM
+driver).
 
 ## Quickstart
 

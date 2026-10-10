@@ -70,7 +70,7 @@ in ''
          code-sandbox exec <name> -- <cmd...>     run a command in a sandbox
          code-sandbox ssh-config                  append ssh configs for ALL active sandboxes
          code-sandbox sync                        render policy + profile from the flake, push on drift
-         code-sandbox doctor                      read-only drift/health report (exit 1 on findings)
+         code-sandbox doctor                      drift/health report + per-sandbox egress smoke (exit 1 on findings)
 
   options:
     -y, --yes          don't prompt when the sandbox already exists (delete + recreate)
@@ -207,6 +207,8 @@ in ''
       resolve_flake_ref
       return
     fi
+    # shellcheck disable=SC2157 # remoteFlakeStr is nix-interpolated per
+    # instantiation — a compile-time constant in the emitted script.
     if [ -n "${remoteFlakeStr}" ]; then
       # Redirect, never pipe git (SIGPIPE can kill the writer early).
       lsremote="$(mktemp)"
@@ -220,6 +222,9 @@ in ''
         printf '%s' "${flakeRef}"
         return
       fi
+      # shellcheck disable=SC2050 # alwaysRemote is nix-interpolated
+      # per instantiation — a compile-time constant in the emitted
+      # script.
       if [ "${
     if alwaysRemote
     then "1"
@@ -465,6 +470,26 @@ in ''
           esac
           openshell sandbox provider list "$sb" 2>/dev/null | sed 's/^/    providers: /' || echo "    providers: (query failed)"
           openshell policy list "$sb" 2>/dev/null | tail -n 3 | sed 's/^/    policy: /' || true
+          # Egress smoke: two admitted endpoints probed THROUGH the
+          # sandbox's own policy — github.com via curl (read) and
+          # cache.nixos.org via nix store ping. Diagnosis rule (learned
+          # 2026-10): an instant "Could not connect" with NO deny line
+          # in the sandbox log is a proxy-level flake, not policy
+          # drift — retry once, then report; only a logged deny line
+          # means the policy denied.
+          if openshell sandbox exec -n "$sb" -- curl -sf -m 8 -o /dev/null https://github.com 2>/dev/null; then
+            echo "    egress: github.com (curl) OK"
+          else
+            echo "    egress: github.com (curl) FAILED — check the sandbox log for deny lines:"
+            echo "      openshell logs $sb --source sandbox | grep -iE 'denied|reject|block|forbidden'"
+            findings=1
+          fi
+          if openshell sandbox exec -n "$sb" -- nix store ping --store https://cache.nixos.org >/dev/null 2>&1; then
+            echo "    egress: cache.nixos.org (nix) OK"
+          else
+            echo "    egress: cache.nixos.org (nix) FAILED — same deny-log grep as above"
+            findings=1
+          fi
         done
       fi
       rm -f "$sandbox_list"

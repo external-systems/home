@@ -13,7 +13,11 @@
 #
 # The module is exported with home's mkCodeSandbox already bound (see
 # flake-parts/default.nix) — consumers never reference inputs.home
-# inside their module config.
+# inside their module config. Consumers get the script only: the bash
+# completion that ships in home's own packages.code-sandbox (a static
+# file beside the package definition, flake-parts/openshellConfig.nix)
+# is not part of the generated wrapper — copy it into your package if
+# you want it.
 {mkCodeSandbox}: {lib, ...}: let
   inherit (lib) mkOption types;
 in {

@@ -59,10 +59,21 @@
           fi
           sed -i "s|@''${placeholder}@|$target|g" $out
         done
+        # Collapse adjacent identical lines: two placeholders can
+        # resolve to the same target (bin_python3 and bin_python3_real
+        # both resolve to bin/python3.14 — nixpkgs' bin/python3 is a
+        # symlink), rendering duplicate `- { path: ... }` entries
+        # (observed in the rendered policy, 2026-10). Adjacent-only on
+        # purpose: identical adjacent YAML lines are never meaningful
+        # here, and collapsing ONLY adjacent dupes cannot touch a
+        # repeated endpoint line in a different policy entry.
+        awk '{ if ($0 == prev) next; print; prev = $0 }' $out > dedup.tmp
+        mv dedup.tmp $out
         # A leftover @bin_<name>@ means the template and this list
         # drifted apart — fail loudly instead of shipping a literal
-        # placeholder to the gateway.
-        if grep -qE '@bin_[a-z_]+@' $out; then
+        # placeholder to the gateway. (Digit-inclusive class: the
+        # placeholder names contain digits, e.g. bin_python3.)
+        if grep -qE '@bin_[a-z0-9_]+@' $out; then
           echo "renderSandboxConfig: unresolved @bin_*@ placeholder in ${template}" >&2
           exit 1
         fi
@@ -79,15 +90,50 @@
       # path, the image builds from the public flake at remote HEAD so
       # the in-image briefing pins a real commit (see
       # documentation/docs/openshell/code-sandbox.md).
-      code-sandbox = pkgs.writeShellScriptBin "code-sandbox" (customLib.mkCodeSandbox {
-        flakeRef = builtins.toString self;
-        remoteFlake = "github:external-systems/home";
-        # The installed wrapper tracks the LIVE repo head: bare
-        # `code-sandbox` builds image/policy/profile from
-        # github:external-systems/home@<remote HEAD> — never the stale
-        # baked store path, never a dirty checkout.
-        alwaysRemote = true;
-      });
+      # The script ships WITH its bash completion. code-sandbox is a
+      # plain shell wrapper (there is no clap to generate completions
+      # from), so the completion is a static file — subcommands +
+      # flags, and live sandbox names for connect/delete/exec — merged
+      # into the package itself. Every install path gets it then, not
+      # just home-manager: NixOS systemPackages, nix run, home.packages.
+      code-sandbox = pkgs.buildEnv {
+        name = "code-sandbox";
+        paths = [
+          (pkgs.writeShellScriptBin "code-sandbox" (customLib.mkCodeSandbox {
+            flakeRef = builtins.toString self;
+            remoteFlake = "github:external-systems/home";
+            # The installed wrapper tracks the LIVE repo head: bare
+            # `code-sandbox` builds image/policy/profile from
+            # github:external-systems/home@<remote HEAD> — never the
+            # stale baked store path, never a dirty checkout.
+            alwaysRemote = true;
+          }))
+          (pkgs.writeTextDir "share/bash-completion/completions/code-sandbox" ''
+            _code_sandbox() {
+              local cur cmds names
+              cur="''${COMP_WORDS[COMP_CWORD]}"
+              cmds="create delete connect exec ssh-config sync doctor"
+              if [ "$COMP_CWORD" -eq 1 ]; then
+                COMPREPLY=($(compgen -W "$cmds" -- "$cur"))
+                return
+              fi
+              case "''${COMP_WORDS[1]}" in
+                connect | delete | exec)
+                  if [ "$COMP_CWORD" -eq 2 ]; then
+                    names="$(openshell sandbox list 2>/dev/null \
+                      | awk 'NF && $1 !~ /^[Nn][Aa][Mm][Ee]|^-+$/ {print $1}')"
+                    COMPREPLY=($(compgen -W "$names" -- "$cur"))
+                  fi
+                  ;;
+                create)
+                  COMPREPLY=($(compgen -W "-y --yes --cpu --memory --flake --provider --sync --no-sync --include-workdir --no-include-workdir --ssh-config --no-ssh-config --ssh-config-file -h --help" -- "$cur"))
+                  ;;
+              esac
+            }
+            complete -F _code_sandbox code-sandbox
+          '')
+        ];
+      };
       code-agent-policy = renderSandboxConfig "code-agent-policy" (customLib.relativeToRoot "openshell/policies/code-agent.yaml") {
         bin_nix = "${pkgs.nix}/bin/nix";
         bin_git = "${pkgs.git}/bin/git";

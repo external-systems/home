@@ -43,7 +43,10 @@ grows.
 
 ## Network: full admitted list
 
-Egress is deny-by-default. Admitted hosts (from
+Egress is deny-by-default and matches (binary, host) PAIRS — a host
+listed here is reachable only by the binaries its policy entry pins
+(the `binaries:` lists in `openshell/policies/code-agent.yaml`), e.g.
+PyPI is python3/uv/nix-only and curl is refused. Admitted hosts (from
 `openshell/policies/code-agent.yaml`):
 
 | Host | Access | Why |
@@ -53,11 +56,12 @@ Egress is deny-by-default. Admitted hosts (from
 | `api.github.com` | read; read-write with github-agent provider | gh + github MCP |
 | `codeload.github.com`, `raw.githubusercontent.com`, `gist.github.com`, `*.githubusercontent.com` asset hosts | read | tarballs, raw files, release assets (VSCodium fallback download) |
 | `*.nixos.org` | read | cache.nixos.org substitution, releases/channels/tarballs |
-| `*.cachix.org` | read | community binary caches |
-| `cache.flakehub.com`, `edge.cache.flakehub.com`, `api.flakehub.io` | read | FlakeHub caches |
+| `*.cachix.org` | read | cachix binary caches (the repo's openshell/devenv/nix-community/chaotic-nyx are baked substituters) |
+| `api.flakehub.io`, `api.flakehub.com` | read | flakehub: inputs (the cache.flakehub.com binary caches were dropped: 401 Unauthorized anonymously — dead substituters) |
 | `cache.geninf.io`, `cache.clan.lol` | read | clan niks3 caches |
 | `git.clan.lol` | read-write git transport | clan repos |
-| `pypi.org`, `files.pythonhosted.org` | read (wheels only) | python3/uv package fetches (no uploads admitted) |
+| `code.m3ta.dev` | read-only git smart-HTTP | the home flake's `agents` input (nix input fetch / clones; no push) |
+| `pypi.org`, `files.pythonhosted.org` | read | python3/uv wheel fetches (no uploads); nix also admitted — the home flake's headroom input is a wheel URL, and flake input fetches run as the nix binary |
 | `search.nixos.org` | read | mcp-nixos `search`-family backend (package/option `info` is local) |
 | `api.kimi.com` | — | kimi-for-coding API |
 | `api.anthropic.com`, `platform.claude.com` | — | claude API + startup preflight |
@@ -80,14 +84,22 @@ recreating the sandbox; filesystem/image changes require recreation.
   image's heaviest payload, and nix2container copyToRoot rewrites
   dumped the tree at the image root rather than its store path.
 - Substituters + trusted keys baked in `/etc/nix/nix.conf` (also
-  `$NIX_CONFIG`): FlakeHub caches (keys `cache.flakehub.com-3` through
-  `-10`), clan niks3 (`cache.geninf.io-1`, `cache.clan.lol-1` — objects
-  may be signed under either).
+  `$NIX_CONFIG`): the repo's own cachix caches (`openshell` — this
+  flake's closure — plus `devenv`, `nix-community`, `chaotic-nyx`,
+  mirroring flake.nix's nixConfig minus cache.numtide.com, whose host
+  the policy does not admit) and clan niks3 (`cache.geninf.io-1`,
+  `cache.clan.lol-1` — objects may be signed under either). The
+  FlakeHub binary caches were dropped: they answer nix-cache-info with
+  401 Unauthorized anonymously, so they were dead substituters adding
+  warning noise to every nix invocation.
 - For a Cachix-backed package, name cache + key explicitly:
   `NIX_CONFIG="$NIX_CONFIG extra-substituters = https://<cache>.cachix.org extra-trusted-public-keys = <cache>.cachix.org-1:…" nix profile install …`
-- No `/dev/kvm`: builds fall back to TCG and crawl. Substitution-only
-  is the intended path for unbaked packages — never let a from-source
-  build start.
+- No `/dev/kvm` in the guest: NixOS VM tests and nested VMs cannot
+  run — those are CI's job. Plain nix builds run at NATIVE speed (the
+  microVM is KVM-backed on the host; the repo's `checks.lint` builds
+  in seconds). What bites instead: large source builds eat the 32 GiB
+  overlay and FOD fetches are policy-gated — never let an llvm/rustc-
+  class source build start; substitute instead.
 - Every nix command warning "you don't have Internet access; disabling
   some network-dependent features" is NOT a network problem: nix
   2.34's `haveInternet()` (src/nix/main.cc) is not a connectivity
@@ -102,10 +114,12 @@ recreating the sandbox; filesystem/image changes require recreation.
   substitute true build …` (the CLI only zeroes it when NOT
   overridden; `--option`/`NIX_CONFIG` count). Works in-sandbox:
   `nix build --option substitute true .#checks.x86_64-linux.lint -L`.
-- Do NOT run `nix flake check` or the NixOS VM tests (`nix run
-  .#vm-test`) in-sandbox: they build heavy derivations and need KVM.
-  Checks, builds and VM tests are CI's job — the fleet CI is not wired
-  up yet, so flag the gap rather than running them.
+- Do NOT run the NixOS VM tests (`nix run .#vm-test`) in-sandbox:
+  they need /dev/kvm. VM tests are CI's job — the fleet CI is not wired
+  up yet, so flag the gap rather than running them. Full `nix flake
+  check` is allowed (checks only — VM tests are legacyPackages and
+  never part of it) but evaluates every output; prefer the targeted
+  lint gate when iterating.
 
 ## MCP trio failure modes
 
@@ -147,3 +161,31 @@ recreating the sandbox; filesystem/image changes require recreation.
 - Sandbox feels stale (missing baked files): the image hash-named
   sandbox lifecycle is `code-sandbox` in the dev shell — re-run it to
   rebuild, reload and recreate.
+
+## Troubleshooting recipes
+
+- An admitted-LOOKING host refusing connections instantly (`Could not
+  connect to server`) usually means the (binary, host) PAIR is missing
+  from the policy, not a network failure — and the deny log is NOT
+  authoritative: observed 2026-10, `nix` → `files.pythonhosted.org`
+  refused with zero deny lines in `openshell logs <sb> --source
+  sandbox` (the host was admitted only for python3/uv; the home
+  flake's headroom input fetch runs as the nix binary — fixed by
+  adding `@bin_nix@` to the python_packages entry). Diagnose by
+  reading the sandbox's composed policy on the host, not the log.
+  Same class, latent at the time: `code.m3ta.dev` (agents input) and
+  `api.flakehub.com` (moscripts lock URL — policy had only .io).
+  Rare one-off refuses on genuinely admitted pairs (observed once for
+  nix→github.com) are proxy-level flakes: retry once or twice — it
+  self-recovers within minutes — then report.
+- Plain `openshell logs <name>` is flooded by upstream supervisor ssh
+  WARNs (`data on unknown channel ChannelId(N)`, steady ~5s cadence)
+  — noise; always filter with `--source sandbox | grep -iE
+  'denied|reject|block|forbidden'`.
+- `error: killing process ...: Operation not permitted` during nix
+  builds is the supervisor's seccomp blocking nix→builder signals —
+  cosmetic; the build result stands.
+- `ls /` fails with EACCES: the sandbox filesystem policy marks /bin
+  /usr /lib /lib64 /etc /opt /proc read_only and /sandbox /tmp /nix
+  /home read_write — `/` itself is in neither list (deny by default),
+  so it cannot be LISTED; every real path below it works normally.

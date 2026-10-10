@@ -10,8 +10,8 @@
 # Sandbox policy for the code-agent image (general coding sandbox,
 # flake-parts/ociImages/code-agent.nix): nix runtime package adds via
 # substitution (cache.nixos.org, other *.nixos.org infra such as
-# releases/channels/tarballs, FlakeHub caches, clan-core's niks3
-# cache cache.geninf.io/cache.clan.lol, any *.cachix.org cache), public
+# releases/channels/tarballs, clan-core's niks3 cache
+# cache.geninf.io/cache.clan.lol, any *.cachix.org cache), public
 # GitHub over HTTPS (git clone/fetch, curl downloads), read-write
 # git+HTTPS to the
 # fleet's gitea (git.clan.lol — clan flake inputs and agent push work),
@@ -105,8 +105,11 @@ network_policies:
   # Cachix binary caches: one hostname per cache (<name>.cachix.org) —
   # the wildcard covers nix-community.cachix.org (nix-community
   # packages not on cache.nixos.org), devenv.cachix.org, and any cache
-  # an agent configures at runtime. This only permits the egress: nix
-  # uses a cache when it is named in NIX_CONFIG (extra-substituters +
+  # an agent configures at runtime. The repo's own caches (openshell —
+  # this flake's closure — plus devenv, nix-community, chaotic-nyx,
+  # mirroring flake.nix's nixConfig) are baked into the image
+  # NIX_CONFIG as substituters + trusted keys; any other cache works at
+  # runtime once named in NIX_CONFIG (extra-substituters +
   # extra-trusted-public-keys), e.g.
   #   NIX_CONFIG="$NIX_CONFIG extra-substituters = https://nix-community.cachix.org \
   #     extra-trusted-public-keys = nix-community.cachix.org-1:…" nix profile install nix-community#…
@@ -121,7 +124,7 @@ network_policies:
   # clan-core's niks3 binary cache (served as cache.geninf.io, also
   # answering as cache.clan.lol; objects may be signed under either
   # public key). Its substituter + both keys are baked into the image
-  # NIX_CONFIG, next to the FlakeHub keys.
+  # NIX_CONFIG.
   clan_cache:
     name: clan_cache
     endpoints:
@@ -132,16 +135,20 @@ network_policies:
     binaries:
       - { path: @bin_nix@ }
 
-  # FlakeHub caches baked into the image NIX_CONFIG (public keys,
-  # non-secret) + api host for flakehub: inputs.
+  # FlakeHub api hosts for flakehub: inputs (moscripts is one). The
+  # lock's tarball URLs point at api.flakehub.com; api.flakehub.io is
+  # the resolver. nix fetchers run as the nix binary. The
+  # cache.flakehub.com/edge.cache.flakehub.com binary caches were
+  # REMOVED from the image NIX_CONFIG — they answer nix-cache-info with
+  # 401 Unauthorized anonymously, so they were dead substituters adding
+  # warning noise to every nix invocation — and their egress went with
+  # them.
   flakehub:
     name: flakehub
     endpoints:
-      - { host: cache.flakehub.com, port: 443, protocol: rest,
-          enforcement: enforce, access: read-only }
-      - { host: edge.cache.flakehub.com, port: 443, protocol: rest,
-          enforcement: enforce, access: read-only }
       - { host: api.flakehub.io, port: 443, protocol: rest,
+          enforcement: enforce, access: read-only }
+      - { host: api.flakehub.com, port: 443, protocol: rest,
           enforcement: enforce, access: read-only }
     binaries:
       - { path: @bin_nix@ }
@@ -321,6 +328,12 @@ network_policies:
       - { path: @bin_python3@ }
       - { path: @bin_python3_real@ }
       - { path: @bin_uv@ }
+      # The home flake's headroom input is a files.pythonhosted.org
+      # wheel URL — flake INPUT fetches run as the nix binary, not
+      # python/uv (learned 2026-10: fetchTree is lazy, so only evals
+      # that reference the input hit this — which is why the lint gate
+      # passed while `nix build .#code-agent-policy` was refused).
+      - { path: @bin_nix@ }
 
   # mcp-nixos (the baked nixos MCP server): package/option `info`
   # queries answer from its local index, but `search`-family queries
@@ -333,6 +346,34 @@ network_policies:
           enforcement: enforce, access: read-only }
     binaries:
       - { path: @bin_mcp_nixos@ }
+
+  # code.m3ta.dev (Gitea): the home flake's `agents` input
+  # (git+https://code.m3ta.dev/m3tam3re/AGENTS — the shared skill-tree
+  # helper). Read-only smart-HTTP for nix input fetches and agent
+  # clones; pushing there is not a sandbox workflow.
+  m3ta:
+    name: m3ta
+    endpoints:
+      - host: code.m3ta.dev
+        port: 443
+        protocol: rest
+        enforcement: enforce
+        rules:
+          - allow:
+              method: GET
+              path: "**"
+          - allow:
+              method: HEAD
+              path: "**"
+          - allow:
+              method: OPTIONS
+              path: "**"
+          - allow:
+              method: POST
+              path: "/**/git-upload-pack"
+    binaries:
+      - { path: @bin_nix@ }
+      - { path: @bin_git@ }
 
   # VSCodium Remote-SSH bootstrap fallback (jeanp413 open-remote-ssh):
   # only reached when the pre-baked server commit does not match the

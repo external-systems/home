@@ -3,7 +3,11 @@
   lib,
   ...
 }: {
-  perSystem = {pkgs, ...}: {
+  perSystem = {
+    pkgs,
+    self',
+    ...
+  }: {
     # Lint gate: alejandra (format), statix (anti-patterns), deadnix (dead
     # bindings). Runs inside `nix flake check`, so CI fails on findings.
     # Source is filtered to .nix files so docs/vars changes don't
@@ -18,6 +22,54 @@
           alejandra --check .
           statix check .
           deadnix --fail .
+          touch $out
+        '';
+
+      # Rendered code-agent sandbox policy correctness. The TEMPLATE
+      # (openshell/policies/code-agent.yaml) is placeholder-invalid
+      # YAML by design; the rendered package is what the gateway
+      # consumes, so this gates the rendered artifact: it must parse
+      # as YAML, carry no leftover @bin_*@ placeholder, no duplicate
+      # binary pins (renderSandboxConfig collapses adjacent dupes),
+      # and no wildcard store binary beyond the one documented
+      # exception (kimi-code's nodejs — its closure is not this
+      # flake's pkgs.nodejs; see flake-parts/openshellConfig.nix).
+      # Wildcards are gated hard: in this image the nix store is
+      # agent-writable (filesystem policy marks /nix read_write), so
+      # a wildcard binary pin is an egress forge vector — mint a
+      # matching store path and inherit its hosts. The exact-pin
+      # default is enforced here.
+      code-agent-policy =
+        pkgs.runCommand "check-code-agent-policy" {
+          nativeBuildInputs = [pkgs.gawk pkgs.gnugrep pkgs.yq];
+          policy = self'.packages.code-agent-policy;
+        } ''
+          # Parses as YAML, placeholder-free.
+          yq -e . "$policy" >/dev/null
+          if grep -qE '@bin_[a-z0-9_]+@' "$policy"; then
+            echo "FAIL: leftover @bin_*@ placeholder in the rendered policy" >&2
+            exit 1
+          fi
+
+          # No duplicate binary pins WITHIN one policy entry — a dup
+          # means a render regression (the dedupe in renderSandboxConfig
+          # stopped collapsing adjacent identical entries). The same
+          # binary pinned by DIFFERENT entries is legitimate (bin_nix
+          # appears in most of them).
+          dupes="$(yq -r '.network_policies | to_entries[] | .key as $k | ((.value.binaries // [])[] | .path) | "\($k) \(.)"' "$policy" | sort | uniq -d || true)"
+          if [ -n "$dupes" ]; then
+            echo "FAIL: duplicate binary pins in the rendered policy:" >&2
+            echo "$dupes" >&2
+            exit 1
+          fi
+
+          # Exactly one wildcard binary pin is sanctioned.
+          wildcards="$(grep -oE 'path: /nix/store/\*[^ }]+' "$policy" | sort -u || true)"
+          if [ "$wildcards" != "path: /nix/store/*-nodejs*/bin/node" ]; then
+            echo "FAIL: unexpected wildcard binary pins (only the documented kimi nodejs entry is sanctioned):" >&2
+            echo "$wildcards" >&2
+            exit 1
+          fi
           touch $out
         '';
 
