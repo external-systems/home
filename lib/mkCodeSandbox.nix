@@ -119,7 +119,11 @@ in ''
   and gateway config can never disagree about which binary may call which
   host. `code-sandbox sync` (also run by `create`) diffs the rendered
   profile against the gateway (`openshell profile export ${profileId}`)
-  and pushes it with `openshell profile update` on drift; `code-sandbox
+  and pushes it with `openshell profile update` on drift; it also diffs
+  each sandbox's base policy (`openshell policy get <name> --base`)
+  against the rendered policy and pushes it with `openshell policy set
+  --wait` on drift — policy hot-reloads, no recreation, and the
+  sandbox's include_workdir choice is preserved. `code-sandbox
   doctor` reports the same read-only, plus provider presence/refresh
   status and per-sandbox policy/provider health. Never `openshell
   profile import` by hand after editing — one-shot imports are exactly
@@ -311,6 +315,74 @@ in ''
     rm -f "$gw" "$gw_canon" "$rendered_canon"
   }
 
+  # Canonicalize a sandbox policy YAML for drift comparison: keep only
+  # the fields the owning repo controls (same rationale as
+  # canon_profile — the gateway may manage/normalize other fields).
+  canon_policy() {
+    yq -S -y '{version, filesystem_policy, landlock, network_policies}' "$1"
+  }
+
+  # Fetch a sandbox's own (pre-provider-composition) policy into $2.
+  # `openshell policy get --base` may prefix the YAML with a comment
+  # header up to a '---' separator (the README recipe strips through
+  # it); handle both that and a bare/comment-prefixed document, then
+  # verify the result actually parses as a policy.
+  fetch_base_policy() {
+    openshell policy get "$1" --base 2>/dev/null >"$2.raw" || return 1
+    if grep -q '^---$' "$2.raw"; then
+      sed '1,/^---$/d' "$2.raw" >"$2"
+    else
+      grep -v '^#' "$2.raw" >"$2"
+    fi
+    rm -f "$2.raw"
+    yq -e '.network_policies' "$2" >/dev/null 2>&1
+  }
+
+  # Write the rendered policy into $2, adjusted to preserve the
+  # include_workdir value found in the gateway policy file $1 (create
+  # flips that line for --include-workdir sandboxes; sync must never
+  # silently change a sandbox's filesystem posture).
+  rendered_policy_for() {
+    if grep -q 'include_workdir: true' "$1"; then
+      sed 's/^\( *\)include_workdir: false$/\1include_workdir: true/' "$policy_path" >"$2"
+    else
+      cp "$policy_path" "$2"
+    fi
+  }
+
+  # Push the rendered sandbox policy to every sandbox whose gateway
+  # copy drifted from the flake (`openshell policy set` hot-reloads —
+  # no recreation needed). Only sandboxes whose current policy carries
+  # the code-agent marker (a nix_store network entry) are touched: an
+  # unrelated sandbox's posture is never rewritten.
+  sync_policies() {
+    sandbox_list="$(mktemp)"
+    openshell sandbox list >"$sandbox_list" 2>/dev/null || true
+    sandbox_names="$(awk 'NF && $1 !~ /^[Nn][Aa][Mm][Ee]|^-+$/ {print $1}' "$sandbox_list")"
+    rm -f "$sandbox_list"
+    if [ -z "$sandbox_names" ]; then
+      echo "code-sandbox: no sandboxes to policy-sync"
+      return 0
+    fi
+    for sb in $sandbox_names; do
+      gw="$(mktemp)"; adj="$(mktemp)"
+      if ! fetch_base_policy "$sb" "$gw"; then
+        echo "code-sandbox: $sb: policy unreadable — skipping" >&2
+      elif ! grep -q 'name: nix_store' "$gw"; then
+        echo "code-sandbox: $sb: not a code-agent policy (no nix_store entry) — skipping"
+      else
+        rendered_policy_for "$gw" "$adj"
+        if diff <(canon_policy "$gw") <(canon_policy "$adj") >/dev/null 2>&1; then
+          echo "code-sandbox: $sb: policy up to date"
+        else
+          echo "code-sandbox: $sb: policy drifted from the flake — pushing rendered copy (hot-reloads, no recreation)"
+          openshell policy set "$sb" --policy "$adj" --wait
+        fi
+      fi
+      rm -f "$gw" "$adj"
+    done
+  }
+
   # Report one provider's presence (plus refresh status when present).
   # Returns nonzero when missing: `create` treats that as fatal,
   # `sync`/`doctor` as a finding.
@@ -411,6 +483,7 @@ in ''
       [ -z "$name" ] || { echo "code-sandbox: sync takes no sandbox name" >&2; usage 1; }
       render_configs
       sync_profile
+      sync_policies
       for p in $(provider_list); do
         check_provider "$p" || true
       done
@@ -470,6 +543,18 @@ in ''
           esac
           openshell sandbox provider list "$sb" 2>/dev/null | sed 's/^/    providers: /' || echo "    providers: (query failed)"
           openshell policy list "$sb" 2>/dev/null | tail -n 3 | sed 's/^/    policy: /' || true
+          # Policy drift vs the rendered flake policy (sync pushes it).
+          gwpol="$(mktemp)"; adjpol="$(mktemp)"
+          if fetch_base_policy "$sb" "$gwpol" && grep -q 'name: nix_store' "$gwpol"; then
+            rendered_policy_for "$gwpol" "$adjpol"
+            if diff <(canon_policy "$gwpol") <(canon_policy "$adjpol") >/dev/null 2>&1; then
+              echo "    policy drift: none"
+            else
+              echo "    policy drift: DRIFTED from the flake — run: code-sandbox sync"
+              findings=1
+            fi
+          fi
+          rm -f "$gwpol" "$adjpol"
           # Egress smoke: two admitted endpoints probed THROUGH the
           # sandbox's own policy — github.com via curl (read) and
           # cache.nixos.org via nix store ping. Diagnosis rule (learned
