@@ -193,6 +193,16 @@
         # egress — admitted read-only in the sandbox policy — has a
         # pinned binary; pip itself ships inside `python3 -m venv`).
         uv
+        # Go toolchain: module/toolchain fetches ride the golang policy
+        # entry (proxy.golang.org + sum.golang.org admitted for the go
+        # binary; direct-VCS fallback reuses git's github/gitea
+        # admissions). GOPATH/GOMODCACHE default to writable $HOME/go.
+        go
+        # Tiny but constantly missed: which (install scripts probe with
+        # it) and ncurses' clear/tput/reset (nixpkgs ncurses carries its
+        # own terminfo db — verified clear works under a real TERM).
+        which
+        ncurses
         # The clan CLI: baked because it can never be obtained
         # in-sandbox — clan-cli's clan-runtime dependency builds with a
         # nested `nix flake update --store ./.` inside the builder,
@@ -280,6 +290,10 @@
       ln -s ${pkgs.dnsutils}/bin/dig                $out/usr/local/bin/dig
       ln -s ${pkgs.rsync}/bin/rsync                 $out/usr/local/bin/rsync
       ln -s ${pkgs.uv}/bin/uv                       $out/usr/local/bin/uv
+      ln -s ${pkgs.go}/bin/go                       $out/usr/local/bin/go
+      ln -s ${pkgs.go}/bin/gofmt                    $out/usr/local/bin/gofmt
+      ln -s ${pkgs.which}/bin/which                 $out/usr/local/bin/which
+      ln -s ${pkgs.ncurses}/bin/clear               $out/usr/local/bin/clear
       # headroom via the env-mapping wrapper (MCP configs and
       # interactive use both resolve to this PATH entry).
       ln -s ${sandboxHeadroom}/bin/headroom         $out/usr/local/bin/headroom
@@ -303,6 +317,12 @@
       case ":$PATH:" in
         *:/usr/local/bin:*) ;;
         *) export PATH="/usr/local/bin:$PATH" ;;
+      esac
+      # uv tool/pipx-style user binaries (uv warns otherwise; $HOME is
+      # /sandbox under the supervisor, /home/agent under plain docker).
+      case ":$PATH:" in
+        *:"$HOME/.local/bin":*) ;;
+        *) export PATH="$HOME/.local/bin:$PATH" ;;
       esac
       case ":$LD_LIBRARY_PATH:" in
         *:/usr/lib/wheel-deps:*) ;;
@@ -678,7 +698,7 @@
         You are ${agentName}, running inside an OpenShell code-agent sandbox: an isolated microVM with deny-by-default network egress, running as uid 1000 (agent), workdir /sandbox, HOME=/home/agent. Image: code-agent @ ${imageRev}.
 
         ## Toolset
-        A full toolset is pre-baked on PATH (/bin, /usr/bin, /usr/local/bin): shell + coreutils, git/gh, curl/wget/jq/yq, python3, ripgrep/fd/sd/tmux/less, archive + foreign-ELF tools (file/readelf/objdump/ldd), kubectl/helm, shellcheck/shfmt, nix (+ nixd/alejandra/statix/deadnix), the clan CLI, and the pi/kimi/claude CLIs.
+        A full toolset is pre-baked on PATH (/bin, /usr/bin, /usr/local/bin): shell + coreutils, git/gh, curl/wget/jq/yq, python3 + uv, go, ripgrep/fd/sd/tmux/less, which/clear, archive + foreign-ELF tools (file/readelf/objdump/ldd), kubectl/helm, shellcheck/shfmt, nix (+ nixd/alejandra/statix/deadnix), the clan CLI, and the pi/kimi/claude CLIs.
 
         - Use baked tools directly. NEVER `nix run` or `nix profile install` a package that is already installed.
         - The nix store is single-user and WRITABLE by design
@@ -738,7 +758,7 @@
         /opt/skills holds the repo's merged skill tree (repo skills/ + external sources), wired into pi, kimi and claude. Load with /skill:<name>; read a SKILL.md before relying on a skill. The **sandbox-environment** skill carries this sandbox's deep reference (full egress list, cache keys, recipes).
 
         ## Network
-        Egress is deny-by-default and matches (binary, host) PAIRS. Admitted: github.com (read + api), the nix cache estates (*.nixos.org, *.cachix.org, clan's cache.geninf.io/cache.clan.lol), flake-input hosts for nix/git fetches (git.clan.lol read-write, code.m3ta.dev read-only, api.flakehub.io/api.flakehub.com, files.pythonhosted.org for the headroom wheel input), api.kimi.com, api.anthropic.com, platform.claude.com. A host admitted for ONE binary is not admitted for others (e.g. PyPI is python3/uv/nix-only; curl is refused). Everything else is DENIED — do not retry dead hosts in a loop; report the blocked host. Full host/rule list: **sandbox-environment** skill.
+        Egress is deny-by-default and matches (binary, host) PAIRS. Admitted: github.com (read + api), the nix cache estates (*.nixos.org, *.cachix.org, clan's cache.geninf.io/cache.clan.lol), flake-input hosts for nix/git fetches (git.clan.lol read-write, code.m3ta.dev read-only, api.flakehub.io/api.flakehub.com, files.pythonhosted.org for the headroom wheel input), PyPI (pypi.org + files.pythonhosted.org) for python3/uv, the Go module proxy + checksum db (proxy.golang.org/sum.golang.org) for go, api.kimi.com, api.anthropic.com, platform.claude.com. A host admitted for ONE binary is not admitted for others (e.g. PyPI is python3/uv-only; curl is refused). Everything else is DENIED — do not retry dead hosts in a loop; report the blocked host. Full host/rule list: **sandbox-environment** skill.
 
         ## Identity and secrets
         - Git commits are authored as the andrewthomaslee-agent bot.
@@ -782,14 +802,24 @@
     # warning noise to every nix invocation (api.flakehub.io stays
     # admitted in the sandbox policy for flakehub: inputs — verified
     # 401-in-sandbox, 2026-10). Baked at BOTH /etc/nix/nix.conf (rootfs
-    # below, picked up by every nix invocation including sshd-spawned
-    # shells that drop env) and $NIX_CONFIG (image Env below) —
-    # nix.conf alone would suffice, but NIX_CONFIG wins when set, so
-    # both carry the same content.
+    # below) and $NIX_CONFIG (image Env below). NOTE (verified live
+    # 2026-10): the supervisor does NOT pass the image Env's NIX_CONFIG
+    # through to the sandbox process env — it rewrites Env wholesale
+    # (SSL_CERT_FILE arrives pointed at the supervisor CA bundle), so
+    # /etc/nix/nix.conf is the ONLY copy guaranteed in effect under
+    # OpenShell; $NIX_CONFIG remains for plain docker runs.
     nixConfig = lib.concatStringsSep "\n" [
       "experimental-features = nix-command flakes"
       "sandbox = false"
       "filter-syscalls = false"
+      # The gateway proxy occasionally refuses an admitted (binary, host)
+      # pair with an instant "Could not connect to server" that
+      # self-recovers within a minute (observed 2026-10 for
+      # nix→github.com input tarballs). Retry downloads and allow a
+      # sane connect window so these flakes self-heal instead of
+      # failing the eval.
+      "connect-timeout = 10"
+      "download-attempts = 3"
       "extra-substituters = https://openshell.cachix.org/ https://devenv.cachix.org/ https://nix-community.cachix.org/ https://chaotic-nyx.cachix.org/ https://cache.geninf.io/"
       "extra-trusted-public-keys = openshell.cachix.org-1:OAr5MunsfH5PZvUsfD08OtGx5RtcwdNZGJdU5FqLm5w= devenv.cachix.org-1:w1cLUi8dv3hnoSPGAuibQv+f9TZLr6cv/Hm9XgU50cw= nix-community.cachix.org-1:mB9FSh9qf2dCimDSUo8Zy7bkq5CX+/rkCWyvRCYg3Fs= chaotic-nyx.cachix.org-1:HfnXSw4pj95iI/n8ae7W70yP3m9y9633ndgliTLGsQI= cache.geninf.io-1:uhEViaczNKSoerYM+w7uqXUzlAhnbEBKsFzgg9n3cvI= cache.clan.lol-1:3KztgSAB5R1M+Dz7vzkBGzXdodizbgLXGXKXlcQLA28="
     ];

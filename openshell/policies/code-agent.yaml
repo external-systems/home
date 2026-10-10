@@ -335,6 +335,35 @@ network_policies:
       # passed while `nix build .#code-agent-policy` was refused).
       - { path: @bin_nix@ }
 
+  # Go module + toolchain fetches (the image bakes pkgs.go): the module
+  # proxy serves version lists, .mod/.zip payloads and the
+  # golang.org/toolchain modules GOTOOLCHAIN=auto downloads;
+  # sum.golang.org is the checksum db (GOSUMDB). Read-only; Go module
+  # publishing is not a sandbox workflow. Direct-VCS fallback
+  # (GOPROXY=direct, or GONOSUMDB/GOPRIVATE paths) reuses git's
+  # github.com / git.clan.lol / code.m3ta.dev admissions above — no
+  # extra hosts needed here.
+  golang:
+    name: golang
+    endpoints:
+      - { host: proxy.golang.org, port: 443, protocol: rest,
+          enforcement: enforce, access: read-only }
+      - { host: sum.golang.org, port: 443, protocol: rest,
+          enforcement: enforce, access: read-only }
+    binaries:
+      - { path: @bin_go@ }
+      # go also runs INSIDE nix builders (go-modules fixed-output
+      # derivations — e.g. nix2container's own build when the image is
+      # rebuilt in-sandbox): that go comes from whatever nixpkgs the
+      # built flake pins, not this image's pkgs.go, so an exact pin
+      # would silently deny those builds after an input bump. Wildcard,
+      # same rationale as the kimi nodejs pin below. nixpkgs' bin/go is
+      # a symlink to share/go/bin/go and the supervisor matches the
+      # RESOLVED exe, so pin the share/ layout too (verified: both this
+      # flake's pkgs.go and nixpkgs#go resolve there).
+      - { path: /nix/store/*-go-*/bin/go }
+      - { path: /nix/store/*-go-*/share/go/bin/go }
+
   # mcp-nixos (the baked nixos MCP server): package/option `info`
   # queries answer from its local index, but `search`-family queries
   # call the search.nixos.org backend — admit it for the server's

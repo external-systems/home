@@ -8,8 +8,9 @@ architecture and the lessons that shaped the design, see the
 ## What the image gives you
 
 - **Toolset on PATH** (`/bin`, `/usr/local/bin`, login shells): bash,
-  coreutils, git, gh, curl, jq, yq, python3, ripgrep, fd, sd, openssh,
-  tmux, nix — plus the Nix language tooling (`nixd`, `alejandra`,
+  coreutils, git, gh, curl, jq, yq, python3, go, ripgrep, fd, sd,
+  openssh, tmux, nix, which, clear — plus the Nix language tooling
+  (`nixd`, `alejandra`,
   `statix`, `deadnix`), shell vetting (`shellcheck`, `shfmt`), archive
   tools (`unzip`, `zstd`, `wget`), ELF inspection (`file`, `readelf`,
   `objdump`, `ldd`), patching (`diff`, `patch`), k8s clients
@@ -22,6 +23,31 @@ architecture and the lessons that shaped the design, see the
   `python3 -m venv`). Binary wheels import as-is: the few system libs
   they link (`libstdc++`/`libgcc_s`/`libz`) resolve from the baked
   `/usr/lib/wheel-deps` dir on `LD_LIBRARY_PATH`.
+  Verified in-sandbox (2026-10): `uv venv` + wheel installs (numpy,
+  pillow, lxml), `uv init --package` + `uv build`, `uv tool install`,
+  `uv python install` (managed CPython via the nix-ld shim), `pip`
+  inside `python3 -m venv`, and the docs stack (`mkdocs-material` +
+  `mkdocs-glightbox`, `mkdocs build --strict` in `documentation/`).
+  Practical notes:
+  - `uv tool install`ed binaries land in `$HOME/.local/bin`, which
+    login shells put on PATH via `/etc/profile` (re-login or
+    `export PATH="$HOME/.local/bin:$PATH"` in non-login shells).
+  - `uv venv` does NOT seed pip — use `uv pip …` inside it, or
+    `uv venv --seed` when you need real pip.
+  - An sdist that compiles still fails without a toolchain, but nix
+    supplies one on demand:
+    `nix shell --option substitute true nixpkgs#gcc` then re-run the
+    uv/pip install inside that shell (verified with psutil).
+  - uv's "Failed to hardlink files" warning is benign: it appears
+    only when the project lives on `/tmp` (tmpfs) while the uv cache
+    is on the overlay — projects under `/sandbox` hardlink fine.
+  For Go work: the full `go` toolchain is baked (with `gofmt`) —
+  `proxy.golang.org` + `sum.golang.org` are admitted read-only for the
+  go binary (and for any `/nix/store/*-go-*/bin/go`, so go-modules
+  fixed-output derivations inside nix builds fetch too), and
+  GOPATH/GOMODCACHE default to the writable `$HOME/go`. Direct-VCS
+  fallback (`GOPRIVATE`/`GOPROXY=direct`) rides git's github.com /
+  git.clan.lol admissions.
 - **Three pre-wired AI agents** (no interactive login ever), each with
   the sandbox environment briefing baked into its user-level system
   prompt / memory (pi `~/.pi/agent/APPEND_SYSTEM.md`, kimi
@@ -128,7 +154,7 @@ openshell sandbox exec -n code -- nix --version
 ```
 
 Providers are created once per gateway (see
-[the overview](index.md#4-ai-coding-agents--interactive-and-remote) for
+[the overview](index.md#4-ai-coding-agents-interactive-and-remote) for
 the profile import / provider create commands); attach them at create
 time or later with `openshell sandbox provider attach code <name> --wait`.
 

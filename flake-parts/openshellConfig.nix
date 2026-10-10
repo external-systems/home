@@ -149,6 +149,7 @@
         # absolute path already (don't re-prefix it with /bin).
         bin_python3_real = pkgs.python3.interpreter;
         bin_uv = "${pkgs.uv}/bin/uv";
+        bin_go = "${pkgs.go}/bin/go";
         bin_mcp_nixos = "${inputs'.mcp-nixos.packages.mcp-nixos}/bin/mcp-nixos";
       };
 

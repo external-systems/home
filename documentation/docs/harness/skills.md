@@ -36,7 +36,7 @@ skillsDir = inputs.agents.lib.mkSkills {
 
 The same helper builds the tree baked at `/opt/skills` in the OpenShell
 sandbox image, so hosts and sandboxes run the identical skill set (see
-the [Code-Agent Image](openshell/code-agent-image.md)).
+the [Code-Agent Image](../openshell/code-agent-image.md)).
 
 ### Sources
 
