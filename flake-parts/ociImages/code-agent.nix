@@ -334,6 +334,20 @@
       if [ -z "''${NIX_LD_LIBRARY_PATH:-}" ]; then
         export NIX_LD_LIBRARY_PATH="${nixLdLibs}"
       fi
+      # FOD builders inherit NIX_SSL_CERT_FILE via impureEnvVars and
+      # hang git/curl fetchers off it (buildGoModule sets
+      # GIT_SSL_CAINFO=$NIX_SSL_CERT_FILE): point it at the supervisor
+      # CA bundle when the gateway's MITM CA is mounted, else the
+      # public bundle (plain docker). Go itself does not read this var
+      # — the /etc/ssl/certs/ca-certificates.crt symlink (rootfs below)
+      # is what covers env-less go inside builders.
+      if [ -z "''${NIX_SSL_CERT_FILE:-}" ]; then
+        if [ -r /run/openshell-supervisor-ca/material/ca-bundle.crt ]; then
+          export NIX_SSL_CERT_FILE=/run/openshell-supervisor-ca/material/ca-bundle.crt
+        else
+          export NIX_SSL_CERT_FILE="${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt"
+        fi
+      fi
       EOF
 
       # nix config on disk (see nixConfig above): unlike $NIX_CONFIG in
@@ -421,6 +435,25 @@
       ln -s ${pkgs.stdenv.cc.cc.lib}/lib/libstdc++.so.6 $out/usr/lib/wheel-deps/
       ln -s ${pkgs.stdenv.cc.cc.lib}/lib/libgcc_s.so.1 $out/usr/lib/wheel-deps/
       ln -s ${pkgs.zlib}/lib/libz.so.1 $out/usr/lib/wheel-deps/
+
+      # TLS under the gateway's MITM (verified live 2026-10): the
+      # supervisor intercepts TLS and presents certs signed by its
+      # per-gateway CA; the runtime process env gets SSL_CERT_FILE
+      # pointed at the supervisor bundle
+      # (/run/openshell-supervisor-ca/material/ca-bundle.crt = public
+      # CAs + supervisor CA), but nix BUILDERS run with a scrubbed env,
+      # so env-less TLS clients inside FODs (go mod vendor in
+      # buildGoModule go-modules FODs) failed with "x509: certificate
+      # signed by unknown authority". Go probes
+      # /etc/ssl/certs/ca-certificates.crt FIRST of its default cert
+      # files (that is also why go works on NixOS, which ships that
+      # name): symlink it at the supervisor bundle. Under plain docker
+      # the symlink dangles — go/openssl skip unreadable candidates and
+      # fall back to the public bundle in the same dir (from cacert via
+      # baseTools), so both modes work.
+      mkdir -p $out/etc/ssl/certs
+      ln -s /run/openshell-supervisor-ca/material/ca-bundle.crt \
+        $out/etc/ssl/certs/ca-certificates.crt
     '';
 
     # Home, workdir, and the pre-baked per-agent wiring. Owned
@@ -771,6 +804,7 @@
         - A host is DENIED → report it instead of retrying; the policy hot-reloads (`openshell policy set` from the host), no sandbox recreation needed. Host-side diagnosis: `openshell logs <sandbox> --source sandbox | grep -iE 'denied|reject|block|forbidden'` (plain `openshell logs <name>` is flooded by known upstream supervisor ssh WARNs — `data on unknown channel` — ignore those).
         - An admitted-LOOKING host refusing connections instantly (`Could not connect to server`) usually means the (binary, host) PAIR is missing from the policy, not a network failure — and the deny log is not authoritative (observed 2026-10: nix→files.pythonhosted.org refused with NO deny line; that host was admitted only for python3/uv, fixed in this policy revision). Check the pair against the sandbox's composed policy from the host before concluding drift. Rare one-off refuses on genuinely admitted pairs (observed once for nix→github.com) are proxy-level flakes: retry once or twice (self-recovers within minutes), then report.
         - `error: killing process ...: Operation not permitted` during nix builds is the supervisor's seccomp blocking nix→builder signals — cosmetic; the build result stands.
+        - The gateway MITMs TLS with a per-gateway supervisor CA (mounted at /run/openshell-supervisor-ca/material/): interactive tools work via the injected SSL_CERT_FILE, nix BUILDERS run with a scrubbed env — covered by the baked /etc/ssl/certs/ca-certificates.crt symlink (go's first probe path) and NIX_SSL_CERT_FILE from /etc/profile (FODs inherit it via impureEnvVars; git/curl fetchers hang off it).
         - `ls /` fails (EACCES): the sandbox filesystem policy marks /bin /usr /lib /lib64 /etc /opt /proc read_only and /sandbox /tmp /nix /home read_write, and `/` itself is in neither list — deny by default, so it cannot be listed. Every real path below it works normally.
 
         ## Agent notes
