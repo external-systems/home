@@ -350,6 +350,13 @@ network_policies:
           enforcement: enforce, access: read-only }
       - { host: sum.golang.org, port: 443, protocol: rest,
           enforcement: enforce, access: read-only }
+      # The module proxy serves large payloads (toolchain zips for
+      # GOTOOLCHAIN=auto, some module zips) via signed-URL redirects to
+      # its GCS backend — same redirect class as github.com's
+      # release-assets.githubusercontent.com (verified live 2026-10:
+      # GOTOOLCHAIN=go1.25.0 download denied at storage.googleapis.com).
+      - { host: storage.googleapis.com, port: 443, protocol: rest,
+          enforcement: enforce, access: read-only }
     binaries:
       - { path: @bin_go@ }
       # go also runs INSIDE nix builders (go-modules fixed-output
