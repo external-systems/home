@@ -31,9 +31,13 @@
       # consumes, so this gates the rendered artifact: it must parse
       # as YAML, carry no leftover @bin_*@ placeholder, no duplicate
       # binary pins (renderSandboxConfig collapses adjacent dupes),
-      # and no wildcard store binary beyond the one documented
-      # exception (kimi-code's nodejs — its closure is not this
-      # flake's pkgs.nodejs; see flake-parts/openshellConfig.nix).
+      # and no wildcard store binary beyond the documented
+      # exceptions: kimi-code's nodejs (its closure is not this flake's
+      # pkgs.nodejs; see flake-parts/openshellConfig.nix) and the go
+      # toolchain (go also runs INSIDE nix builders — go-modules FODs —
+      # from whatever nixpkgs the built flake pins, and nixpkgs' bin/go
+      # resolves to share/go/bin/go, so both layouts are pinned; see
+      # the golang entry in openshell/policies/code-agent.yaml).
       # Wildcards are gated hard: in this image the nix store is
       # agent-writable (filesystem policy marks /nix read_write), so
       # a wildcard binary pin is an egress forge vector — mint a
@@ -63,10 +67,14 @@
             exit 1
           fi
 
-          # Exactly one wildcard binary pin is sanctioned.
+          # Only the sanctioned wildcard binary pins (see above).
           wildcards="$(grep -oE 'path: /nix/store/\*[^ }]+' "$policy" | sort -u || true)"
-          if [ "$wildcards" != "path: /nix/store/*-nodejs*/bin/node" ]; then
-            echo "FAIL: unexpected wildcard binary pins (only the documented kimi nodejs entry is sanctioned):" >&2
+          expected="$(printf '%s\n' \
+            'path: /nix/store/*-go-*/bin/go' \
+            'path: /nix/store/*-go-*/share/go/bin/go' \
+            'path: /nix/store/*-nodejs*/bin/node')"
+          if [ "$wildcards" != "$expected" ]; then
+            echo "FAIL: unexpected wildcard binary pins (sanctioned: the kimi nodejs entry and the two go toolchain layouts):" >&2
             echo "$wildcards" >&2
             exit 1
           fi
