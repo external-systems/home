@@ -129,6 +129,31 @@
       ];
     };
 
+    # /etc/ssl/certs/ca-certificates.crt → the gateway's supervisor CA
+    # bundle (the OpenShell gateway MITMs TLS with a per-gateway CA
+    # mounted at /run/openshell-supervisor-ca/material/; nix BUILDERS
+    # run with a scrubbed env, so env-less TLS clients inside FODs —
+    # go mod vendor in buildGoModule go-modules FODs — failed with
+    # "x509: certificate signed by unknown authority", verified
+    # 2026-10). ca-certificates.crt is go's FIRST default cert-file
+    # probe (also why go works on NixOS, which ships that name).
+    # Under plain docker the symlink dangles — go/openssl skip
+    # unreadable candidates and fall back to cacert's public bundle in
+    # the same dir, so both modes work.
+    #
+    # Lives in baseTools, NOT rootfs: cacert is /etc/ssl's only other
+    # provider, so buildEnv links /etc/ssl as a whole-dir SYMLINK, and a
+    # rootfs-side real /etc/ssl dir conflicts with it at image assembly
+    # ("the file '/etc/ssl' already exists in the graph with mode
+    # 'Lrwxrwxrwx' ... added again with mode 'dr-xr-xr-x'" — layers.json
+    # build failure, observed 2026-10). As a second buildEnv provider,
+    # /etc/ssl becomes a merged real dir instead.
+    supervisorCaLink = pkgs.runCommand "supervisor-ca-link" {} ''
+      mkdir -p $out/etc/ssl/certs
+      ln -s /run/openshell-supervisor-ca/material/ca-bundle.crt \
+        $out/etc/ssl/certs/ca-certificates.crt
+    '';
+
     # /bin + /usr/bin toolset (the sshd default PATH covers /bin) plus
     # merged /etc contributions (ssl certs, ssh client config, nix
     # profile snippets, /usr/bin/env).
@@ -150,6 +175,7 @@
         gh
         curl
         cacert
+        supervisorCaLink
         jq
         yq
         python3
@@ -435,25 +461,6 @@
       ln -s ${pkgs.stdenv.cc.cc.lib}/lib/libstdc++.so.6 $out/usr/lib/wheel-deps/
       ln -s ${pkgs.stdenv.cc.cc.lib}/lib/libgcc_s.so.1 $out/usr/lib/wheel-deps/
       ln -s ${pkgs.zlib}/lib/libz.so.1 $out/usr/lib/wheel-deps/
-
-      # TLS under the gateway's MITM (verified live 2026-10): the
-      # supervisor intercepts TLS and presents certs signed by its
-      # per-gateway CA; the runtime process env gets SSL_CERT_FILE
-      # pointed at the supervisor bundle
-      # (/run/openshell-supervisor-ca/material/ca-bundle.crt = public
-      # CAs + supervisor CA), but nix BUILDERS run with a scrubbed env,
-      # so env-less TLS clients inside FODs (go mod vendor in
-      # buildGoModule go-modules FODs) failed with "x509: certificate
-      # signed by unknown authority". Go probes
-      # /etc/ssl/certs/ca-certificates.crt FIRST of its default cert
-      # files (that is also why go works on NixOS, which ships that
-      # name): symlink it at the supervisor bundle. Under plain docker
-      # the symlink dangles — go/openssl skip unreadable candidates and
-      # fall back to the public bundle in the same dir (from cacert via
-      # baseTools), so both modes work.
-      mkdir -p $out/etc/ssl/certs
-      ln -s /run/openshell-supervisor-ca/material/ca-bundle.crt \
-        $out/etc/ssl/certs/ca-certificates.crt
     '';
 
     # Home, workdir, and the pre-baked per-agent wiring. Owned
