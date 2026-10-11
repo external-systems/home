@@ -48,19 +48,32 @@
   envAttr ? "code-agent-env",
   # Gateway-side provider profile id (sync/doctor drift-check this one).
   profileId ? "github-agent",
-  # Providers attached at create; checked by sync/doctor. The default
-  # claude provider is claude-subscription (Pro/Max/Team OAuth token
-  # from `claude setup-token`, injected as $CLAUDE_CODE_OAUTH_TOKEN) —
-  # the owner's working credential. Platform-key users pass
-  # `--provider claude-code` instead. NEVER attach both: Claude Code's
-  # precedence ranks $ANTHROPIC_AUTH_TOKEN above $CLAUDE_CODE_OAUTH_TOKEN,
-  # so a $0-credit platform key would shadow the subscription. Note the
-  # baked headroom MCP server's LLM transforms need a PLATFORM key (a
-  # subscription token only bills correctly on Claude-Code-shaped
-  # requests) — with the subscription provider they degrade to local
-  # structural compression; the headroom proxy's compressors are all
-  # local and unaffected either way.
-  providers ? ["github-agent" "kimi-for-coding" "claude-subscription"],
+  # BASE providers attached to every sandbox; checked by sync/doctor.
+  # The credential provider for the sandbox's coding agent is added on
+  # top, derived from --agent: pi/kimi → kimi-for-coding, claude →
+  # claude-subscription (Pro/Max/Team OAuth token from
+  # `claude setup-token`, injected as $CLAUDE_CODE_OAUTH_TOKEN) — the
+  # owner's working credential. Platform-key users pass
+  # `--agent claude --provider github-agent --provider claude-code`
+  # instead (--provider replaces the whole list). NEVER attach both
+  # claude providers: Claude Code's precedence ranks
+  # $ANTHROPIC_AUTH_TOKEN above $CLAUDE_CODE_OAUTH_TOKEN, so a $0-credit
+  # platform key would shadow the subscription. Note the baked headroom
+  # MCP server's LLM transforms need a PLATFORM key (a subscription
+  # token only bills correctly on Claude-Code-shaped requests) — with
+  # the subscription provider they degrade to local structural
+  # compression; the headroom proxy's compressors are all local and
+  # unaffected either way.
+  providers ? ["github-agent"],
+  # Coding agent each created sandbox is dedicated to (--agent
+  # overrides): stamped into the sandbox as CODE_AGENT via the
+  # create-time --env channel (the only env channel that survives the
+  # supervisor's scrub on every spawn path), selecting both the
+  # headroom proxy's upstream (pi/kimi → api.kimi.com/coding, claude →
+  # api.anthropic.com) and the auto-attached credential provider. The
+  # image's launcher wrappers refuse to run an agent from the wrong
+  # routing family.
+  defaultAgent ? "kimi",
   # OCI image name for the content-hash tag.
   imageName ? "code-agent",
   # Sandbox name prefix.
@@ -101,6 +114,13 @@ in ''
 
   options:
     -y, --yes          don't prompt when the sandbox already exists (delete + recreate)
+        --agent A      dedicate the sandbox to one coding agent: pi, kimi or claude
+                       (default: ${defaultAgent}). Stamps CODE_AGENT into the sandbox's
+                       create-time env, selects the headroom proxy's upstream
+                       (pi/kimi → api.kimi.com/coding, claude → api.anthropic.com),
+                       and attaches the matching credential provider on top of the
+                       base providers (${providersStr}): kimi-for-coding for pi/kimi,
+                       claude-subscription for claude
         --cpu N        CPUs for the sandbox (default: ${cpu})
         --memory SIZE  memory for the sandbox (default: ${memory})
                        both are accepted but IGNORED by the VM driver — sizing
@@ -112,7 +132,8 @@ in ''
   }; "." = the flake enclosing the cwd (for working
                        on that flake itself)
         --provider N   attach provider N INSTEAD of the defaults (repeatable;
-                       defaults: ${providersStr})
+                       e.g. claude platform-key users: --agent claude
+                       --provider github-agent --provider claude-code)
         --no-sync      create only: skip the profile sync (default: sync before create)
       --include-workdir / --no-include-workdir
                      toggle the policy's include_workdir BIT at create (default off).
@@ -124,7 +145,7 @@ in ''
         --no-ssh-config           don't append the Remote-SSH config (default: append)
         --ssh-config-file FILE    where to append it (default: ~/.ssh/config.local)
 
-  Naming: sandboxes are <name>-<imghash> (default name: ${defaultName}) and
+  Naming: sandboxes are <name>-<imghash> (default name: ${defaultName}-<agent>) and
   images ${imageName}:<imghash> — both content-addressed, so an existing name
   means an older image. Recreate for image changes; network policy hot-reloads
   via `code-sandbox sync`. The image bakes its flake git rev into every agent
@@ -404,13 +425,18 @@ in ''
   }
 
   # The provider list for this invocation: --provider replaces the
-  # baked defaults entirely.
+  # baked defaults entirely; otherwise the base providers plus the
+  # credential provider for the selected --agent.
   provider_list() {
     if [ -n "$extra_providers" ]; then
       printf '%s' "$extra_providers"
-    else
-      printf '%s' "$default_providers"
+      return
     fi
+    case "$agent" in
+      claude) agent_credential="claude-subscription" ;;
+      *) agent_credential="kimi-for-coding" ;;
+    esac
+    printf '%s %s' "$default_providers" "$agent_credential"
   }
 
   cmd="create"
@@ -430,10 +456,11 @@ in ''
     then "1"
     else "0"
   }" \
-    ssh_config=1 ssh_config_file="$HOME/.ssh/config.local"
+    ssh_config=1 ssh_config_file="$HOME/.ssh/config.local" agent="${defaultAgent}"
   while [ $# -gt 0 ]; do
     case "$1" in
       -y | --yes) yes=1; shift ;;
+      --agent) agent="''${2:?--agent needs a value}"; shift 2 ;;
       --cpu) cpu="''${2:?--cpu needs a value}"; shift 2 ;;
       --memory) memory="''${2:?--memory needs a value}"; shift 2 ;;
       --flake) flake_explicit=1; flake_ref="''${2:?--flake needs a value}"; shift 2 ;;
@@ -457,6 +484,11 @@ in ''
         fi ;;
     esac
   done
+
+  case "$agent" in
+    pi | kimi | claude) ;;
+    *) echo "code-sandbox: --agent must be pi, kimi or claude (got '$agent')" >&2; usage 1 ;;
+  esac
 
   case "$cmd" in
     delete)
@@ -602,7 +634,10 @@ in ''
   img="$(nix build "''${ref}#${imageAttr}" --no-link --print-out-paths)"
   shorthash="$(basename "$img" | cut -c1-8)"
   tag="${imageName}:$shorthash"
-  name="''${name:-${defaultName}}-$shorthash"
+  # The default name embeds the agent, so a kimi sandbox and a claude
+  # sandbox of the same image don't collide (code-kimi-<hash> vs
+  # code-claude-<hash>) — one sandbox per coding agent is the model.
+  name="''${name:-${defaultName}-$agent}-$shorthash"
 
   echo "code-sandbox: loading image as $tag ..."
   nix run "''${ref}#${loaderApp}"
@@ -658,6 +693,13 @@ in ''
     fi
   fi
 
+  # Stamp the sandbox's coding agent: CODE_AGENT survives the env scrub
+  # on every spawn path (spec env, same channel as the file above) and
+  # the image's launcher wrappers read it to start the single headroom
+  # proxy with the right upstream — and to refuse agents from the wrong
+  # routing family.
+  env_args+=(--env "CODE_AGENT=$agent")
+
   create_policy="$policy_path"
   if [ "$include_workdir" = 1 ]; then
     # include_workdir is a POLICY BIT only (the sandbox's internal
@@ -670,7 +712,7 @@ in ''
     sed 's/^\( *\)include_workdir: false$/\1include_workdir: true/' "$policy_path" >"$create_policy"
   fi
 
-  echo "code-sandbox: creating sandbox '$name' (cpu=$cpu memory=$memory) ..."
+  echo "code-sandbox: creating sandbox '$name' (agent=$agent cpu=$cpu memory=$memory) ..."
   openshell sandbox create --name "$name" --from "$tag" \
     --policy "$create_policy" \
     "''${provider_args[@]}" \

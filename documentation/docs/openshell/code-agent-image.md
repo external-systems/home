@@ -95,39 +95,50 @@ architecture and the lessons that shaped the design, see the
   the github tools are listed in the system prompt at session start (a
   provider-less github server fails loudly at startup and pi marks it
   failed; the tools are still visible).
-- **All agent inference routes through a local headroom proxy**
-  (context compression → token savings; verified in-sandbox 2026-10:
-  ~5s cold start, ~365MB RSS slim, real claude traffic compressed on
-  first contact). One Anthropic-wire pipeline per upstream (a proxy
-  instance has a single anthropic target):
-  - `:8787` → `api.anthropic.com` — `claude` (baked
-    `~/.claude/settings.json` `env.ANTHROPIC_BASE_URL`).
-  - `:8788` → `api.kimi.com/coding` — `pi` (baked `models.json`
-    baseUrl override) AND `kimi` (baked `config.toml`
-    `type = "anthropic"` + base_url; the Anthropic wire is the same
-    subscription product pi speaks — verified live — unlike the kimi
-    wire's OpenAI-style surface, which headroom's anthropic pipeline
-    can't serve).
+- **All agent inference routes through ONE local headroom proxy** on
+  `127.0.0.1:8787` (context compression → token savings; verified
+  in-sandbox 2026-10: ~5s cold start, ~365MB RSS slim, real traffic
+  compressed on first contact). A proxy process has a single
+  Anthropic-wire upstream target, and each sandbox is dedicated to one
+  coding agent at create time — `code-sandbox --agent pi|kimi|claude`
+  stamps `$CODE_AGENT` into the create-time env (the channel that
+  survives the supervisor's env scrub) and attaches only the matching
+  credential provider:
+  - `pi` / `kimi` sandboxes → upstream `api.kimi.com/coding` — `pi`
+    (baked `models.json` baseUrl override) AND `kimi` (baked
+    `config.toml` `type = "anthropic"` + base_url; the Anthropic wire
+    is the same subscription product pi speaks — verified live —
+    unlike the kimi wire's OpenAI-style surface, which headroom's
+    anthropic pipeline can't serve).
+  - `claude` sandboxes → upstream `api.anthropic.com` (the proxy's
+    default target; baked `~/.claude/settings.json`
+    `env.ANTHROPIC_BASE_URL`).
   There is no systemd in the microVM, so each agent's `/usr/local/bin`
-  launcher wrapper lazy-starts its proxy (`headroom-proxy-ensure`,
-  flock-serialized, `--stateless`, telemetry/update-check off since
-  those hosts are not policy-admitted) and `exec`s the real CLI —
-  `/proc/pid/exe` keeps matching the policy's binary pins. Proxy logs:
-  `/tmp/headroom-proxy-<port>.log`; health: `headroom doctor`;
-  savings: `headroom savings`. Egress: the policy admits
-  api.anthropic.com AND api.kimi.com for headroom-slim's python
-  interpreter (`@bin_headroom_py@` in the `claude_code` and
-  `kimi_for_coding` rules); gateway credential substitution works for
-  proxy-routed traffic (verified).
+  launcher wrapper lazy-starts the proxy (`headroom-proxy-ensure`,
+  flock-serialized, `--stateless`, `--disable-kompress` — the image
+  ships headroom-slim without the [ml] extra and huggingface.co is not
+  policy-admitted, so the optional ML compressor could never load; the
+  structural compressors carry the measured savings — telemetry/
+  update-check off since those hosts are not policy-admitted), verifies
+  the running proxy's `/health` upstream matches its routing family,
+  refuses to run an agent stamped for the OTHER family, and `exec`s the
+  real CLI — `/proc/pid/exe` keeps matching the policy's binary pins.
+  Proxy log: `/tmp/headroom-proxy-8787.log`; health: `headroom doctor`;
+  savings: `curl -s 127.0.0.1:8787/stats` (`--stateless` keeps no
+  on-disk ledger, so `headroom savings` stays empty by design). Egress:
+  the policy admits api.anthropic.com AND api.kimi.com for
+  headroom-slim's python interpreter (`@bin_headroom_py@` in the
+  `claude_code` and `kimi_for_coding` rules); gateway credential
+  substitution works for proxy-routed traffic (verified).
 - The agents, one line each:
   - `pi` — Kimi for Coding subscription, key from the attached provider's
-    `$KIMI_API_KEY`, via the `:8788` proxy. Baked defaults
+    `$KIMI_API_KEY`, via the `:8787` proxy. Baked defaults
     (`~/.pi/agent/settings.json`): kimi-for-coding at `max` thinking,
     `defaultProjectTrust = "always"`. An `anthropic` provider entry
     (`:8787`, `$ANTHROPIC_AUTH_TOKEN`) is wired for claude models, but
-    only works with the claude-code PLATFORM provider attached — a
-    subscription token 429s on pi's raw-API request shape (verified
-    2026-10).
+    only works in a `--agent claude` sandbox with the claude-code
+    PLATFORM provider attached — a subscription token 429s on pi's
+    raw-API request shape (verified 2026-10).
   - `kimi` — same subscription via the baked `config.toml`
     (`type = "anthropic"`, proxy base_url, `api_key_env = "KIMI_API_KEY"`).
     Baked defaults: model k3 at high thinking effort, subagents on

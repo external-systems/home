@@ -143,25 +143,38 @@ recreating the sandbox; filesystem/image changes require recreation.
 
 ## Headroom proxy (inference routing)
 
-ALL agent inference routes through a baked headroom proxy pair — one
-Anthropic-wire pipeline per upstream (an instance has ONE anthropic
-target): claude → `127.0.0.1:8787` → api.anthropic.com; pi + kimi →
-`127.0.0.1:8788` → api.kimi.com/coding (kimi-code speaks the Anthropic
-wire here — `type = "anthropic"` in the baked config.toml, verified
-live 2026-10). No systemd in the microVM: each agent's
-/usr/local/bin launcher wrapper lazy-starts its proxy via
-`headroom-proxy-ensure <port> [upstream]` (flock-serialized,
-`--stateless`, telemetry/update-check off — those hosts are not
-admitted) and `exec`s the real CLI, so policy binary pins still match.
-Routing lives in the HM-generated config FILES (claude settings.json
-`env.ANTHROPIC_BASE_URL`, pi models.json `baseUrl`, kimi config.toml
-`baseUrl`) — the file channel survives the supervisor's env scrub.
-Failure modes: agent errors connecting to 127.0.0.1:<port> → proxy not
-running; start it with the ensure command above, log at
-/tmp/headroom-proxy-<port>.log. 502 through :8788 on an old sandbox →
-the policy predates the `@bin_headroom_py@` pin in the kimi_for_coding
-rule — hot-reload the policy from the host. `headroom doctor`
-health-checks routing; `headroom savings` shows the numbers.
+ALL agent inference routes through ONE baked headroom proxy on
+`127.0.0.1:8787` — a proxy process has ONE Anthropic-wire upstream
+target, and each sandbox is dedicated to a single coding agent at
+create time: `code-sandbox --agent pi|kimi|claude` stamps `$CODE_AGENT`
+into the create-time env (the channel that survives the supervisor's
+env scrub) and attaches only the matching credential provider
+(kimi-for-coding for pi/kimi, claude-subscription for claude) on top of
+github-agent. The proxy's upstream follows the sandbox's agent:
+pi/kimi → `api.kimi.com/coding` (kimi-code speaks the Anthropic wire
+here — `type = "anthropic"` in the baked config.toml, verified live
+2026-10), claude → `api.anthropic.com` (the default target). No systemd
+in the microVM: each agent's /usr/local/bin launcher wrapper
+lazy-starts the proxy via `headroom-proxy-ensure <port> [upstream]`
+(flock-serialized, `--stateless`, `--disable-kompress` — the image
+ships headroom-slim without the [ml] extra and huggingface.co is NOT
+admitted, so the optional ML compressor could never load; the
+structural compressors carry the measured savings — telemetry/
+update-check off, those hosts are not admitted), verifies the running
+proxy's `/health` upstream matches its own routing family, refuses to
+run an agent stamped for the OTHER family, and `exec`s the real CLI, so
+policy binary pins still match. Routing lives in the HM-generated
+config FILES (claude settings.json `env.ANTHROPIC_BASE_URL`, pi
+models.json `baseUrl`, kimi config.toml `baseUrl`) — the file channel
+survives the supervisor's env scrub. Failure modes: agent errors
+connecting to 127.0.0.1:8787 → proxy not running; start it with the
+ensure command above, log at /tmp/headroom-proxy-8787.log. 502 through
+the proxy on an old sandbox → the policy predates the
+`@bin_headroom_py@` pin in the kimi_for_coding rule — hot-reload the
+policy from the host. "headroom savings" stays EMPTY by design
+(`--stateless` keeps no on-disk ledger) — read savings from
+`curl -s 127.0.0.1:8787/stats` or the headroom MCP stats tool.
+`headroom doctor` health-checks routing.
 
 ## MCP trio failure modes
 

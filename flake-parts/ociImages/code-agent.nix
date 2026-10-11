@@ -720,15 +720,20 @@
       github = "GitHub repos, issues, PRs; requires the github-agent provider attached at sandbox creation.";
     };
 
-    # Headroom proxy instances for the sandbox's inference routing: one
-    # Anthropic-wire pipeline per UPSTREAM (a proxy instance has a
-    # single anthropic target), so claude's api.anthropic.com and the
-    # kimi-for-coding subscription (api.kimi.com/coding — Anthropic-wire
-    # for both pi and kimi-code, verified live in-sandbox 2026-10) each
-    # get one. Verified in-sandbox: ~5s cold start, ~365MB RSS (slim),
-    # compressed real claude traffic on first contact.
-    headroomAnthropicPort = 8787;
-    headroomKimiPort = 8788;
+    # ONE headroom proxy per sandbox for inference routing: a proxy
+    # process has a single Anthropic-wire upstream target, and each
+    # sandbox is dedicated to one coding agent at create time
+    # (code-sandbox --agent pi|kimi|claude stamps $CODE_AGENT into the
+    # create-time env — the channel that survives the supervisor's env
+    # scrub). The first launcher wrapper to run lazy-starts the proxy
+    # with its routing family's upstream:
+    #   pi / kimi → api.kimi.com/coding (kimi-for-coding subscription;
+    #               Anthropic-wire for both, verified live 2026-10)
+    #   claude    → api.anthropic.com (the proxy's default target)
+    # Verified in-sandbox: ~5s cold start, ~365MB RSS (slim),
+    # compressed real traffic on first contact.
+    headroomPort = 8787;
+    headroomKimiUpstream = "https://api.kimi.com/coding";
 
     # Proxy lazy-start: no systemd in the microVM, so the first agent
     # invocation brings its proxy up (flock serializes the startup
@@ -738,6 +743,12 @@
     # anthropic-pipeline upstream override (empty = api.anthropic.com).
     # --stateless: no filesystem writes (containerized mode; the CCR
     # store + stats live in memory for the sandbox's lifetime).
+    # --disable-kompress: the image ships headroom-slim (no [ml]
+    # extra), and kompress's ModernBERT model downloads from
+    # huggingface.co, which the sandbox policy deliberately does NOT
+    # admit — without the flag the proxy idles "degraded" on every
+    # /health. The structural compressors (smart_crusher, log, code —
+    # where the measured savings are) stay enabled.
     # Telemetry/update-check off: their hosts are deliberately not
     # policy-admitted.
     headroomProxyEnsure = pkgs.writeShellScriptBin "headroom-proxy-ensure" ''
@@ -751,7 +762,7 @@
         if [ -n "$upstream" ]; then
           export ANTHROPIC_TARGET_API_URL="$upstream"
         fi
-        nohup ${sandboxHeadroom}/bin/headroom proxy --stateless --port "$port" \
+        nohup ${sandboxHeadroom}/bin/headroom proxy --stateless --disable-kompress --port "$port" \
           >>"/tmp/headroom-proxy-$port.log" 2>&1 &
         for _ in $(${pkgs.coreutils}/bin/seq 1 60); do
           ${pkgs.curl}/bin/curl -sf "http://127.0.0.1:$port/livez" >/dev/null 2>&1 && return 0
@@ -852,25 +863,62 @@
               {"kimi": kimi_trust, "claude": claude_trust}[sys.argv[1]](dirs)
     '';
 
-    # Agent launcher wrappers: ensure the agent's headroom proxy, run
-    # the agent's pre-exec setup (trust pre-seed, messaging socket),
-    # then exec the real CLI — /proc/pid/exe resolves to the REAL
-    # binary, so the policy's binary pins (pi ELF, the node wildcard,
-    # .claude-wrapped) keep matching.
-    mkAgentLauncher = name: realBin: port: upstream: preExec:
+    # Agent launcher wrappers: gate on the sandbox's stamped agent,
+    # ensure the (single) headroom proxy, verify its upstream matches
+    # this agent's routing family, run the agent's pre-exec setup
+    # (trust pre-seed, messaging socket), then exec the real CLI —
+    # /proc/pid/exe resolves to the REAL binary, so the policy's binary
+    # pins (pi ELF, the node wildcard, .claude-wrapped) keep matching.
+    #
+    # One coding agent per sandbox: code-sandbox --agent stamps
+    # $CODE_AGENT at create time (the create-time --env set survives
+    # the supervisor's env scrub, unlike the image Env). pi and kimi
+    # share the "kimi" routing family (same upstream, same credential).
+    # A launcher from the wrong family would silently misroute through
+    # a proxy bound to the OTHER upstream and fail with a bare 401 —
+    # refuse loudly instead. Unset CODE_AGENT (plain docker run, older
+    # code-sandbox) skips the gate; the /health upstream check below
+    # still catches a misbound proxy.
+    mkAgentLauncher = name: realBin: family: upstream: preExec: let
+      expectedUpstream =
+        if upstream == ""
+        then "https://api.anthropic.com"
+        else upstream;
+      allowedAgents =
+        if family == "claude"
+        then ''"" | claude''
+        else ''"" | pi | kimi'';
+    in
       pkgs.writeShellScriptBin name ''
+        case "''${CODE_AGENT:-}" in
+          ${allowedAgents}) ;;
+          *)
+            echo "${name}: this sandbox was created for CODE_AGENT='$CODE_AGENT' — ${name} routes to ${expectedUpstream}, which this sandbox's headroom proxy does not serve." >&2
+            echo "Create a dedicated sandbox instead:  code-sandbox --agent ${family} create" >&2
+            exit 1
+            ;;
+        esac
+        ${headroomProxyEnsure}/bin/headroom-proxy-ensure ${toString headroomPort} "${upstream}"
+        # Belt-and-braces: a proxy started by a different-family
+        # launcher (or by hand with the wrong upstream) must never
+        # silently misroute this agent's traffic.
+        proxyUpstream="$(${pkgs.curl}/bin/curl -sf "http://127.0.0.1:${toString headroomPort}/health" 2>/dev/null | ${pkgs.python3}/bin/python3 -c 'import json,sys; print(json.load(sys.stdin)["checks"]["upstream"]["url"])' 2>/dev/null || true)"
+        if [ -n "$proxyUpstream" ] && [ "$proxyUpstream" != "${expectedUpstream}" ]; then
+          echo "${name}: headroom proxy on 127.0.0.1:${toString headroomPort} is bound to $proxyUpstream, but ${name} needs ${expectedUpstream}." >&2
+          echo "Kill the stale proxy (pkill -f 'headroom proxy') or recreate with:  code-sandbox --agent ${family} create" >&2
+          exit 1
+        fi
         ${preExec}
-        ${headroomProxyEnsure}/bin/headroom-proxy-ensure ${toString port} "${upstream}"
         exec ${realBin} "$@"
       '';
-    sandboxPi = mkAgentLauncher "pi" "${pkgs.pi-coding-agent}/bin/pi" headroomKimiPort "https://api.kimi.com/coding" "";
-    sandboxKimi = mkAgentLauncher "kimi" "${pkgs.kimi-code}/bin/kimi" headroomKimiPort "https://api.kimi.com/coding" ''
+    sandboxPi = mkAgentLauncher "pi" "${pkgs.pi-coding-agent}/bin/pi" "kimi" headroomKimiUpstream "";
+    sandboxKimi = mkAgentLauncher "kimi" "${pkgs.kimi-code}/bin/kimi" "kimi" headroomKimiUpstream ''
       # Pre-trust /sandbox folders (see agentPreTrust): kimi's startup
       # gate prompts per folder otherwise and project MCP servers stay
       # disabled while untrusted.
       ${pkgs.python3}/bin/python3 ${agentPreTrust} kimi 2>/dev/null || true
     '';
-    sandboxClaude = mkAgentLauncher "claude" "${pkgs.claude-code}/bin/claude" headroomAnthropicPort "" ''
+    sandboxClaude = mkAgentLauncher "claude" "${pkgs.claude-code}/bin/claude" "claude" "" ''
       # Pre-trust /sandbox folders (see agentPreTrust).
       ${pkgs.python3}/bin/python3 ${agentPreTrust} claude 2>/dev/null || true
       # Cross-session messaging: '/' in this microVM is owned by the
@@ -935,24 +983,26 @@
           models.providers = {
             # kimi-for-coding subscription, key from the
             # provider-injected $KIMI_API_KEY, routed through the
-            # kimi-upstream headroom proxy. A baseUrl-only override
+            # sandbox's single headroom proxy. A baseUrl-only override
             # preserves pi's built-in model catalog for the provider
             # (pi custom-provider docs).
             kimi-coding = {
               apiKey = "$KIMI_API_KEY";
-              baseUrl = "http://127.0.0.1:${toString headroomKimiPort}";
+              baseUrl = "http://127.0.0.1:${toString headroomPort}";
             };
             # Claude models ride the claude-code PLATFORM provider's
-            # $ANTHROPIC_AUTH_TOKEN through the anthropic-upstream
-            # proxy. Under the default claude-subscription provider
-            # this var is unset and the provider fails fast on use —
-            # ON PURPOSE: a subscription OAuth token only bills on
-            # Claude-Code-shaped requests; pi's raw /v1/messages calls
-            # 429 against it (verified live in-sandbox 2026-10), so
-            # there is nothing to route here without the platform key.
+            # $ANTHROPIC_AUTH_TOKEN through the same single proxy —
+            # which only works in a sandbox created with `--agent
+            # claude` (the proxy's upstream is per-sandbox). Under the
+            # default claude-subscription provider this var is unset
+            # and the provider fails fast on use — ON PURPOSE: a
+            # subscription OAuth token only bills on Claude-Code-shaped
+            # requests; pi's raw /v1/messages calls 429 against it
+            # (verified live in-sandbox 2026-10), so there is nothing
+            # to route here without the platform key.
             anthropic = {
               apiKey = "$ANTHROPIC_AUTH_TOKEN";
-              baseUrl = "http://127.0.0.1:${toString headroomAnthropicPort}";
+              baseUrl = "http://127.0.0.1:${toString headroomPort}";
             };
           };
           appendSystemMd = sandboxContext-pi;
@@ -980,7 +1030,7 @@
             default_permission_mode = "auto";
             providers.kimi-for-coding = {
               type = "anthropic";
-              base_url = "http://127.0.0.1:${toString headroomKimiPort}";
+              base_url = "http://127.0.0.1:${toString headroomPort}";
               api_key_env = "KIMI_API_KEY";
             };
             models = {
@@ -1054,11 +1104,13 @@
             # "auto" is the softer classifier-driven alternative (never
             # asks, but silently blocks what it judges risky).
             permissions.defaultMode = "bypassPermissions";
-            # Route claude through the anthropic-upstream headroom
-            # proxy. The settings.json env block applies to claude's
-            # own process — the file channel survives the supervisor's
-            # env scrub (HM sessionVariables would not).
-            env.ANTHROPIC_BASE_URL = "http://127.0.0.1:${toString headroomAnthropicPort}";
+            # Route claude through the sandbox's single headroom
+            # proxy (its upstream is per-sandbox: a claude sandbox
+            # binds api.anthropic.com). The settings.json env block
+            # applies to claude's own process — the file channel
+            # survives the supervisor's env scrub (HM sessionVariables
+            # would not).
+            env.ANTHROPIC_BASE_URL = "http://127.0.0.1:${toString headroomPort}";
           };
           # Bake ~/.claude.json too (claude merges either file) so the
           # onboarding skip survives claude rewriting its state file.
@@ -1176,7 +1228,7 @@
       Pre-configured in every agent's user-level MCP config (pi ~/.pi/agent/mcp.json, kimi ~/.kimi-code/mcp.json, claude ~/.claude/settings.json): **headroom** (context compression), **nixos** (NixOS / Home Manager option search), **github** (repos / issues / PRs — only functional when the sandbox was created with the github-agent provider attached). There is deliberately NO kubernetes MCP server; use kubectl/helm directly.
 
       ## Headroom proxy
-      ALL agent inference routes through a local headroom proxy (context compression → token savings), lazy-started by each agent's launcher wrapper: claude → http://127.0.0.1:8787 → api.anthropic.com; pi + kimi → http://127.0.0.1:8788 → api.kimi.com/coding. If an agent fails with a 127.0.0.1 connection error, start its proxy: `headroom-proxy-ensure 8787` (claude) / `headroom-proxy-ensure 8788 https://api.kimi.com/coding` (pi/kimi). Logs at /tmp/headroom-proxy-<port>.log; `headroom doctor` health-checks; `headroom savings` shows the numbers.
+      ALL agent inference routes through ONE local headroom proxy (context compression → token savings) on http://127.0.0.1:8787, lazy-started by each agent's launcher wrapper with the upstream for the sandbox's stamped agent ($CODE_AGENT, set by `code-sandbox --agent` at create time): pi/kimi → https://api.kimi.com/coding, claude → https://api.anthropic.com (the proxy's default target). Kompress (the optional ML compressor) is disabled — its model host is not policy-admitted; the structural compressors carry the savings. If an agent fails with a 127.0.0.1 connection error, start the proxy: `headroom-proxy-ensure 8787` (claude) / `headroom-proxy-ensure 8787 https://api.kimi.com/coding` (pi/kimi). Logs at /tmp/headroom-proxy-8787.log; `headroom doctor` health-checks; savings show in `curl -s 127.0.0.1:8787/stats` (`--stateless` keeps no on-disk ledger, so `headroom savings` stays empty by design).
 
       ## Skills
       /opt/skills holds the repo's merged skill tree (repo skills/ + external sources), wired into pi, kimi and claude. Load with /skill:<name>; read a SKILL.md before relying on a skill. The **sandbox-environment** skill carries this sandbox's deep reference (full egress list, cache keys, recipes).
@@ -1205,7 +1257,7 @@
 
     sandboxContext-pi = sandboxContext "pi" ''
       - MCP exposure: all three servers are `direct` — their tools are listed in the system prompt at session start; the github server still needs the github-agent provider attached to answer calls. Diagnose servers with `pi mcp list`; add project-only servers with `pi mcp add -l <name> -- <cmd>`.
-      - Defaults (baked ~/.pi/agent/settings.json): kimi-coding/kimi-for-coding at max thinking; project trust auto-granted. A claude provider (anthropic, via :8787) is wired too, but only works when the claude-code PLATFORM provider is attached ($ANTHROPIC_AUTH_TOKEN) — the subscription token 429s on pi's raw-API request shape.
+      - Defaults (baked ~/.pi/agent/settings.json): kimi-coding/kimi-for-coding at max thinking; project trust auto-granted. A claude provider (anthropic, via the same :8787 proxy) is wired too, but only works in a `--agent claude` sandbox with the claude-code PLATFORM provider attached ($ANTHROPIC_AUTH_TOKEN) — the subscription token 429s on pi's raw-API request shape.
     '';
 
     sandboxContext-kimi = sandboxContext "\${product_name}" ''

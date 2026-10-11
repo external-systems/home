@@ -135,9 +135,10 @@ What the image bakes in (all nixpkgs/`llm-agents`-pinned, no secrets):
   claude-code — attach ONE, never both). All agent user configs are
   home-manager-generated (the image's standalone HM evaluation renders
   `homeSpec.agents.*` into the agents' config files), and ALL
-  inference routes through a baked, lazy-started headroom proxy pair
-  (`:8787` → api.anthropic.com for claude, `:8788` →
-  api.kimi.com/coding for pi+kimi) for context compression — see the
+  inference routes through ONE baked, lazy-started headroom proxy per
+  sandbox (`127.0.0.1:8787`; upstream follows the sandbox's stamped
+  `$CODE_AGENT` — `code-sandbox --agent`: pi/kimi → api.kimi.com/coding,
+  claude → api.anthropic.com) for context compression — see the
   [image guide](code-agent-image.md).
 - **Repo skills baked at `/opt/skills`** — the same merged skill tree
   `inputs.agents.lib.mkSkills` builds for the NixOS hosts (the home
@@ -379,7 +380,8 @@ Image/driver interplay:
   `maxContextSize`) supports env-referenced keys. The baked config.toml
   uses `type = "anthropic"` (the Anthropic `/messages` wire at
   api.kimi.com/coding — verified live in-sandbox 2026-10) pointed at
-  the kimi-upstream headroom proxy (`127.0.0.1:8788`), replacing both
+  the sandbox's single headroom proxy (`127.0.0.1:8787`, kimi upstream
+  in pi/kimi sandboxes), replacing both
   the OAuth device flow (whose `auth.kimi.com` hosts stay
   policy-closed) and the OpenAI-style `type = "kimi"` wire (not
   proxyable through headroom's anthropic pipeline — the OpenAI-style

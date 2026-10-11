@@ -57,13 +57,21 @@ The code-agent OCI image wires headroom differently from the NixOS
 hosts (no systemd, no HM session variables — the supervisor scrubs the
 process env):
 
-- **Two baked proxy instances**, one Anthropic-wire pipeline per
-  upstream: `:8787` → api.anthropic.com (claude), `:8788` →
-  api.kimi.com/coding (pi + kimi-code, both Anthropic-wire against the
-  Kimi for Coding subscription).
+- **One baked proxy instance per sandbox** — a proxy process has ONE
+  Anthropic-wire upstream target, and `code-sandbox --agent
+  pi|kimi|claude` dedicates each sandbox to one coding agent (stamped
+  as `$CODE_AGENT` in the create-time env): pi + kimi sandboxes route
+  `:8787` → api.kimi.com/coding (both Anthropic-wire against the Kimi
+  for Coding subscription), claude sandboxes route `:8787` →
+  api.anthropic.com (the proxy's default target).
 - **Lazy start** — each agent's `/usr/local/bin` launcher wrapper runs
   `headroom-proxy-ensure <port> [upstream]` (flock-serialized,
-  `--stateless`, `HEADROOM_BEACON=off`) and `exec`s the real CLI.
+  `--stateless`, `--disable-kompress` — the image ships headroom-slim
+  without the [ml] extra and huggingface.co is not policy-admitted, so
+  the optional ML compressor could never load; the structural
+  compressors carry the savings — `HEADROOM_BEACON=off`), verifies the
+  running proxy's `/health` upstream, refuses agents stamped for the
+  other routing family, and `exec`s the real CLI.
 - **Routing via config files** — claude `settings.json`
   `env.ANTHROPIC_BASE_URL`, pi `models.json` `baseUrl`, kimi
   `config.toml` `type = "anthropic"` + `baseUrl` — all rendered by the

@@ -7,8 +7,9 @@
 #  - pi via the baked ~/.pi/agent/models.json (built-in kimi-coding
 #    provider, key from $KIMI_API_KEY);
 #  - kimi-code via the baked ~/.kimi-code/config.toml (type =
-#    "anthropic", baseUrl http://127.0.0.1:8788 — the kimi-upstream
-#    headroom proxy — apiKeyEnv KIMI_API_KEY; the Anthropic /messages
+#    "anthropic", baseUrl http://127.0.0.1:8787 — the sandbox's single
+#    headroom proxy, kimi upstream in pi/kimi sandboxes — apiKeyEnv
+#    KIMI_API_KEY; the Anthropic /messages
 #    wire pi also speaks, verified live in-sandbox 2026-10)
 #    the same subscription over the wire Moonshot's own CLI speaks).
 # kimi-code's OAuth login flow (auth.kimi.com / auth.kimi.ai) stays

@@ -37,15 +37,19 @@ driver).
 ## Quickstart
 
 ```bash
-code-sandbox                # build + load image, sync configs, create (name: code-<imghash>)
-code-sandbox connect code-<imghash>
+code-sandbox                # build + load image, sync configs, create (name: code-kimi-<imghash>)
+code-sandbox --agent claude # same, dedicated to claude (name: code-claude-<imghash>)
+code-sandbox connect code-kimi-<imghash>
 code-sandbox doctor         # read-only health report; exits 1 on findings
 code-sandbox sync           # re-render + push profile if the gateway drifted
 ```
 
 The sandbox name and the docker tag are both content-addressed
-(`code-agent:<imghash>`), so an existing name always means an older
-image and prompts for replacement (`-y` to skip the prompt).
+(`code-agent:<imghash>`), and the default sandbox name also embeds the
+selected agent (`code-kimi-<imghash>`, `code-claude-<imghash>`), so an
+existing name always means an older image and prompts for replacement
+(`-y` to skip the prompt), and a kimi and a claude sandbox of the same
+image coexist without colliding.
 
 ## Subcommands
 
@@ -126,7 +130,11 @@ otherwise recover the image env from the baked `/etc/profile` +
 static runtime plumbing (`LD_LIBRARY_PATH`, `NIX_LD`,
 `NIX_LD_LIBRARY_PATH`, `TERMINFO_DIRS`, `XDG_RUNTIME_DIR`) — never
 secrets (credentials go
-through providers). The attr name is the generator's `envAttr`
+through providers). On top of the file, `create` stamps
+`CODE_AGENT=<pi|kimi|claude>` (the `--agent` value) through the same
+channel — the image's launcher wrappers read it to pick the single
+headroom proxy's upstream and to refuse agents from the wrong routing
+family. The attr name is the generator's `envAttr`
 (`perSystem.codeSandbox.envAttr` for flake consumers; `null`
 disables); a flake without the attr warns and continues.
 
@@ -134,6 +142,15 @@ disables); a flake without the attr warns and continues.
 
 ```
 -y, --yes                don't prompt when the sandbox already exists
+    --agent A            dedicate the sandbox to one coding agent: pi, kimi
+                         or claude (default kimi). Stamps CODE_AGENT into the
+                         create-time env, selects the single headroom proxy's
+                         upstream (pi/kimi → api.kimi.com/coding, claude →
+                         api.anthropic.com), and attaches the matching
+                         credential provider (kimi-for-coding for pi/kimi,
+                         claude-subscription for claude) on top of the base
+                         providers (github-agent). The image's launcher
+                         wrappers refuse agents from the wrong routing family
     --cpu N              CPUs (default 4) — accepted but IGNORED by the VM
                          driver (sizing is driver-wide gateway config there)
     --memory SIZE        memory (default 8Gi) — same
@@ -141,10 +158,10 @@ disables); a flake without the attr warns and continues.
                          (installed wrapper default: the live
                          github:external-systems/home remote HEAD)
     --provider N         attach provider N INSTEAD of the defaults
-                         (repeatable; defaults: github-agent
-                         kimi-for-coding claude-subscription —
-                         claude-code is the platform-key alternative;
-                         never attach both claude providers)
+                         (repeatable; e.g. claude platform-key users:
+                         --agent claude --provider github-agent
+                         --provider claude-code — never attach both
+                         claude providers)
     --no-sync            skip the profile sync before create
     --include-workdir    toggle the policy's include_workdir BIT (see below)
     --no-include-workdir explicit default

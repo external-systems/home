@@ -175,21 +175,25 @@ each CLI's config only *references* those env var names.
 ```bash
 openshell sandbox connect code        # or: openshell sandbox exec -n code --tty -- pi
 pi            # preconfigured: kimi-for-coding via $KIMI_API_KEY (subscription, not platform API),
-              # routed through the kimi-upstream headroom proxy (127.0.0.1:8788)
+              # routed through the sandbox's single headroom proxy (127.0.0.1:8787)
 kimi          # same subscription via baked config.toml (type = "anthropic", apiKeyEnv
-              # $KIMI_API_KEY, same :8788 proxy) — no /login; the OAuth hosts are
+              # $KIMI_API_KEY, same :8787 proxy) — no /login; the OAuth hosts are
               # policy-unreachable on purpose
-claude        # via the anthropic-upstream headroom proxy (127.0.0.1:8787);
+claude        # via the same :8787 proxy (anthropic upstream in claude sandboxes);
               # credential from claude-subscription ($CLAUDE_CODE_OAUTH_TOKEN, default)
               # or claude-code ($ANTHROPIC_AUTH_TOKEN, platform key) — never both;
               # the platform.claude.com startup preflight is admitted by the policy
 ```
 
-All three launchers lazy-start their headroom proxy on first run
-(`headroom-proxy-ensure`; logs `/tmp/headroom-proxy-<port>.log`,
-`headroom doctor` health-checks, `headroom savings` shows token
-savings). All agent user configs — MCP trio (headroom/nixos/github),
-provider wiring, proxy routing, the environment briefing — are
+One sandbox is dedicated to ONE coding agent: `code-sandbox --agent
+pi|kimi|claude` at create stamps `$CODE_AGENT` (selecting the proxy's
+upstream and the auto-attached credential provider), and a launcher for
+the wrong routing family refuses to run. All launchers lazy-start the
+headroom proxy on first run (`headroom-proxy-ensure`; log
+`/tmp/headroom-proxy-8787.log`, `headroom doctor` health-checks,
+`curl -s 127.0.0.1:8787/stats` shows token savings). All agent user
+configs — MCP trio (headroom/nixos/github), provider wiring, proxy
+routing, the environment briefing — are
 home-manager-generated into the agents' config files by the image's
 standalone HM evaluation (`homeSpec.agents.*` in
 flake-parts/ociImages/code-agent.nix).
