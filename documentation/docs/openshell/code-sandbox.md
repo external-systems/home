@@ -124,7 +124,8 @@ spawn path — interactive `bash -i` ssh sessions (which read only
 otherwise recover the image env from the baked `/etc/profile` +
 `~/.bashrc`. The file carries only
 static runtime plumbing (`LD_LIBRARY_PATH`, `NIX_LD`,
-`NIX_LD_LIBRARY_PATH`, `TERMINFO_DIRS`) — never secrets (credentials go
+`NIX_LD_LIBRARY_PATH`, `TERMINFO_DIRS`, `XDG_RUNTIME_DIR`) — never
+secrets (credentials go
 through providers). The attr name is the generator's `envAttr`
 (`perSystem.codeSandbox.envAttr` for flake consumers; `null`
 disables); a flake without the attr warns and continues.

@@ -104,7 +104,7 @@ architecture and the lessons that shaped the design, see the
     `~/.claude/settings.json` `env.ANTHROPIC_BASE_URL`).
   - `:8788` → `api.kimi.com/coding` — `pi` (baked `models.json`
     baseUrl override) AND `kimi` (baked `config.toml`
-    `type = "anthropic"` + baseUrl; the Anthropic wire is the same
+    `type = "anthropic"` + base_url; the Anthropic wire is the same
     subscription product pi speaks — verified live — unlike the kimi
     wire's OpenAI-style surface, which headroom's anthropic pipeline
     can't serve).
