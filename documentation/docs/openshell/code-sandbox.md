@@ -122,8 +122,7 @@ supervisor spawns every sandbox process with a scrubbed environment
 spawn path — interactive `bash -i` ssh sessions (which read only
 `~/.bashrc`), editor servers, and non-shell exec consumers. Shells
 otherwise recover the image env from the baked `/etc/profile` +
-`~/.bashrc`; the `--env` set additionally covers a HOME whose dotfiles
-are masked by an `--include-workdir` mount. The file carries only
+`~/.bashrc`. The file carries only
 static runtime plumbing (`LD_LIBRARY_PATH`, `NIX_LD`,
 `NIX_LD_LIBRARY_PATH`, `TERMINFO_DIRS`) — never secrets (credentials go
 through providers). The attr name is the generator's `envAttr`
@@ -142,20 +141,54 @@ disables); a flake without the attr warns and continues.
     --provider N         attach provider N INSTEAD of the defaults
                          (repeatable; defaults: github-agent kimi-for-coding)
     --no-sync            skip the profile sync before create
-    --include-workdir    mount the directory you run this from into the
-                         sandbox workdir (/sandbox)
-    --no-include-workdir explicit default (clean, ephemeral sandbox)
+    --include-workdir    toggle the policy's include_workdir BIT (see below)
+    --no-include-workdir explicit default
     --no-ssh-config      don't touch ~/.ssh/config.local
     --ssh-config-file F  where to append the Remote-SSH block
 ```
 
-`--include-workdir`: the rendered policy ships
-`filesystem_policy.include_workdir: false`, so by default nothing from
-your host directory enters the sandbox — clone inside it instead
-(github.com is admitted read+write with the `github-agent` provider).
-Flip the toggle when you want to work on local files directly: the
-directory you invoke `code-sandbox` from is then mounted at the
-sandbox's working directory (`/sandbox`).
+`--include-workdir`: flips `filesystem_policy.include_workdir` in the
+sandbox policy at create time. Upstream, that bit is a **permission
+flag only** — it adds the sandbox's own internal workdir (`/sandbox`,
+the microVM's ephemeral overlay) to the policy's `read_write` set. It
+never mounts anything: the VM driver (libkrun microVM) has **no
+host-share mechanism at all** — no bind mounts, no virtiofs. And since
+this policy already lists `/sandbox` in `read_write`, the toggle is a
+no-op kept for CLI compatibility.
+
+## Moving files between host and sandbox
+
+There is no live host-directory passthrough — the VM driver boots each
+sandbox as its own libkrun microVM with a private overlay disk, so the
+sandbox can never see `~/borg` directly. Use the CLI's native transfer
+commands instead:
+
+```bash
+openshell sandbox upload code-<hash> ~/borg      # merges into /sandbox/borg
+# agent works in /sandbox/borg ...
+openshell sandbox download code-<hash> borg ~/borg   # and back
+```
+
+Semantics to know (upstream `openshell sandbox upload`/`download`):
+
+- **Upload is git-aware by default**: inside a git work tree it sends
+  exactly `git ls-files -co --exclude-standard` — tracked + untracked,
+  never gitignored files, never `.git` itself. A gitignored `.env`
+  (`SOPS_AGE_KEY`, `GITHUB_TOKEN`, ...) therefore cannot leak into the
+  sandbox. Outside a git tree everything goes, with a warning;
+  `--no-git-ignore` forces unfiltered.
+- **Merge, never delete**: uploading a directory merges it into the
+  same-named sandbox directory, overwriting matching entries but never
+  deleting unrelated ones; download likewise extracts over the local
+  destination. Neither command has a dry-run — diff before/after
+  yourself if the host tree is precious.
+- Download paths are relative to the sandbox workdir (`/sandbox`) or
+  absolute under it; anything outside the workspace is refused.
+
+For anything beyond simple merges — a real dirty-tree mirror with
+deletions and review — use the git workflow instead: clone inside the
+sandbox (github.com is admitted read+write with the `github-agent`
+provider), branch, commit, push, and pull on the host.
 
 ## Using it from other projects
 

@@ -54,10 +54,14 @@
   imageName ? "code-agent",
   # Sandbox name prefix.
   defaultName ? "code",
-  # Default for the --include-workdir toggle: mount the invoking
-  # directory into the sandbox workdir (/sandbox). The rendered policy
-  # ships `include_workdir: false` (clean, ephemeral sandboxes); the
-  # toggle flips that line at create time.
+  # Default for the --include-workdir toggle. NOTE: upstream
+  # `include_workdir` is a POLICY BIT ONLY — it adds the sandbox's own
+  # internal workdir (/sandbox, the VM's ephemeral overlay) to the
+  # filesystem policy's read_write set; it never mounts host files (the
+  # VM driver has no host-share mechanism at all). This repo's policy
+  # already lists /sandbox in read_write, so the toggle is a no-op kept
+  # for CLI compatibility — file transfer rides the CLI's native
+  # `openshell sandbox upload`/`download`.
   includeWorkdir ? false,
   cpu ? "4",
   memory ? "8Gi",
@@ -97,67 +101,28 @@ in ''
         --provider N   attach provider N INSTEAD of the defaults (repeatable;
                        defaults: ${providersStr})
         --no-sync      create only: skip the profile sync (default: sync before create)
-      --include-workdir
-                     mount the directory you run this from into the sandbox
-                     workdir (/sandbox) — default is a clean, ephemeral
-                     sandbox (include_workdir: false)
-      --no-include-workdir
-                     explicit default: do NOT mount the invoking directory
+      --include-workdir / --no-include-workdir
+                     toggle the policy's include_workdir BIT at create (default off).
+                     Policy bit only: it adds the sandbox's INTERNAL /sandbox to
+                     read_write (this policy already lists it) — no host files are
+                     ever mounted into a sandbox (the VM driver has no host-share
+                     mechanism; use `openshell sandbox upload/download`).
     -h, --help         this help
         --no-ssh-config           don't append the Remote-SSH config (default: append)
         --ssh-config-file FILE    where to append it (default: ~/.ssh/config.local)
 
-  The sandbox is named <name>-<imghash> (default name: ${defaultName}), and
-  the image is loaded as ${imageName}:<imghash> — both content-addressed,
-  so an existing sandbox name means an older image and prompts for
-  replacement. Recreate to pick up image changes; only network policy
-  tweaks hot-reload.
-
-  Image source (rev pinning): the image bakes "Image: ${imageName} @
-  <rev>" (from the flake's git revision) into every agent briefing.
-  The build source is resolved so that line never lies: --flake REF
-  builds REF verbatim; otherwise ${
+  Naming: sandboxes are <name>-<imghash> (default name: ${defaultName}) and
+  images ${imageName}:<imghash> — both content-addressed, so an existing name
+  means an older image. Recreate for image changes; network policy hot-reloads
+  via `code-sandbox sync`. The image bakes its flake git rev into every agent
+  briefing; --flake picks the build source (default: ${
     if alwaysRemote
-    then "the image/policy/profile always build from ${remoteFlakeStr}@<remote HEAD> — the live repo head, never a stale or dirty source."
-    else "a clean local checkout whose HEAD equals the remote HEAD builds locally; anything else builds ${remoteFlakeStr}@<remote HEAD>."
-  }
-  --flake . forces a local build. The policy + provider profile are
-  rendered from the SAME resolved source, so the @bin_*@ pins always
-  describe the image actually built.
+    then "${remoteFlakeStr}@<remote HEAD> (the live repo head)"
+    else "a clean checkout at the remote HEAD, else ${remoteFlakeStr}@<remote HEAD>"
+  }).
 
-  Policy + profile lifecycle: the sandbox policy and the '${profileId}'
-  provider profile are TEMPLATES in the flake — rendered with the image's
-  exact store paths (a @bin_*@ placeholder per admitted binary) so image
-  and gateway config can never disagree about which binary may call which
-  host. `code-sandbox sync` (also run by `create`) diffs the rendered
-  profile against the gateway (`openshell profile export ${profileId}`)
-  and pushes it with `openshell profile update` on drift; it also diffs
-  each sandbox's base policy (`openshell policy get <name> --base`)
-  against the rendered policy and pushes it with `openshell policy set
-  --wait` on drift — policy hot-reloads, no recreation, and the
-  sandbox's include_workdir choice is preserved. `code-sandbox
-  doctor` reports the same read-only, plus provider presence/refresh
-  status and per-sandbox policy/provider health. Never `openshell
-  profile import` by hand after editing — one-shot imports are exactly
-  how gateway copies go stale.
-
-  Sandbox env: create also passes the flake's #${envAttrStr} file
-  (KEY=VALUE lines) as `openshell sandbox create --env` flags. The
-  supervisor spawns every sandbox process with a scrubbed environment,
-  and that spec env is the ONLY channel reaching every spawn path
-  (interactive `bash -i` ssh sessions, editor servers, non-shell
-  exec) — shells otherwise recover the image env from the baked
-  /etc/profile + ~/.bashrc. A flake without the attr warns and
-  continues.
-
-  Requires on the host: the `openshell` CLI configured against a gateway,
-  and the configured providers created there (sync/doctor print the exact
-  fix hint when one is missing).
-
-  Unless disabled, the generated Remote-SSH config is appended to the
-  ssh config file as a managed, per-sandbox comment-delimited block —
-  re-running replaces the block for that sandbox instead of duplicating
-  it.
+  Full design docs (rev pinning, policy/profile drift lifecycle, sandbox env):
+  documentation/docs/openshell/code-sandbox.md.
   USAGE
     exit "''${1:-0}"
   }
@@ -181,6 +146,16 @@ in ''
     chmod 600 "$tmp"
     mv "$tmp" "$ssh_config_file"
     echo "code-sandbox: ssh config for '$1' appended to $ssh_config_file"
+  }
+
+  # Active sandbox names, one per line (first column of `openshell
+  # sandbox list`; header/separator dropped). Redirect, never pipe the
+  # CLI — it panics (exit 101) on EPIPE.
+  list_sandbox_names() {
+    sandbox_list="$(mktemp)"
+    openshell sandbox list >"$sandbox_list" 2>/dev/null || true
+    awk 'NF && $1 !~ /^[Nn][Aa][Mm][Ee]|^-+$/ {print $1}' "$sandbox_list"
+    rm -f "$sandbox_list"
   }
 
   # "." means "the flake enclosing the cwd" — resolve via the git root
@@ -377,10 +352,7 @@ in ''
   # the code-agent marker (a nix_store network entry) are touched: an
   # unrelated sandbox's posture is never rewritten.
   sync_policies() {
-    sandbox_list="$(mktemp)"
-    openshell sandbox list >"$sandbox_list" 2>/dev/null || true
-    sandbox_names="$(awk 'NF && $1 !~ /^[Nn][Aa][Mm][Ee]|^-+$/ {print $1}' "$sandbox_list")"
-    rm -f "$sandbox_list"
+    sandbox_names="$(list_sandbox_names)"
     if [ -z "$sandbox_names" ]; then
       echo "code-sandbox: no sandboxes to policy-sync"
       return 0
@@ -488,12 +460,8 @@ in ''
       ;;
     ssh-config)
       [ -z "$name" ] || { echo "code-sandbox: ssh-config takes no sandbox name (it syncs all of them)" >&2; usage 1; }
-      sandbox_list="$(mktemp)"
       # Redirect, never pipe the CLI (EPIPE panic, exit 101).
-      openshell sandbox list >"$sandbox_list" 2>/dev/null || true
-      # First column is the name; drop header/separator lines.
-      sandbox_names="$(awk 'NF && $1 !~ /^[Nn][Aa][Mm][Ee]|^-+$/ {print $1}' "$sandbox_list")"
-      rm -f "$sandbox_list"
+      sandbox_names="$(list_sandbox_names)"
       [ -n "$sandbox_names" ] || { echo "code-sandbox: no active sandboxes found" >&2; exit 1; }
       for sb in $sandbox_names; do
         append_ssh_config "$sb"
@@ -544,10 +512,7 @@ in ''
       done
 
       echo "== sandboxes =="
-      sandbox_list="$(mktemp)"
-      openshell sandbox list >"$sandbox_list" 2>/dev/null || true
-      # First column is the name; drop header/separator lines.
-      sandbox_names="$(awk 'NF && $1 !~ /^[Nn][Aa][Mm][Ee]|^-+$/ {print $1}' "$sandbox_list")"
+      sandbox_names="$(list_sandbox_names)"
       if [ -z "$sandbox_names" ]; then
         echo "  (none running)"
       else
@@ -598,7 +563,6 @@ in ''
           fi
         done
       fi
-      rm -f "$sandbox_list"
       if [ "$findings" = 0 ]; then
         echo "code-sandbox: doctor: all good"
       else
@@ -683,8 +647,12 @@ in ''
 
   create_policy="$policy_path"
   if [ "$include_workdir" = 1 ]; then
-    # The rendered policy ships include_workdir: false (clean, ephemeral
-    # sandboxes); the toggle flips that single line for this create.
+    # include_workdir is a POLICY BIT only (the sandbox's internal
+    # /sandbox joins read_write; no host files are ever mounted — the VM
+    # driver has no host-share mechanism). The rendered policy ships
+    # include_workdir: false; the toggle flips that single line for this
+    # create, and sync preserves the sandbox's bit. File transfer rides
+    # the CLI's native `openshell sandbox upload`/`download`.
     create_policy="$(mktemp)"
     sed 's/^\( *\)include_workdir: false$/\1include_workdir: true/' "$policy_path" >"$create_policy"
   fi

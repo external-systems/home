@@ -286,7 +286,7 @@ environment, covering every spawn path:
 |---|---|
 | remote command / editor bootstrap (`bash -lc`) | baked `/etc/profile` (idempotent) |
 | interactive session (`bash -i` — raw ssh, editor integrated terminals) | HM-generated `~/.bashrc` (from the baked `profile-agent` eval) at BOTH `$HOME` roots (`/sandbox` and `/home/agent`) — sources `/etc/profile`, then history/aliases/TERM fallback + starship prompt |
-| everything, incl. non-shell exec and a workdir-masked HOME | create-time `--env` (`packages.code-agent-env`, passed by `code-sandbox create`): `LD_LIBRARY_PATH`, `NIX_LD`, `NIX_LD_LIBRARY_PATH`, `TERMINFO_DIRS` |
+| everything, incl. non-shell exec and interactive ssh (HOME = workdir) | create-time `--env` (`packages.code-agent-env`, passed by `code-sandbox create`): `LD_LIBRARY_PATH`, `NIX_LD`, `NIX_LD_LIBRARY_PATH`, `TERMINFO_DIRS` |
 
 Client `SetEnv`/`SendEnv` requests are accepted and discarded by design
 (the environment is policy-controlled) — `TERM` is the exception: it

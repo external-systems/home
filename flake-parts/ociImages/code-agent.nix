@@ -580,10 +580,11 @@
       # ~/.bashrc is load-bearing: interactive ssh sessions are
       # `bash -i` and read nothing else). -rL dereferences HM's store
       # symlinks into real files so the layer is self-contained and the
-      # perms block below can own them 1000:1000. NOTE: with
-      # --include-workdir the host directory mounts OVER /sandbox and
-      # hides these — the create-time --env set (packages.code-agent-env,
-      # passed by code-sandbox) is the channel that still applies then.
+      # perms block below can own them 1000:1000. NOTE: no host
+      # directory is ever mounted over /sandbox (the VM driver has no
+      # host-share mechanism; code-sandbox's --include-workdir is a
+      # policy bit only) — /sandbox keeps these baked dotfiles and the
+      # supervisor points HOME at it.
       cp -rL ${hmAgent.activationPackage}/home-files/. $out/sandbox/
       cp -rL ${hmAgent.activationPackage}/home-files/. $out/home/agent/
 
@@ -1002,9 +1003,9 @@
       # never reaches in-VM sandbox processes. Shells recover the
       # runtime env from /etc/profile and the baked ~/.bashrc, but spec
       # env is the ONLY channel that covers EVERY spawn path —
-      # including `bash -i` interactive ssh sessions whose HOME
-      # dotfiles are masked by an --include-workdir mount, and
-      # non-shell exec consumers (SDKs). Keep it free of
+      # including `bash -i` interactive ssh sessions (whose HOME is the
+      # workdir /sandbox) and non-shell exec consumers (SDKs). Keep it
+      # free of
       # runtime-dependent values: NIX_SSL_CERT_FILE stays out on
       # purpose (the supervisor injects the TLS bundle paths itself;
       # /etc/profile has the plain-docker fallback).
