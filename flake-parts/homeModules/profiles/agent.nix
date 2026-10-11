@@ -1,4 +1,4 @@
-_: {
+{self, ...}: {
   # Minimal home-manager profile for the OpenShell code-agent sandbox
   # image's `agent` user (uid 1000). Unlike the other profile-* modules
   # this one is NOT wired to a NixOS host user and does NOT import
@@ -9,6 +9,14 @@ _: {
   # Home-manager here is strictly a dotfile generator: no activation,
   # no systemd, no runtime `home-manager switch` in the sandbox.
   flake.homeModules.profile-agent = {lib, ...}: {
+    # The fleet's shared starship config (homeModules.starship): pure
+    # HM options, no osConfig/NixOS coupling, so it imports cleanly
+    # into this standalone eval. HM initializes starship from the
+    # package's STORE path at mkOrder 1900 (end of .bashrc), so the
+    # binary works with no home-path on PATH — the store reference
+    # also pulls starship into the image closure automatically.
+    imports = [self.homeModules.starship];
+
     home = {
       username = "agent";
       homeDirectory = "/home/agent";
@@ -56,9 +64,6 @@ _: {
         if [ -n "''${TERM:-}" ] && ! infocmp "$TERM" >/dev/null 2>&1; then
           export TERM=xterm-256color
         fi
-
-        # Unmistakable sandbox prompt (disposable microVM, not the host).
-        PS1='\[\e[1;35m\][sandbox]\[\e[0m\] \[\e[1;34m\]\w\[\e[0m\]\$ '
       '';
       # Login shells (`bash -lc` — remote commands, editor server
       # bootstraps) read /etc/profile themselves; chain into .bashrc so
@@ -84,11 +89,24 @@ _: {
       historyFileSize = 20000;
     };
 
+    # Starship owns the prompt (no static PS1 above): the shared
+    # settings plus sandbox deltas — a literal [sandbox] marker (the
+    # machine you are typing into is a disposable microVM, not the
+    # host) instead of the meaningless container hostname. Glyph
+    # rendering depends on the CLIENT's font (nerd fonts), same as on
+    # the NixOS hosts.
+    homeSpec.programs.starship.enable = true;
+    programs.starship.settings = {
+      format = "[\\[sandbox\\]](bold purple) $all";
+      hostname.disabled = true;
+    };
+
     # Deliberately NOT configured: no programs.git (the image bakes
     # /etc/gitconfig with the bot identity + credential helper), no
     # systemd-user units, no sops-nix, no home.sessionVariables that
-    # would duplicate /etc/profile. If user packages are ever added,
-    # home-path must be merged into the image's baseTools buildEnv —
-    # see the hmAgent comment in flake-parts/ociImages/code-agent.nix.
+    # would duplicate /etc/profile. The profile's user packages
+    # (starship) reach PATH via home-path merged into the image's
+    # baseTools buildEnv — see the hmAgent comment in
+    # flake-parts/ociImages/code-agent.nix.
   };
 }

@@ -117,14 +117,14 @@
     # sessions as `bash -i` — a non-login shell that reads ~/.bashrc
     # and nothing else — and the profile's initExtra sources the
     # idempotent /etc/profile from it (see the module for why).
-    # NOTE: if profile-agent ever gains home.packages, merge
-    # hmAgent.activationPackage + "/home-path" (a buildEnv) into
-    # baseTools' paths — for the minimal bash-only profile it is an
-    # empty profile and deliberately not baked.
+    # home-path (the profile's user package set — starship today) is
+    # merged into baseTools below so the binaries are on PATH in every
+    # shell.
     hmAgent = inputs.home-manager.lib.homeManagerConfiguration {
       inherit pkgs;
       modules = [inputs.self.homeModules.profile-agent];
     };
+    hmAgentHomePath = hmAgent.activationPackage + "/home-path";
 
     # Repo skill set baked read-only at /opt/skills, built by
     # inputs.agents.lib.mkSkills — the same helper (and the same repo
@@ -211,6 +211,10 @@
     baseTools = pkgs.buildEnv {
       name = "code-agent-base";
       paths = with pkgs; [
+        # The HM profile's user package set (starship — the profile's
+        # bashrc initializes it from the store path anyway; this puts
+        # the CLI on PATH for `starship explain`/`starship config`).
+        hmAgentHomePath
         bashInteractive
         coreutils
         gnused

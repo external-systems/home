@@ -99,12 +99,16 @@ architecture and the lessons that shaped the design, see the
   also get a sane `umask 022` from `/etc/profile`.
 - **Shell dotfiles + full terminfo** for every ssh/editor session
   flavor: `~/.bashrc` (sources the idempotent `/etc/profile`,
-  sets prompt/history/aliases and a TERM fallback), `~/.bash_profile`
+  sets history/aliases and a TERM fallback), `~/.bash_profile`
   and `~/.profile` at BOTH `$HOME` roots — generated at image-build
   time by a standalone home-manager evaluation of the minimal
   `profile-agent` module (`flake-parts/homeModules/profiles/agent.nix`;
   home-manager is used strictly as a dotfile generator: no activation,
-  no systemd, no runtime `home-manager switch`) — and a merged ncurses +
+  no systemd, no runtime `home-manager switch`). The prompt is
+  **starship** (the fleet's shared `homeModules.starship` config plus
+  a literal `[sandbox]` marker; initialized from the store path, and
+  the CLI is on PATH via the HM home-path merged into the image
+  toolset) — plus a merged ncurses +
   ghostty terminfo db at `/usr/share/terminfo` (with `/etc/terminfo` /
   `/lib/terminfo` links and `TERMINFO_DIRS`) — see
   [Remote access](#remote-access-ssh-vscodium-vs-code).
@@ -243,7 +247,7 @@ environment, covering every spawn path:
 | Spawn path | Where it gets its env |
 |---|---|
 | remote command / editor bootstrap (`bash -lc`) | baked `/etc/profile` (idempotent) |
-| interactive session (`bash -i` — raw ssh, editor integrated terminals) | HM-generated `~/.bashrc` (from the baked `profile-agent` eval) at BOTH `$HOME` roots (`/sandbox` and `/home/agent`) — sources `/etc/profile`, then prompt/history/aliases/TERM fallback |
+| interactive session (`bash -i` — raw ssh, editor integrated terminals) | HM-generated `~/.bashrc` (from the baked `profile-agent` eval) at BOTH `$HOME` roots (`/sandbox` and `/home/agent`) — sources `/etc/profile`, then history/aliases/TERM fallback + starship prompt |
 | everything, incl. non-shell exec and a workdir-masked HOME | create-time `--env` (`packages.code-agent-env`, passed by `code-sandbox create`): `LD_LIBRARY_PATH`, `NIX_LD`, `NIX_LD_LIBRARY_PATH`, `TERMINFO_DIRS` |
 
 Client `SetEnv`/`SendEnv` requests are accepted and discarded by design
