@@ -247,8 +247,12 @@ network_policies:
   # Kimi for Coding subscription endpoint (api.kimi.com/coding,
   # Anthropic-compatible): pi's built-in kimi-coding provider (key via
   # the attached kimi-for-coding provider, $KIMI_API_KEY injected) and
-  # the kimi-code CLI. The supervisor matches resolved exes: pi is a
-  # standalone ELF (libexec/pi/pi), kimi-code runs on node.
+  # the kimi-code CLI — BOTH routed through the kimi-upstream headroom
+  # proxy (127.0.0.1:8788) by the baked config files, so the live
+  # connections arrive from the proxy's python interpreter. The
+  # supervisor matches resolved exes: pi is a standalone ELF
+  # (libexec/pi/pi — kept for direct fallback + the MCP-free path),
+  # kimi-code runs on node, headroom-slim on pkgs.unstable python3.13.
   kimi_for_coding:
     name: kimi_for_coding
     endpoints:
@@ -261,6 +265,12 @@ network_policies:
       # could silently deny kimi egress after an input bump, so this
       # pin stays a wildcard on purpose.
       - { path: /nix/store/*-nodejs*/bin/node }
+      # headroom proxy (the :8788 kimi-upstream instance pi + kimi
+      # route through): headroom-slim's bin entry is a bash wrapper, so
+      # pin its PYTHON INTERPRETER — same pattern as the claude_code
+      # rule's @bin_headroom_py@ (gateway credential substitution for
+      # proxy-routed traffic verified in-sandbox 2026-10).
+      - { path: @bin_headroom_py@ }
 
   # Claude Code against api.anthropic.com with a Claude Teams
   # subscription bearer token (injected as $ANTHROPIC_AUTH_TOKEN by

@@ -17,7 +17,7 @@ architecture and the lessons that shaped the design, see the
   `objdump`, `ldd`), patching (`diff`, `patch`), k8s clients
   (`kubectl`, `helm`), and `dig` — with a **starship** prompt.
   The user-level half of this list (everything an agent sandbox user
-  needs, incl. the agent CLIs) comes from the baked home-manager
+  needs) comes from the baked home-manager
   profile (`profile-agent-base` + the `profile-agent` OCI flavor, see
   the dotfiles bullet below) and is reusable as-is on NixOS hosts;
   the system layer (coreutils family, ssh client, nix, ncurses,
@@ -69,13 +69,20 @@ architecture and the lessons that shaped the design, see the
   fallback (`GOPRIVATE`/`GOPROXY=direct`) rides git's github.com /
   git.clan.lol admissions. For JS/TS work: `bun` is baked (from the
   HM profile).
-- **Three pre-wired AI agents** (no interactive login ever), each with
-  the sandbox environment briefing baked into its user-level system
-  prompt / memory (pi `~/.pi/agent/APPEND_SYSTEM.md`, kimi
-  `~/.kimi-code/SYSTEM.md`, claude `~/.claude/CLAUDE.md` — toolset,
-  admitted egress, skills location, identity and secrets posture) and a
-  shared MCP trio: **headroom** (context compression; wrapper maps the
-  injected `$ANTHROPIC_AUTH_TOKEN` onto `ANTHROPIC_API_KEY`), **nixos**
+- **Three pre-wired AI agents** (no interactive login ever), all user
+  configs **home-manager-generated**: the image's standalone HM
+  evaluation (`profile-agent` + `homeModules.agents` + a sandbox module
+  in `flake-parts/ociImages/code-agent.nix`) renders the MCP trio, the
+  provider wiring, the proxy routing and the environment briefing into
+  the agents' config FILES (`~/.pi/agent/{settings,models,mcp}.json` +
+  `APPEND_SYSTEM.md`, `~/.kimi-code/{config.toml,mcp.json,SYSTEM.md}`,
+  `~/.claude/{settings.json,.claude.json,CLAUDE.md}`) — the file
+  channel survives the supervisor's process-env scrub, which HM
+  sessionVariables would not. The briefing (toolset, admitted egress,
+  skills location, identity and secrets posture) rides each agent's
+  user-level system prompt / memory. Shared MCP trio: **headroom**
+  (context compression; wrapper maps the injected
+  `$ANTHROPIC_AUTH_TOKEN` onto `ANTHROPIC_API_KEY`), **nixos**
   (option search; package/option `info` answers from a local index,
   the live sources — `search.nixos.org` backend, wiki, noogle, nixhub,
   flakehub, nix.dev, nixvim/nvf/home-manager/darwin docs — are
@@ -84,22 +91,48 @@ architecture and the lessons that shaped the design, see the
   with the `github-agent` provider attached — the profile admits
   read-write api.github.com and substitutes the credential at egress;
   the baked wrapper maps the `$GITHUB_TOKEN` handle onto
-  `GITHUB_PERSONAL_ACCESS_TOKEN`). The trio is baked at each agent's
-  user-level MCP spot: pi `~/.pi/agent/mcp.json`, kimi
-  `~/.kimi-code/mcp.json`, claude `~/.claude/settings.json`
-  `mcpServers` — in pi all three are `direct`, so the github tools are
-  listed in the system prompt at session start (a provider-less github
-  server fails loudly at startup and pi marks it failed; the tools are
-  still visible):
+  `GITHUB_PERSONAL_ACCESS_TOKEN`). In pi all three are `direct`, so
+  the github tools are listed in the system prompt at session start (a
+  provider-less github server fails loudly at startup and pi marks it
+  failed; the tools are still visible).
+- **All agent inference routes through a local headroom proxy**
+  (context compression → token savings; verified in-sandbox 2026-10:
+  ~5s cold start, ~365MB RSS slim, real claude traffic compressed on
+  first contact). One Anthropic-wire pipeline per upstream (a proxy
+  instance has a single anthropic target):
+  - `:8787` → `api.anthropic.com` — `claude` (baked
+    `~/.claude/settings.json` `env.ANTHROPIC_BASE_URL`).
+  - `:8788` → `api.kimi.com/coding` — `pi` (baked `models.json`
+    baseUrl override) AND `kimi` (baked `config.toml`
+    `type = "anthropic"` + baseUrl; the Anthropic wire is the same
+    subscription product pi speaks — verified live — unlike the kimi
+    wire's OpenAI-style surface, which headroom's anthropic pipeline
+    can't serve).
+  There is no systemd in the microVM, so each agent's `/usr/local/bin`
+  launcher wrapper lazy-starts its proxy (`headroom-proxy-ensure`,
+  flock-serialized, `--stateless`, telemetry/update-check off since
+  those hosts are not policy-admitted) and `exec`s the real CLI —
+  `/proc/pid/exe` keeps matching the policy's binary pins. Proxy logs:
+  `/tmp/headroom-proxy-<port>.log`; health: `headroom doctor`;
+  savings: `headroom savings`. Egress: the policy admits
+  api.anthropic.com AND api.kimi.com for headroom-slim's python
+  interpreter (`@bin_headroom_py@` in the `claude_code` and
+  `kimi_for_coding` rules); gateway credential substitution works for
+  proxy-routed traffic (verified).
+- The agents, one line each:
   - `pi` — Kimi for Coding subscription, key from the attached provider's
-    `$KIMI_API_KEY`.
-  - `kimi` — same subscription via a baked `~/.kimi-code/config.toml`
-    (`type = "kimi"`, `https://api.kimi.com/coding/v1`,
-    `apiKeyEnv = "KIMI_API_KEY"`). Do **not** run `/login` — the OAuth
-    hosts are unreachable on purpose.
-  - `claude` — Claude Teams subscription bearer (`$ANTHROPIC_AUTH_TOKEN`
-    from the attached provider); onboarding pre-completed and the
-    `platform.claude.com` startup preflight admitted by the policy.
+    `$KIMI_API_KEY`, via the `:8788` proxy.
+  - `kimi` — same subscription via the baked `config.toml`
+    (`type = "anthropic"`, proxy baseUrl, `apiKeyEnv = "KIMI_API_KEY"`).
+    Do **not** run `/login` — the OAuth hosts are unreachable on purpose.
+  - `claude` — via the `:8787` proxy. Credential from the attached
+    provider: **claude-subscription** (default — Pro/Max/Team OAuth
+    token from `claude setup-token`, injected as
+    `$CLAUDE_CODE_OAUTH_TOKEN` so Claude Code bills the subscription)
+    or **claude-code** (Console platform API key, `$ANTHROPIC_AUTH_TOKEN`
+    bearer) — attach ONE, never both (bearer precedence shadows the
+    subscription token). Onboarding pre-completed; the
+    `platform.claude.com` startup preflight is admitted by the policy.
 - **Repo skills at `/opt/skills`** — the same merged skill tree
   `inputs.agents.lib.mkSkills` builds for the NixOS hosts (the home
   repo's `skills/` tree + external flake-input skill sources), wired
@@ -133,7 +166,11 @@ architecture and the lessons that shaped the design, see the
   evaluation of `profile-agent`
   (`flake-parts/homeModules/profiles/agent.nix`; home-manager is used
   strictly as a dotfile + package-set generator: no activation, no
-  systemd, no runtime `home-manager switch`). The profile is split for
+  systemd, no runtime `home-manager switch`). The SAME evaluation also
+  renders the pi/kimi/claude user configs via `homeModules.agents`
+  (`homeSpec.agents.*` — MCP trio, provider wiring, headroom-proxy
+  routing, environment briefing; see the agents bullet above). The
+  profile is split for
   reuse: `profile-agent-base` (profiles/agent-base.nix) is the
   PORTABLE agent user environment — bash/starship, git/gh, uv, go,
   bun and the CLI toolbelt incl. the agent CLIs — and `profile-agent`

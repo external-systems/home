@@ -141,6 +141,28 @@ recreating the sandbox; filesystem/image changes require recreation.
   never part of it) but evaluates every output; prefer the targeted
   lint gate when iterating.
 
+## Headroom proxy (inference routing)
+
+ALL agent inference routes through a baked headroom proxy pair — one
+Anthropic-wire pipeline per upstream (an instance has ONE anthropic
+target): claude → `127.0.0.1:8787` → api.anthropic.com; pi + kimi →
+`127.0.0.1:8788` → api.kimi.com/coding (kimi-code speaks the Anthropic
+wire here — `type = "anthropic"` in the baked config.toml, verified
+live 2026-10). No systemd in the microVM: each agent's
+/usr/local/bin launcher wrapper lazy-starts its proxy via
+`headroom-proxy-ensure <port> [upstream]` (flock-serialized,
+`--stateless`, telemetry/update-check off — those hosts are not
+admitted) and `exec`s the real CLI, so policy binary pins still match.
+Routing lives in the HM-generated config FILES (claude settings.json
+`env.ANTHROPIC_BASE_URL`, pi models.json `baseUrl`, kimi config.toml
+`baseUrl`) — the file channel survives the supervisor's env scrub.
+Failure modes: agent errors connecting to 127.0.0.1:<port> → proxy not
+running; start it with the ensure command above, log at
+/tmp/headroom-proxy-<port>.log. 502 through :8788 on an old sandbox →
+the policy predates the `@bin_headroom_py@` pin in the kimi_for_coding
+rule — hot-reload the policy from the host. `headroom doctor`
+health-checks routing; `headroom savings` shows the numbers.
+
 ## MCP trio failure modes
 
 - `headroom` — `headroom mcp serve`; wrapper maps the injected

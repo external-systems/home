@@ -308,18 +308,46 @@
       }
       // lib.optionalAttrs cfg.mcp.artifacthub.enable {
         artifacthub.command = ["${lib.getExe pkgs.artifacthub-mcp}"];
-      };
-    # claude-compatible mcpServers JSON, written to pi
-    # (~/.pi/agent/mcp.json), kimi-code (~/.kimi-code/mcp.json) and
-    # claude-code (~/.claude/settings.json).
+      }
+      // cfg.mcp.extraServers;
+    # TOML renderer for kimi-code's config.toml (homeSpec.agents.kimi.config).
+    tomlFmt = pkgs.formats.toml {};
+    # claude-compatible mcpServers attrset (command + args), shared by the
+    # per-agent renderers below.
+    sharedMcpServersClaude =
+      lib.mapAttrs (_: v: {
+        command = lib.head v.command;
+        args = lib.tail v.command;
+      })
+      sharedMcpCommands;
+    # claude-compatible mcpServers JSON, written to kimi-code
+    # (~/.kimi-code/mcp.json) and merged into claude-code's settings.
     sharedMcpJson = builtins.toJSON {
-      mcpServers =
-        lib.mapAttrs (_: v: {
+      mcpServers = sharedMcpServersClaude;
+    };
+    # pi's own mcp.json: same servers, plus the pi-specific per-server
+    # description/exposure fields when the server entry carries them
+    # (mcp.extraServers — e.g. the OpenShell code-agent image pins all
+    # its servers `direct` so their tools are listed in the system
+    # prompt at session start instead of hidden behind codemode).
+    piMcpJson = builtins.toJSON {
+      mcpServers = lib.mapAttrs (_: v:
+        {
           command = lib.head v.command;
           args = lib.tail v.command;
-        })
-        sharedMcpCommands;
+        }
+        // lib.optionalAttrs ((v.description or null) != null) {inherit (v) description;}
+        // lib.optionalAttrs ((v.exposure or null) != null) {inherit (v) exposure;})
+      sharedMcpCommands;
     };
+    # claude-code's settings.json content: the caller's settings attrs
+    # (homeSpec.agents.claude.settings) merged with the shared MCP table.
+    claudeSettingsJson = builtins.toJSON (
+      cfg.claude.settings
+      // lib.optionalAttrs (sharedMcpCommands != {}) {
+        mcpServers = sharedMcpServersClaude;
+      }
+    );
   in {
     options.homeSpec.agents = {
       # ---- Shared skills: homeSpec.agents.skills.* ---- #
@@ -362,6 +390,36 @@
           defaultText = lib.literalExpression "pkgs.pi-coding-agent";
           description = "The pi package to install.";
         };
+        installPackage = lib.mkOption {
+          type = lib.types.bool;
+          default = true;
+          description = "Add the pi package to home.packages. The OpenShell code-agent image sets false: it ships its own launcher wrapper (headroom proxy ensure + exec) as the sole bin/pi.";
+        };
+        # ~/.pi/agent/settings.json content (verbatim JSON attrs). The
+        # sandbox image uses it for the baked skills resource path.
+        settings = lib.mkOption {
+          type = lib.types.attrs;
+          default = {};
+          description = "pi settings.json content (attrs rendered to JSON); empty = not written.";
+        };
+        # ~/.pi/agent/models.json: provider overrides — apiKey env
+        # indirection, baseUrl rerouting (e.g. through a local headroom
+        # proxy). Registering only baseUrl/apiKey preserves pi's
+        # built-in model catalog for the provider (pi custom-provider
+        # docs).
+        models = lib.mkOption {
+          type = with lib.types; nullOr attrs;
+          default = null;
+          description = "pi models.json provider overrides (attrs rendered to JSON); null = not written.";
+        };
+        # ~/.pi/agent/APPEND_SYSTEM.md: appended to pi's system prompt
+        # every session. The sandbox image bakes its environment
+        # briefing here; NixOS hosts use the machineContext AGENTS.md.
+        appendSystemMd = lib.mkOption {
+          type = with lib.types; nullOr str;
+          default = null;
+          description = "Text for ~/.pi/agent/APPEND_SYSTEM.md (appended to pi's system prompt); null = not written.";
+        };
       };
 
       # ---- kimi-code: homeSpec.agents.kimi.* ---- #
@@ -376,6 +434,27 @@
           defaultText = lib.literalExpression "pkgs.kimi-code";
           description = "The kimi-code package to install.";
         };
+        installPackage = lib.mkOption {
+          type = lib.types.bool;
+          default = true;
+          description = "Add the kimi-code package to home.packages. The OpenShell code-agent image sets false: it ships its own launcher wrapper (headroom proxy ensure + exec) as the sole bin/kimi.";
+        };
+        # ~/.kimi-code/config.toml content (attrs rendered TOML):
+        # provider wiring, models, identity, permission rules. null =
+        # not written (kimi's own defaults apply).
+        config = lib.mkOption {
+          type = with lib.types; nullOr attrs;
+          default = null;
+          description = "kimi-code config.toml content (attrs rendered to TOML); null = not written.";
+        };
+        # ~/.kimi-code/SYSTEM.md ($KIMI_CODE_HOME/SYSTEM.md): added to
+        # kimi's system prompt every session — the sandbox image's
+        # environment briefing lives here.
+        systemMd = lib.mkOption {
+          type = with lib.types; nullOr str;
+          default = null;
+          description = "Text for ~/.kimi-code/SYSTEM.md (added to kimi's system prompt); null = not written.";
+        };
       };
 
       # ---- claude-code: homeSpec.agents.claude.* ---- #
@@ -386,6 +465,38 @@
           default = pkgs.claude-code;
           defaultText = lib.literalExpression "pkgs.claude-code";
           description = "The claude-code package to install.";
+        };
+        installPackage = lib.mkOption {
+          type = lib.types.bool;
+          default = true;
+          description = "Add the claude-code package to home.packages. The OpenShell code-agent image sets false: it ships its own launcher wrapper (headroom proxy ensure + exec) as the sole bin/claude.";
+        };
+        # Extra ~/.claude/settings.json attrs, merged with the shared
+        # mcpServers table — e.g. hasCompletedOnboarding, theme, or an
+        # env block pinning ANTHROPIC_BASE_URL to a local headroom
+        # proxy (the settings env block applies to claude's own process
+        # and survives a process-env scrub, unlike HM sessionVariables).
+        settings = lib.mkOption {
+          type = lib.types.attrs;
+          default = {};
+          description = "Extra claude-code settings.json attrs (merged with the shared mcpServers table).";
+        };
+        # Also write the merged settings to ~/.claude.json (claude
+        # merges either file; the sandbox bakes both so the onboarding
+        # skip survives claude rewriting its mutable state file).
+        writeClaudeJson = lib.mkOption {
+          type = lib.types.bool;
+          default = false;
+          description = "Also write the merged settings to ~/.claude.json (claude's mutable state file; claude merges either).";
+        };
+        # ~/.claude/CLAUDE.md override text (user-level memory loaded
+        # every session). Takes precedence over the machineContext
+        # CLAUDE.md; a standalone/no-osConfig eval (the OCI sandbox
+        # image) never fires machineContext anyway.
+        claudeMd = lib.mkOption {
+          type = with lib.types; nullOr str;
+          default = null;
+          description = "Override text for ~/.claude/CLAUDE.md (user-level memory); null = machineContext default.";
         };
       };
 
@@ -554,70 +665,133 @@
           default = false;
           description = "Enable the Varlock docs MCP server (search varlock.dev documentation) in opencode.";
         };
+        # Extra local stdio servers merged verbatim into the shared set
+        # (the OpenShell code-agent image's env-mapping credential
+        # wrapper trio: headroom/nixos/github). description/exposure are
+        # pi-only fields — pi's mcp.json carries them, the claude-shape
+        # renderers (kimi/claude) drop them.
+        extraServers = lib.mkOption {
+          type = with lib.types;
+            attrsOf (submodule {
+              options = {
+                command = lib.mkOption {
+                  type = lib.types.listOf lib.types.str;
+                  description = "Server command as an exe+args list (split into command/args per consumer dialect).";
+                };
+                description = lib.mkOption {
+                  type = with lib.types; nullOr str;
+                  default = null;
+                  description = "One-line server description (pi's mcp.json only).";
+                };
+                exposure = lib.mkOption {
+                  type = with lib.types; nullOr (enum ["direct" "codemode"]);
+                  default = null;
+                  description = "pi tool exposure for this server (pi's mcp.json only).";
+                };
+              };
+            });
+          default = {};
+          description = "Extra local stdio MCP servers merged into the shared set for every enabled agent.";
+        };
       };
     };
 
     config = lib.mkMerge [
       # ---- pi ---- #
       (lib.mkIf cfg.pi.enabled {
-        home.packages = [cfg.pi.package];
-        home.file =
-          lib.mkIf cfg.skills.enabled {
+        home.packages = lib.optional cfg.pi.installPackage cfg.pi.package;
+        # NOTE: mkMerge, not `mkIf … // …` — attrs //-appended to an
+        # mkIf sentinel are SILENTLY DISCARDED by the module system
+        # (verified 2026-10; the pre-refactor version of this block
+        # never wrote pi's mcp.json/AGENTS.md on hosts).
+        home.file = lib.mkMerge [
+          (lib.mkIf cfg.skills.enabled {
             ".agents/skills".source = skillsDir;
-          }
+          })
           # pi user instructions: ~/.pi/agent/AGENTS.md is applied
           # across working directories (pi configuration docs) — the
           # same machine context opencode gets via its global
           # AGENTS.md. Gated on the opencode machineContext switch +
           # a resolvable hostname, same as the opencode write.
-          // lib.optionalAttrs (oc.machineContext.enable && hostName != "") {
+          (lib.optionalAttrs (oc.machineContext.enable && hostName != "") {
             ".pi/agent/AGENTS.md".text = machineContextText;
-          }
+          })
           # pi MCP servers: ~/.pi/agent/mcp.json (available in every
-          # project), same shared set as the other agents.
-          // lib.optionalAttrs (sharedMcpCommands != {}) {
-            ".pi/agent/mcp.json".text = sharedMcpJson;
-          };
+          # project), same shared set as the other agents — with pi's
+          # per-server description/exposure fields when present
+          # (mcp.extraServers).
+          (lib.optionalAttrs (sharedMcpCommands != {}) {
+            ".pi/agent/mcp.json".text = piMcpJson;
+          })
+          (lib.optionalAttrs (cfg.pi.settings != {}) {
+            ".pi/agent/settings.json".text = builtins.toJSON cfg.pi.settings;
+          })
+          (lib.optionalAttrs (cfg.pi.models != null) {
+            ".pi/agent/models.json".text = builtins.toJSON cfg.pi.models;
+          })
+          (lib.optionalAttrs (cfg.pi.appendSystemMd != null) {
+            ".pi/agent/APPEND_SYSTEM.md".text = cfg.pi.appendSystemMd;
+          })
+        ];
       })
 
       # ---- kimi-code ---- #
       (lib.mkIf cfg.kimi.enabled {
-        home.packages = [cfg.kimi.package];
-        home.file =
-          lib.mkIf cfg.skills.enabled {
+        home.packages = lib.optional cfg.kimi.installPackage cfg.kimi.package;
+        home.file = lib.mkMerge [
+          (lib.mkIf cfg.skills.enabled {
             ".kimi-code/skills".source = skillsDir;
-          }
+          })
           # kimi-code user-level AGENTS.md ($KIMI_CODE_HOME/AGENTS.md),
           # same machine context as the other agents.
-          // lib.optionalAttrs (oc.machineContext.enable && hostName != "") {
+          (lib.optionalAttrs (oc.machineContext.enable && hostName != "") {
             ".kimi-code/AGENTS.md".text = machineContextText;
-          }
+          })
           # kimi MCP servers: ~/.kimi-code/mcp.json, same shared set.
-          // lib.optionalAttrs (sharedMcpCommands != {}) {
+          (lib.optionalAttrs (sharedMcpCommands != {}) {
             ".kimi-code/mcp.json".text = sharedMcpJson;
-          };
+          })
+          (lib.optionalAttrs (cfg.kimi.config != null) {
+            ".kimi-code/config.toml".source = tomlFmt.generate "kimi-config.toml" cfg.kimi.config;
+          })
+          (lib.optionalAttrs (cfg.kimi.systemMd != null) {
+            ".kimi-code/SYSTEM.md".text = cfg.kimi.systemMd;
+          })
+        ];
       })
 
       # ---- claude-code ---- #
       (lib.mkIf cfg.claude.enabled {
         home = {
-          packages = [cfg.claude.package];
-          file =
-            lib.mkIf cfg.skills.enabled {
+          packages = lib.optional cfg.claude.installPackage cfg.claude.package;
+          file = lib.mkMerge [
+            (lib.mkIf cfg.skills.enabled {
               ".claude/skills".source = skillsDir;
-            }
+            })
             # claude-code user-level memory (~/.claude/CLAUDE.md), loaded
             # into every session — same machine context as the other
-            # agents.
-            // lib.optionalAttrs (oc.machineContext.enable && hostName != "") {
+            # agents (claude.claudeMd overrides; a standalone eval never
+            # fires this branch anyway).
+            (lib.optionalAttrs (oc.machineContext.enable && hostName != "" && cfg.claude.claudeMd == null) {
               ".claude/CLAUDE.md".text = machineContextText;
-            }
+            })
+            (lib.optionalAttrs (cfg.claude.claudeMd != null) {
+              ".claude/CLAUDE.md".text = cfg.claude.claudeMd;
+            })
             # claude MCP servers: ~/.claude/settings.json mcpServers (NOT
             # ~/.claude.json — that is claude's mutable state file and
-            # must stay writable), same shared set.
-            // lib.optionalAttrs (sharedMcpCommands != {}) {
-              ".claude/settings.json".text = sharedMcpJson;
-            };
+            # must stay writable), same shared set, merged with the
+            # caller's extra settings attrs (claude.settings).
+            (lib.optionalAttrs (sharedMcpCommands != {} || cfg.claude.settings != {}) {
+              ".claude/settings.json".text = claudeSettingsJson;
+            })
+            # The sandbox also bakes ~/.claude.json (claude merges
+            # either file) so the onboarding skip survives claude
+            # rewriting its mutable state file.
+            (lib.optionalAttrs cfg.claude.writeClaudeJson {
+              ".claude.json".text = claudeSettingsJson;
+            })
+          ];
           # Route claude-code provider traffic through the headroom proxy
           # (documented ANTHROPIC_BASE_URL flow; the proxy systemd user
           # service holds Restart=always). pi/kimi are NOT rerouted: the

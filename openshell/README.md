@@ -174,18 +174,31 @@ each CLI's config only *references* those env var names.
 
 ```bash
 openshell sandbox connect code        # or: openshell sandbox exec -n code --tty -- pi
-pi            # preconfigured: kimi-for-coding via $KIMI_API_KEY (subscription, not platform API)
-kimi          # pre-wired: kimi-for-coding subscription via baked config.toml (apiKeyEnv
-              # $KIMI_API_KEY) — no /login; the OAuth hosts are policy-unreachable on purpose
-claude        # uses $ANTHROPIC_AUTH_TOKEN (Claude Teams subscription token); the
-              # platform.claude.com startup preflight is admitted by the policy
+pi            # preconfigured: kimi-for-coding via $KIMI_API_KEY (subscription, not platform API),
+              # routed through the kimi-upstream headroom proxy (127.0.0.1:8788)
+kimi          # same subscription via baked config.toml (type = "anthropic", apiKeyEnv
+              # $KIMI_API_KEY, same :8788 proxy) — no /login; the OAuth hosts are
+              # policy-unreachable on purpose
+claude        # via the anthropic-upstream headroom proxy (127.0.0.1:8787);
+              # credential from claude-subscription ($CLAUDE_CODE_OAUTH_TOKEN, default)
+              # or claude-code ($ANTHROPIC_AUTH_TOKEN, platform key) — never both;
+              # the platform.claude.com startup preflight is admitted by the policy
 ```
+
+All three launchers lazy-start their headroom proxy on first run
+(`headroom-proxy-ensure`; logs `/tmp/headroom-proxy-<port>.log`,
+`headroom doctor` health-checks, `headroom savings` shows token
+savings). All agent user configs — MCP trio (headroom/nixos/github),
+provider wiring, proxy routing, the environment briefing — are
+home-manager-generated into the agents' config files by the image's
+standalone HM evaluation (`homeSpec.agents.*` in
+flake-parts/ociImages/code-agent.nix).
 
 The repo's skills (`/opt/skills`) are advertised by name+description in
 each CLI (pi and kimi-code: `/skill:<name>`; claude: `/`-invoked skills)
 and loaded on demand. `claude auth login` also works: the OAuth token
 polling endpoint (`platform.claude.com/v1/oauth/token`) is admitted in
-the policy — but with the claude-code provider attached you don't need
+the policy — but with a claude provider attached you don't need
 it.
 
 **From the outside via VSCodium** (§5): connect with Remote-SSH, open
@@ -401,8 +414,12 @@ Narrow additive grants: `openshell policy update code
   `providers.<name>.{type,apiKey,apiKeyEnv,baseUrl}`, top-level
   `defaultProvider`/`defaultModel`, `[models.<alias>]` with required
   `provider`/`model`/`maxContextSize`. `type = "kimi"` speaks the
-  OpenAI-style wire with Bearer auth — the same surface Moonshot's own
-  managed CLI uses at `https://api.kimi.com/coding/v1`.
+  OpenAI-style wire with Bearer auth (`https://api.kimi.com/coding/v1`);
+  `type = "anthropic"` speaks the Anthropic `/messages` wire at
+  `https://api.kimi.com/coding` — the code-agent image uses the
+  ANTHROPIC variant (verified live in-sandbox 2026-10) so kimi-code can
+  share pi's headroom proxy instance (the proxy's anthropic pipeline
+  cannot serve the OpenAI-style kimi wire).
 
 ## Shell completions
 

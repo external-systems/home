@@ -51,6 +51,35 @@ in place. Under Home-Manager that file is a symlink into the read-only Nix
 store, so wrap fails with `Read-only file system`. The declarative
 equivalent is implemented directly in the home-manager modules instead.
 
+## OpenShell code-agent sandbox
+
+The code-agent OCI image wires headroom differently from the NixOS
+hosts (no systemd, no HM session variables — the supervisor scrubs the
+process env):
+
+- **Two baked proxy instances**, one Anthropic-wire pipeline per
+  upstream: `:8787` → api.anthropic.com (claude), `:8788` →
+  api.kimi.com/coding (pi + kimi-code, both Anthropic-wire against the
+  Kimi for Coding subscription).
+- **Lazy start** — each agent's `/usr/local/bin` launcher wrapper runs
+  `headroom-proxy-ensure <port> [upstream]` (flock-serialized,
+  `--stateless`, `HEADROOM_BEACON=off`) and `exec`s the real CLI.
+- **Routing via config files** — claude `settings.json`
+  `env.ANTHROPIC_BASE_URL`, pi `models.json` `baseUrl`, kimi
+  `config.toml` `type = "anthropic"` + `baseUrl` — all rendered by the
+  image's home-manager evaluation (`homeSpec.agents.*`, see
+  `flake-parts/ociImages/code-agent.nix`).
+- **Policy**: api.anthropic.com and api.kimi.com are admitted for
+  headroom-slim's python interpreter (`@bin_headroom_py@` in the
+  `claude_code` and `kimi_for_coding` rules); gateway credential
+  substitution works for proxy-routed traffic.
+- The **MCP server** (`headroom mcp serve`) is one of the baked MCP
+  trio and shares the proxy's CCR store, so `headroom_retrieve`
+  resolves proxy-placed `<<ccr:…>>` markers. With the default
+  claude-subscription provider (no platform key) the MCP server's
+  LLM transforms are unavailable — headroom falls back to its local
+  structural compressors, which carry the bulk of the savings.
+
 ## Package
 
 `flake-parts/packages/headroom.nix` builds `headroom-ai` **v0.37.0** from

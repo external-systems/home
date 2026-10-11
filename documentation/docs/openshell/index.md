@@ -121,13 +121,19 @@ What the image bakes in (all nixpkgs/`llm-agents`-pinned, no secrets):
 - **Three AI coding agents** from the `llm-agents` flake input, each
   pre-wired so no interactive login is ever needed: `pi` (baked
   `models.json` reads `$KIMI_API_KEY`), `kimi-code` (baked
-  `~/.kimi-code/config.toml`: `type = "kimi"` against
-  `https://api.kimi.com/coding/v1`, `apiKeyEnv = "KIMI_API_KEY"` — the
-  subscription over the wire Moonshot's own CLI speaks), and `claude`
+  `~/.kimi-code/config.toml`: `type = "anthropic"` against the
+  headroom proxy — the same Kimi for Coding subscription pi speaks,
+  `apiKeyEnv = "KIMI_API_KEY"`), and `claude`
   (baked onboarding skip; subscription OAuth token as
   `$CLAUDE_CODE_OAUTH_TOKEN` from the attached claude-subscription
   provider, or a Console platform key as `$ANTHROPIC_AUTH_TOKEN` from
-  claude-code — attach ONE, never both).
+  claude-code — attach ONE, never both). All agent user configs are
+  home-manager-generated (the image's standalone HM evaluation renders
+  `homeSpec.agents.*` into the agents' config files), and ALL
+  inference routes through a baked, lazy-started headroom proxy pair
+  (`:8787` → api.anthropic.com for claude, `:8788` →
+  api.kimi.com/coding for pi+kimi) for context compression — see the
+  [image guide](code-agent-image.md).
 - **Repo skills baked at `/opt/skills`** — the same merged skill tree
   `inputs.agents.lib.mkSkills` builds for the NixOS hosts (the home
   repo's `skills/` tree + external flake-input skill sources), wired
@@ -355,11 +361,15 @@ Image/driver interplay:
 - **kimi-code is pre-wired, never `/login`ed**: its config schema
   (`providers.<name>.{type,apiKey,apiKeyEnv,baseUrl}`,
   `defaultProvider`/`defaultModel`, `[models.<alias>]` with required
-  `maxContextSize`) supports env-referenced keys, and `type = "kimi"`
-  speaks the OpenAI-style Bearer wire that Moonshot's own managed CLI uses
-  at `https://api.kimi.com/coding/v1` — so a baked `config.toml` replaces
-  the OAuth device flow (whose `auth.kimi.com` hosts stay policy-closed),
-  and `KIMI_CODE_MODEL_CATALOG_REFRESH_ON_START=false` stops the models.dev
+  `maxContextSize`) supports env-referenced keys. The baked config.toml
+  uses `type = "anthropic"` (the Anthropic `/messages` wire at
+  api.kimi.com/coding — verified live in-sandbox 2026-10) pointed at
+  the kimi-upstream headroom proxy (`127.0.0.1:8788`), replacing both
+  the OAuth device flow (whose `auth.kimi.com` hosts stay
+  policy-closed) and the OpenAI-style `type = "kimi"` wire (not
+  proxyable through headroom's anthropic pipeline — the OpenAI-style
+  variant remains the fallback if Moonshot ever moves the wire).
+  `KIMI_CODE_MODEL_CATALOG_REFRESH_ON_START=false` stops the models.dev
   fetch failure from littering startup.
 - **No docker/podman inside sandboxes — and starship shouldn't pretend
   otherwise.** The image rootfs carries a baked `/.dockerenv` (artifact of
