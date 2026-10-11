@@ -142,7 +142,16 @@
         bin_claude = "${pkgs.claude-code}/bin/claude";
         bin_claude_wrapped = "${pkgs.claude-code}/bin/.claude-wrapped";
         bin_pi = "${pkgs.pi-coding-agent}/libexec/pi/pi";
-        bin_headroom = "${pkgs.headroom-slim}/bin/headroom";
+        # headroom-slim is a buildPythonApplication of a wheel: its
+        # bin/headroom is a bash WRAPPER SCRIPT whose kernel-resolved
+        # exe is the package set's interpreter — pkgs.unstable's
+        # python313 (flake-parts/packages/headroom.nix `py`). Pin the
+        # interpreter (readlink -f of the script would be the script
+        # itself, which /proc/pid/exe never matches); it is a different
+        # python store path than this flake's pkgs.python3, so the
+        # python_packages entry cannot cover it. Must stay in sync
+        # with headroom.nix's python package set.
+        bin_headroom_py = "${pkgs.unstable.python313}/bin/python3";
         bin_python3 = "${pkgs.python3}/bin/python3";
         # pip runs in-process, so its connections carry the RESOLVED
         # interpreter exe — pin both (nixpkgs' bin/python3 is a symlink
@@ -151,7 +160,14 @@
         bin_python3_real = pkgs.python3.interpreter;
         bin_uv = "${pkgs.uv}/bin/uv";
         bin_go = "${pkgs.go}/bin/go";
-        bin_mcp_nixos = "${inputs'.mcp-nixos.packages.mcp-nixos}/bin/mcp-nixos";
+        # mcp-nixos is a buildPythonApplication too: pin the python
+        # interpreter of ITS OWN scoped package set (the mcp-nixos
+        # flake exposes it as passthru.pythonPackages; the wrapper's
+        # shebang runs exactly this interpreter — verified against the
+        # baked store path 2026-10). bin/mcp-nixos itself is a bash
+        # wrapper script, which the supervisor's /proc/pid/exe match
+        # can never see.
+        bin_mcp_nixos_py = "${inputs'.mcp-nixos.packages.mcp-nixos.pythonPackages.python}/bin/python3";
       };
 
       github-agent-profile = renderSandboxConfig "github-agent-profile" (customLib.relativeToRoot "openshell/profiles/github-agent.yaml") {

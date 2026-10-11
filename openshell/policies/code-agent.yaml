@@ -299,10 +299,17 @@ network_policies:
       - { path: @bin_claude_wrapped@ }
       - { path: @bin_claude@ }
       # headroom (context compression, baked as the agents' MCP server)
-      # posts to api.anthropic.com with the claude provider's token;
-      # its wrapper execs the slim binary, so pin the kernel-resolved
-      # exe here too — without this, headroom_compress is denied.
-      - { path: @bin_headroom@ }
+      # posts to api.anthropic.com with the claude provider's token.
+      # The pin is the headroom-slim package set's PYTHON INTERPRETER,
+      # not bin/headroom: headroom-slim is a buildPythonApplication of a
+      # wheel, whose bin entry is a bash wrapper script around a
+      # `python3.13` shebang script — the supervisor matches the
+      # interpreter the wrapper execs (from pkgs.unstable, a different
+      # python store path than this flake's pkgs.python3, so the
+      # python_packages entry can't cover it), and readlink -f of a
+      # script is the script itself. Without the interpreter pin,
+      # headroom_compress is denied (verified 2026-10 in-sandbox).
+      - { path: @bin_headroom_py@ }
 
   # Python package fetching: PyPI index + wheel CDN, read-only, for the
   # image's python3 and uv. pip runs in-process (`python3 -m pip`, also
@@ -378,16 +385,53 @@ network_policies:
       - { path: /nix/store/*-go-*/share/go/bin/go }
 
   # mcp-nixos (the baked nixos MCP server): package/option `info`
-  # queries answer from its local index, but `search`-family queries
-  # call the search.nixos.org backend — admit it for the server's
-  # binary only.
-  nixos_search:
-    name: nixos_search
+  # queries answer from its local index, but every other source makes
+  # live HTTPS calls (mcp_nixos/config.py): the search-family backends
+  # (search.nixos.org, noogle.dev, search.devbox.sh), the wiki source
+  # (wiki.nixos.org api.php), the doc/data scrapes (home-manager +
+  # nixvim on nix-community.github.io, nix-darwin.github.io,
+  # nvf.notashelf.dev, nix.dev), the flakehub source (api.flakehub.com),
+  # cache.nixos.org cache-status checks, and nixpkgs branch-HEAD
+  # lookups via api.github.com (sources/base.py). All read-only.
+  #
+  # The binary pin is the package set's PYTHON INTERPRETER, not
+  # bin/mcp-nixos: nixpkgs buildPythonApplication bin entries are bash
+  # wrapper scripts around a `python3.14` shebang script, and the
+  # supervisor matches /proc/<pid>/exe — the interpreter the wrapper
+  # execs, from the mcp-nixos input's OWN nixpkgs closure (a different
+  # python store path than this flake's pkgs.python3, so the
+  # python_packages entry can't cover it). readlink -f of a script is
+  # the script itself, so the old bin/mcp-nixos pin matched NOTHING and
+  # every search call died with EACCES (verified 2026-10 in-sandbox).
+  # mcp-nixos also shells out to `nix` for flake-input evals — that
+  # child carries the image's nix exe and rides the nix_* entries.
+  mcp_nixos:
+    name: mcp_nixos
     endpoints:
       - { host: search.nixos.org, port: 443, protocol: rest,
           enforcement: enforce, access: read-only }
+      - { host: wiki.nixos.org, port: 443, protocol: rest,
+          enforcement: enforce, access: read-only }
+      - { host: cache.nixos.org, port: 443, protocol: rest,
+          enforcement: enforce, access: read-only }
+      - { host: nix-community.github.io, port: 443, protocol: rest,
+          enforcement: enforce, access: read-only }
+      - { host: nix-darwin.github.io, port: 443, protocol: rest,
+          enforcement: enforce, access: read-only }
+      - { host: api.flakehub.com, port: 443, protocol: rest,
+          enforcement: enforce, access: read-only }
+      - { host: nix.dev, port: 443, protocol: rest,
+          enforcement: enforce, access: read-only }
+      - { host: noogle.dev, port: 443, protocol: rest,
+          enforcement: enforce, access: read-only }
+      - { host: search.devbox.sh, port: 443, protocol: rest,
+          enforcement: enforce, access: read-only }
+      - { host: api.github.com, port: 443, protocol: rest,
+          enforcement: enforce, access: read-only }
+      - { host: nvf.notashelf.dev, port: 443, protocol: rest,
+          enforcement: enforce, access: read-only }
     binaries:
-      - { path: @bin_mcp_nixos@ }
+      - { path: @bin_mcp_nixos_py@ }
 
   # code.m3ta.dev (Gitea): the home flake's `agents` input
   # (git+https://code.m3ta.dev/m3tam3re/AGENTS — the shared skill-tree

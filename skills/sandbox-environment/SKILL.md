@@ -82,7 +82,7 @@ PyPI is python3/uv/nix-only and curl is refused. Admitted hosts (from
 | `git.clan.lol` | read-write git transport | clan repos |
 | `code.m3ta.dev` | read-only git smart-HTTP | the home flake's `agents` input (nix input fetch / clones; no push) |
 | `pypi.org`, `files.pythonhosted.org` | read | python3/uv wheel fetches (no uploads); nix also admitted — the home flake's headroom input is a wheel URL, and flake input fetches run as the nix binary |
-| `search.nixos.org` | read | mcp-nixos `search`-family backend (package/option `info` is local) |
+| `search.nixos.org`, `wiki.nixos.org`, `cache.nixos.org`, `nix-community.github.io`, `nix-darwin.github.io`, `api.flakehub.com`, `nix.dev`, `noogle.dev`, `search.devbox.sh`, `nvf.notashelf.dev`, `api.github.com` | read | mcp-nixos live sources (package/option `info` is a local index) — pinned to the server's python interpreter, see the `mcp_nixos` policy rule |
 | `api.kimi.com` | — | kimi-for-coding API |
 | `api.anthropic.com`, `platform.claude.com` | — | claude API + startup preflight |
 
@@ -147,9 +147,18 @@ recreating the sandbox; filesystem/image changes require recreation.
   `$ANTHROPIC_AUTH_TOKEN` onto `ANTHROPIC_API_KEY`. Broken when the
   claude-code provider is missing.
 - `nixos` — `mcp-nixos`; package/option `info` answers from a local
-  index, `search`-family queries call the `search.nixos.org` backend
-  (admitted for the server's binary). Broken when the sandbox predates
-  the `nixos_search` policy rule — hot-reload the policy from the host.
+  index, `search`-family queries call the `search.nixos.org` backend.
+  Policy: the `mcp_nixos` rule admits all of the server's live source
+  hosts read-only for its PYTHON INTERPRETER (the mcp-nixos input's
+  own `python3.14`), not for `bin/mcp-nixos` — nixpkgs python bin
+  entries are bash wrapper scripts and the supervisor matches
+  `/proc/pid/exe`, i.e. the interpreter the wrapper execs (the
+  pre-2026-10 pin on the wrapper script matched nothing: every search
+  call EACCES'd). Broken when the sandbox predates the `mcp_nixos`
+  policy rule — hot-reload the policy from the host. Same interpreter
+  pin pattern covers `headroom` (the `claude_code` rule pins
+  nixpkgs-unstable's `python3.13`, the exe of headroom-slim's bash
+  wrapper).
 - `github` — `github-mcp-server` wrapper mapping the `$GITHUB_TOKEN`
   handle onto `GITHUB_PERSONAL_ACCESS_TOKEN`. In pi it is `direct` (its
   ~44 tools are listed in the system prompt at session start). Errors at

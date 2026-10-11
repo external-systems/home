@@ -76,8 +76,11 @@ architecture and the lessons that shaped the design, see the
   admitted egress, skills location, identity and secrets posture) and a
   shared MCP trio: **headroom** (context compression; wrapper maps the
   injected `$ANTHROPIC_AUTH_TOKEN` onto `ANTHROPIC_API_KEY`), **nixos**
-  (option search; `search`-family queries call the `search.nixos.org`
-  backend, admitted for the server's binary) and **github** (works only
+  (option search; package/option `info` answers from a local index,
+  the live sources — `search.nixos.org` backend, wiki, noogle, nixhub,
+  flakehub, nix.dev, nixvim/nvf/home-manager/darwin docs — are
+  admitted read-only for the server's python interpreter by the
+  policy's `mcp_nixos` rule) and **github** (works only
   with the `github-agent` provider attached — the profile admits
   read-write api.github.com and substitutes the credential at egress;
   the baked wrapper maps the `$GITHUB_TOKEN` handle onto
