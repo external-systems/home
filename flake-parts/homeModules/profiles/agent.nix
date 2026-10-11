@@ -44,62 +44,99 @@
     };
     news.display = "silent";
 
-    programs.bash = {
-      enable = true;
-      # LOAD-BEARING: interactive ssh sessions into the sandbox are
-      # `bash -i` — a NON-login shell that reads ONLY ~/.bashrc. HM's
-      # own init does not source /etc/profile, so do it here: the
-      # image's /etc/profile is idempotent and POSIX-safe, and it is
-      # what restores PATH/wheel-deps/nix-ld/terminfo env under the
-      # supervisor's scrubbed (env_clear) process env.
-      initExtra = ''
-        # shellcheck source=/etc/profile
-        if [ -r /etc/profile ]; then
-          . /etc/profile
-        fi
+    programs = {
+      bash = {
+        enable = true;
+        # LOAD-BEARING: interactive ssh sessions into the sandbox are
+        # `bash -i` — a NON-login shell that reads ONLY ~/.bashrc. HM's
+        # own init does not source /etc/profile, so do it here: the
+        # image's /etc/profile is idempotent and POSIX-safe, and it is
+        # what restores PATH/wheel-deps/nix-ld/terminfo env under the
+        # supervisor's scrubbed (env_clear) process env.
+        initExtra = ''
+          # shellcheck source=/etc/profile
+          if [ -r /etc/profile ]; then
+            . /etc/profile
+          fi
 
-        # TERM fallback: ssh forwards the client's TERM verbatim via the
-        # pty request; fall back when it has no entry in the baked
-        # terminfo db (xterm-256color is always present).
-        if [ -n "''${TERM:-}" ] && ! infocmp "$TERM" >/dev/null 2>&1; then
-          export TERM=xterm-256color
-        fi
-      '';
-      # Login shells (`bash -lc` — remote commands, editor server
-      # bootstraps) read /etc/profile themselves; chain into .bashrc so
-      # they get the same interactive setup as `bash -i` sessions.
-      profileExtra = ''
-        if [ -r "$HOME/.bashrc" ]; then
-          . "$HOME/.bashrc"
-        fi
-      '';
-      shellAliases = {
-        ll = "ls -alF --color=auto";
-        la = "ls -A --color=auto";
-        l = "ls -CF --color=auto";
-        grep = "grep --color=auto";
-        # nix's getifaddrs heuristic reports "no Internet" in the
-        # microVM and silently disables substitution — force it back
-        # on for interactive use (scripts must pass the flag
-        # themselves; aliases don't reach them).
-        nix = "nix --option substitute true";
+          # TERM fallback: ssh forwards the client's TERM verbatim via the
+          # pty request; fall back when it has no entry in the baked
+          # terminfo db (xterm-256color is always present).
+          if [ -n "''${TERM:-}" ] && ! infocmp "$TERM" >/dev/null 2>&1; then
+            export TERM=xterm-256color
+          fi
+        '';
+        # Login shells (`bash -lc` — remote commands, editor server
+        # bootstraps) read /etc/profile themselves; chain into .bashrc so
+        # they get the same interactive setup as `bash -i` sessions.
+        profileExtra = ''
+          if [ -r "$HOME/.bashrc" ]; then
+            . "$HOME/.bashrc"
+          fi
+        '';
+        shellAliases = {
+          ll = "ls -alF --color=auto";
+          la = "ls -A --color=auto";
+          l = "ls -CF --color=auto";
+          grep = "grep --color=auto";
+          # nix's getifaddrs heuristic reports "no Internet" in the
+          # microVM and silently disables substitution — force it back
+          # on for interactive use (scripts must pass the flag
+          # themselves; aliases don't reach them).
+          nix = "nix --option substitute true";
+        };
+        historyControl = ["ignoreboth" "erasedups"];
+        historySize = 10000;
+        historyFileSize = 20000;
       };
-      historyControl = ["ignoreboth" "erasedups"];
-      historySize = 10000;
-      historyFileSize = 20000;
+
+      # Starship owns the prompt (no static PS1 above): the shared
+      # settings plus sandbox deltas — a literal [sandbox] marker (the
+      # machine you are typing into is a disposable microVM, not the
+      # host) instead of the meaningless container hostname. Glyph
+      # rendering depends on the CLIENT's font (nerd fonts), same as on
+      # the NixOS hosts.
+      starship.settings = {
+        format = "[\\[sandbox\\]](bold purple) $all";
+        hostname.disabled = true;
+      };
+
+      # uv: binary via home.packages (home-path is merged into baseTools)
+      # and a baked uv.toml enforcing the sandbox briefing's Python rules
+      # (wheels only — no C toolchain ships in the image; the baked
+      # nixpkgs python3 is the only interpreter). Carries over the
+      # python-downloads/python-preference settings of the repo's old
+      # homeModules/uv.nix (deleted in f3eef10 in the "packages move to
+      # project devshells" trim — a fleet trim, not a technical problem);
+      # link-mode is deliberately NOT pinned — hardlinks between the uv
+      # cache and projects under /sandbox are verified working, and copy
+      # mode would waste the 32GiB overlay. NOTE: programs.uv's
+      # python.versions / tool.packages options are activation-time
+      # (uv python/tool install) and are DEAD here — the sandbox never
+      # runs HM activation.
+      uv = {
+        enable = true;
+        settings = {
+          # The baked nixpkgs python3 is the only interpreter: managed
+          # CPython downloads (foreign FHS binaries riding the nix-ld
+          # shim) are off — other versions come via nix substitution
+          # (`nix run --option substitute true nixpkgs#python314`).
+          python-downloads = "never";
+          python-preference = "only-system";
+          # Wheels only BY DEFAULT: sdists that compile cannot build
+          # in-sandbox (no C toolchain) — fail fast instead of a doomed
+          # compile. Escape hatch for a real sdist need: CLI flags
+          # override the config (`nix shell nixpkgs#gcc -c uv pip install
+          # --only-binary :none: …`).
+          no-build = true;
+          pip.only-binary = [":all:"];
+        };
+      };
     };
 
-    # Starship owns the prompt (no static PS1 above): the shared
-    # settings plus sandbox deltas — a literal [sandbox] marker (the
-    # machine you are typing into is a disposable microVM, not the
-    # host) instead of the meaningless container hostname. Glyph
-    # rendering depends on the CLIENT's font (nerd fonts), same as on
-    # the NixOS hosts.
+    # Starship toggle (the shared homeModules.starship import) lives in
+    # the homeSpec namespace, outside `programs`.
     homeSpec.programs.starship.enable = true;
-    programs.starship.settings = {
-      format = "[\\[sandbox\\]](bold purple) $all";
-      hostname.disabled = true;
-    };
 
     # Deliberately NOT configured: no programs.git (the image bakes
     # /etc/gitconfig with the bot identity + credential helper), no

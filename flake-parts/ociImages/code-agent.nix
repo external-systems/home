@@ -211,9 +211,9 @@
     baseTools = pkgs.buildEnv {
       name = "code-agent-base";
       paths = with pkgs; [
-        # The HM profile's user package set (starship — the profile's
-        # bashrc initializes it from the store path anyway; this puts
-        # the CLI on PATH for `starship explain`/`starship config`).
+        # The HM profile's user package set (starship, uv — the
+        # profile's bashrc initializes starship from the store path
+        # anyway; home-path puts both CLIs on PATH in every shell).
         hmAgentHomePath
         bashInteractive
         coreutils
@@ -270,10 +270,6 @@
         shfmt
         dnsutils
         rsync
-        # uv: wheel-first Python package installer (baked so PyPI
-        # egress — admitted read-only in the sandbox policy — has a
-        # pinned binary; pip itself ships inside `python3 -m venv`).
-        uv
         # Go toolchain: module/toolchain fetches ride the golang policy
         # entry (proxy.golang.org + sum.golang.org admitted for the go
         # binary; direct-VCS fallback reuses git's github/gitea
@@ -372,7 +368,10 @@
       ln -s ${pkgs.shfmt}/bin/shfmt                 $out/usr/local/bin/shfmt
       ln -s ${pkgs.dnsutils}/bin/dig                $out/usr/local/bin/dig
       ln -s ${pkgs.rsync}/bin/rsync                 $out/usr/local/bin/rsync
-      ln -s ${pkgs.uv}/bin/uv                       $out/usr/local/bin/uv
+      # uv comes from the HM profile's home-path (programs.uv in
+      # profile-agent) — same pkgs.uv store path, so this fixed FHS
+      # symlink target is unchanged.
+      ln -s ${hmAgentHomePath}/bin/uv                 $out/usr/local/bin/uv
       ln -s ${pkgs.go}/bin/go                       $out/usr/local/bin/go
       ln -s ${pkgs.go}/bin/gofmt                    $out/usr/local/bin/gofmt
       ln -s ${pkgs.which}/bin/which                 $out/usr/local/bin/which
@@ -906,13 +905,18 @@
         - Python: `python3` ships WITHOUT global pip — bootstrap it with
           `python3 -m venv`, or prefer the baked `uv` (wheel-first).
           PyPI (`pypi.org` + `files.pythonhosted.org`) is admitted
-          READ-ONLY for python3/uv. Install WHEELS ONLY (`uv pip
-          install --only-binary=:all: …`): no C toolchain ships here,
-          so sdists that compile cannot build in-sandbox — get those
-          via nix substitution (`nix run --option substitute true
-          nixpkgs#…`). Binary wheels import as-is: the few system libs
-          they link (libstdc++/libgcc_s/libz) resolve from the baked
-          /usr/lib/wheel-deps dir (on LD_LIBRARY_PATH).
+          READ-ONLY for python3/uv. Install WHEELS ONLY: no C toolchain
+          ships here, so sdists that compile cannot build in-sandbox —
+          get those via nix substitution (`nix run --option substitute
+          true nixpkgs#…`). The baked ~/.config/uv/uv.toml (HM
+          profile-agent) already enforces this: python-downloads=never
+          + python-preference=only-system (baked python3 only — other
+          versions via nixpkgs), no-build + pip.only-binary=":all:"
+          (sdist compiles fail fast; per-command override: uv pip
+          install --only-binary :none: inside `nix shell nixpkgs#gcc`).
+          Binary wheels import as-is: the few
+          system libs they link (libstdc++/libgcc_s/libz) resolve from
+          the baked /usr/lib/wheel-deps dir (on LD_LIBRARY_PATH).
         - Foreign glibc binaries (downloaded FHS ELFs) run via the
           nix-ld shim: /lib64/ld-linux-x86-64.so.2 reads NIX_LD and
           NIX_LD_LIBRARY_PATH from the env.

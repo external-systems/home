@@ -17,27 +17,39 @@ architecture and the lessons that shaped the design, see the
   (`kubectl`, `helm`), and `dig`/`rsync`. Foreign glibc binaries run via
   the nix-ld shim (`/lib64/ld-linux-x86-64.so.2` +
   `NIX_LD`/`NIX_LD_LIBRARY_PATH`). For Python work: `uv`
-  (wheel-first installer) plus `python3` — PyPI is admitted read-only
-  for both, WHEELS ONLY (`uv pip install --only-binary=:all: …`), since
-  no C toolchain ships in the image (pip itself bootstraps inside
-  `python3 -m venv`). Binary wheels import as-is: the few system libs
+  (wheel-first installer, from the HM profile) plus `python3` — PyPI
+  is admitted read-only for both, WHEELS ONLY, since no C toolchain
+  ships in the image (pip itself bootstraps inside `python3 -m venv`).
+  The baked `~/.config/uv/uv.toml` (HM `profile-agent`, at both `$HOME`
+  roots) enforces the posture: `python-downloads = "never"` +
+  `python-preference = "only-system"` (the baked nixpkgs `python3` is
+  the only interpreter — get other versions via nix, e.g.
+  `nix run nixpkgs#python314`), and `no-build` +
+  `pip.only-binary = ":all:"` (sdist compiles fail fast instead of
+  dying mid-build; CLI flags override the config — see the gcc hatch
+  below). Binary wheels import as-is: the few system libs
   they link (`libstdc++`/`libgcc_s`/`libz`) resolve from the baked
   `/usr/lib/wheel-deps` dir on `LD_LIBRARY_PATH`.
   Verified in-sandbox (2026-10): `uv venv` + wheel installs (numpy,
   pillow, lxml), `uv init --package` + `uv build`, `uv tool install`,
-  `uv python install` (managed CPython via the nix-ld shim), `pip`
+  `pip`
   inside `python3 -m venv`, and the docs stack (`mkdocs-material` +
   `mkdocs-glightbox`, `mkdocs build --strict` in `documentation/`).
+  (`uv python install` of managed CPython via the nix-ld shim also
+  worked then; it is now DISABLED by the baked `uv.toml` — use
+  nixpkgs pythons instead.)
   Practical notes:
   - `uv tool install`ed binaries land in `$HOME/.local/bin`, which
     login shells put on PATH via `/etc/profile` (re-login or
     `export PATH="$HOME/.local/bin:$PATH"` in non-login shells).
   - `uv venv` does NOT seed pip — use `uv pip …` inside it, or
     `uv venv --seed` when you need real pip.
-  - An sdist that compiles still fails without a toolchain, but nix
-    supplies one on demand:
-    `nix shell --option substitute true nixpkgs#gcc` then re-run the
-    uv/pip install inside that shell (verified with psutil).
+  - An sdist that compiles fails fast under the baked `uv.toml`; when
+    you truly need one, nix supplies a toolchain on demand and CLI
+    flags override the config:
+    `nix shell --option substitute true nixpkgs#gcc -c uv pip install
+    --only-binary :none: …` (verified with psutil, back when the
+    config did not gate it).
   - uv's "Failed to hardlink files" warning is benign: it appears
     only when the project lives on `/tmp` (tmpfs) while the uv cache
     is on the overlay — projects under `/sandbox` hardlink fine.
