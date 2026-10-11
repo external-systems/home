@@ -30,8 +30,11 @@ grows.
   OpenSSH sshd — the supervisor speaks ssh itself and spawns every
   process with a SCRUBBED env (`env_clear`; only HOME/USER/PATH/TERM/
   SHELL + injected TLS vars + provider creds survive; the OCI image Env
-  does NOT propagate under the VM driver). Interactive sessions are
-  `bash -i` (read the baked ~/.bashrc, which sources the idempotent
+  does NOT propagate under the VM driver). The user-level dotfiles and
+  toolset come from a baked home-manager evaluation
+  (homeModules.profile-agent-base + the profile-agent OCI flavor,
+  generated at image-build time — no runtime HM). Interactive sessions
+  are `bash -i` (read the baked ~/.bashrc, which sources the idempotent
   /etc/profile), remote commands/editor bootstraps are `bash -lc`
   (/etc/profile), and the create-time `--env` set (packages.code-agent-env,
   passed by code-sandbox create: LD_LIBRARY_PATH, NIX_LD,
@@ -161,7 +164,9 @@ recreating the sandbox; filesystem/image changes require recreation.
 ## Identity and secrets
 
 - Git identity: `andrewthomaslee-agent` bot; github.com-scoped
-  credential helper feeds git the provider-injected `$GITHUB_TOKEN`.
+  credential helper feeds git the provider-injected `$GITHUB_TOKEN`
+  (config from the baked HM profile's programs.git —
+  ~/.config/git/config).
 - Provider env values are OPAQUE HANDLES, not real secrets —
   `gh auth status` failing is expected; egress substitution is what
   authenticates. Real keys never enter the image.

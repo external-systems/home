@@ -8,13 +8,20 @@ architecture and the lessons that shaped the design, see the
 ## What the image gives you
 
 - **Toolset on PATH** (`/bin`, `/usr/local/bin`, login shells): bash,
-  coreutils, git, gh, curl, jq, yq, python3, go, ripgrep, fd, sd,
+  coreutils, git, gh, curl, jq, yq, python3, uv, go, bun, ripgrep,
+  fd, sd,
   openssh, tmux, nix, which, clear — plus the Nix language tooling
   (`nixd`, `alejandra`,
   `statix`, `deadnix`), shell vetting (`shellcheck`, `shfmt`), archive
   tools (`unzip`, `zstd`, `wget`), ELF inspection (`file`, `readelf`,
   `objdump`, `ldd`), patching (`diff`, `patch`), k8s clients
-  (`kubectl`, `helm`), and `dig`/`rsync`. Foreign glibc binaries run via
+  (`kubectl`, `helm`), and `dig`/`rsync` — with a **starship** prompt.
+  The user-level half of this list (everything an agent sandbox user
+  needs, incl. the agent CLIs) comes from the baked home-manager
+  profile (`profile-agent-base` + the `profile-agent` OCI flavor, see
+  the dotfiles bullet below) and is reusable as-is on NixOS hosts;
+  the system layer (coreutils family, ssh client, nix, ncurses,
+  ELF/patch plumbing) is image-level. Foreign glibc binaries run via
   the nix-ld shim (`/lib64/ld-linux-x86-64.so.2` +
   `NIX_LD`/`NIX_LD_LIBRARY_PATH`). For Python work: `uv`
   (wheel-first installer, from the HM profile) plus `python3` — PyPI
@@ -53,13 +60,15 @@ architecture and the lessons that shaped the design, see the
   - uv's "Failed to hardlink files" warning is benign: it appears
     only when the project lives on `/tmp` (tmpfs) while the uv cache
     is on the overlay — projects under `/sandbox` hardlink fine.
-  For Go work: the full `go` toolchain is baked (with `gofmt`) —
+  For Go work: the full `go` toolchain is baked (with `gofmt`,
+  telemetry off via the baked `~/.config/go/telemetry/mode`) —
   `proxy.golang.org` + `sum.golang.org` are admitted read-only for the
   go binary (and for any `/nix/store/*-go-*/bin/go`, so go-modules
   fixed-output derivations inside nix builds fetch too), and
   GOPATH/GOMODCACHE default to the writable `$HOME/go`. Direct-VCS
   fallback (`GOPRIVATE`/`GOPROXY=direct`) rides git's github.com /
-  git.clan.lol admissions.
+  git.clan.lol admissions. For JS/TS work: `bun` is baked (from the
+  HM profile).
 - **Three pre-wired AI agents** (no interactive login ever), each with
   the sandbox environment briefing baked into its user-level system
   prompt / memory (pi `~/.pi/agent/APPEND_SYSTEM.md`, kimi
@@ -100,7 +109,10 @@ architecture and the lessons that shaped the design, see the
   bot (`andrewthomaslee-agent`), `git init` defaults to a `main`
   branch, and a github.com-scoped credential helper feeds git the
   provider-injected `$GITHUB_TOKEN` — `git push` over https works
-  without prompting. Nothing secret is in the image.
+  without prompting. Config lives in the HM profile's `programs.git`
+  (`~/.config/git/config` at both `$HOME` roots — user-level, so it
+  travels with the profile to NixOS hosts). Nothing secret is in the
+  image.
 - **Deterministic identity + name resolution**: baked
   `/etc/passwd`/`group`/`shadow` (root + uid 1000 agent only),
   `/etc/nsswitch.conf` with `hosts: files dns` (glibc's built-in
