@@ -1,0 +1,71 @@
+# Custom OpenShell provider profile: Claude Code against the standard
+# Anthropic endpoint (api.anthropic.com) with a Claude Pro/Max/Team
+# SUBSCRIPTION — not a Console platform API key (that is the sibling
+# `claude-code` profile, claude-code.yaml).
+#
+# Credential: a long-lived (1-year) OAuth token minted on any machine
+# with a browser and the claude CLI:
+#
+#   claude setup-token    # browser login with the claude.ai account,
+#                         # token prints to the terminal, stored nowhere
+#
+# The token authenticates with the subscription (Pro/Max/Team/Enterprise
+# plan required) and can only make model requests — exactly the sandbox
+# shape. Do NOT harvest the short-lived OAuth access token from
+# ~/.claude/.credentials.json instead: it expires and needs a refresh
+# flow the sandbox cannot do.
+#
+# The profile injects the handle as $CLAUDE_CODE_OAUTH_TOKEN (NOT
+# $ANTHROPIC_AUTH_TOKEN) so Claude Code classifies it as a subscription
+# credential and shapes requests accordingly. Subscription tokens billed
+# as raw API calls fail with "credit balance too low" — that error means
+# the request did NOT look like Claude Code (e.g. curl, or headroom's
+# own LLM transforms), not that the token is bad.
+#
+# NEVER attach both claude providers to one sandbox: Claude Code's
+# credential precedence is ANTHROPIC_AUTH_TOKEN (#2) >
+# ANTHROPIC_API_KEY (#3) > CLAUDE_CODE_OAUTH_TOKEN (#5), so a platform
+# key from `claude-code` would silently shadow the subscription token.
+#
+# platform.claude.com (startup preflight /v1/oauth/hello, OAuth polling)
+# is admitted in the sandbox POLICY (openshell/policies/code-agent.yaml,
+# claude_code rule), not here — same as claude-code.
+#
+# Import once per gateway, then create a provider bound to the endpoint:
+#
+#   export CLAUDE_CODE_OAUTH_TOKEN=<token from claude setup-token>
+#   openshell profile import --file openshell/profiles/claude-subscription.yaml
+#   openshell provider create --name claude-subscription --type claude-subscription \
+#     --credential CLAUDE_CODE_OAUTH_TOKEN   # bare KEY reads the env
+id: claude-subscription
+resource_version: 1
+display_name: Claude subscription (Pro/Max setup-token)
+description: Anthropic Claude Code endpoint (api.anthropic.com, subscription OAuth token from claude setup-token)
+category: inference
+inference_capable: true
+credentials:
+  - name: oauth_token
+    description: Claude subscription OAuth token (claude setup-token, 1-year)
+    env_vars:
+      - CLAUDE_CODE_OAUTH_TOKEN
+    required: true
+    auth_style: bearer
+    header_name: authorization
+    query_param: ""
+endpoints:
+  - host: api.anthropic.com
+    port: 443
+    protocol: rest
+    # Claude Code streams POST /v1/messages; read-write covers
+    # POST/PUT/PATCH and still blocks DELETE.
+    access: read-write
+    enforcement: enforce
+binaries:
+  # Resolved process images (the supervisor matches /proc/<pid>/exe, not
+  # the PATH wrapper): claude-code is a single bundled binary that
+  # wrapProgram renames .claude-wrapped; pin both spellings.
+  - /nix/store/*-claude-code-*/bin/.claude-wrapped
+  - /nix/store/*-claude-code-*/bin/claude
+discovery:
+  credentials:
+    - oauth_token

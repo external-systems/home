@@ -1,8 +1,21 @@
 # Custom OpenShell provider profile: Claude Code against the standard
-# Anthropic endpoint (api.anthropic.com) with a Claude Teams
-# subscription token — NOT the API-platform pay-per-token product. The
-# subscription token works as a bearer credential against the same
-# endpoint Claude Code uses for OAuth logins.
+# Anthropic endpoint (api.anthropic.com) with a Console PLATFORM API key
+# (pay-per-token credits, platform.claude.com). For a Claude Pro/Max/Team
+# SUBSCRIPTION use the sibling `claude-subscription` profile
+# (claude-subscription.yaml) instead — it injects $CLAUDE_CODE_OAUTH_TOKEN
+# so Claude Code applies subscription billing; a subscription token loaded
+# here as a generic bearer fails with "credit balance too low".
+#
+# The platform key rides as $ANTHROPIC_AUTH_TOKEN (Authorization: Bearer).
+# api.anthropic.com accepts a platform key as a bearer credential
+# (verified 2026-10: authenticated, billed credits — a $0-credit key
+# answers "credit balance too low", not 401), and Claude Code ranks
+# ANTHROPIC_AUTH_TOKEN (#2) above ANTHROPIC_API_KEY (#3), so the sandbox
+# needs no second env spelling.
+#
+# NEVER attach both claude providers to one sandbox: ANTHROPIC_AUTH_TOKEN
+# (#2) shadows CLAUDE_CODE_OAUTH_TOKEN (#5) — the platform key would
+# silently hijack a subscription sandbox.
 #
 # Claude Code needs one host beyond api.anthropic.com: its startup
 # connectivity preflight ("Checking connectivity..." → /v1/oauth/hello)
@@ -21,19 +34,19 @@
 # --output yaml`). Import once per gateway, then create a provider bound
 # to the endpoint:
 #
-#   export ANTHROPIC_AUTH_TOKEN=<claude.ai OAuth/subscription token>
+#   export ANTHROPIC_AUTH_TOKEN=<Console platform API key, sk-ant-api...>
 #   openshell profile import --file openshell/profiles/claude-code.yaml
 #   openshell provider create --name claude-code --type claude-code \
 #     --credential ANTHROPIC_AUTH_TOKEN   # bare KEY reads the env
 id: claude-code
 resource_version: 1
-display_name: Claude Code (Teams subscription)
-description: Anthropic Claude Code endpoint (api.anthropic.com, subscription bearer token)
+display_name: Claude Code (platform API key)
+description: Anthropic Claude Code endpoint (api.anthropic.com, Console platform API key — pay-per-token)
 category: inference
 inference_capable: true
 credentials:
   - name: auth_token
-    description: Claude subscription (OAuth-style) token
+    description: Console platform API key (sk-ant-api..., pay-per-token)
     env_vars:
       - ANTHROPIC_AUTH_TOKEN
     required: true

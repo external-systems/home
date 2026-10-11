@@ -151,12 +151,12 @@ openshell sandbox connect code      # detach with Ctrl-P, then Ctrl-Q
 openshell sandbox exec -n code -- nix --version
 ```
 
-Attach providers (kimi-for-coding, claude-code, github-agent) at create:
+Attach providers (kimi-for-coding, claude-subscription, github-agent) at create:
 
 ```bash
 openshell sandbox create --name code --from code-agent:latest \
   --policy openshell/policies/code-agent.yaml \
-  --provider kimi-for-coding --provider claude-code --provider github-agent \
+  --provider kimi-for-coding --provider claude-subscription --provider github-agent \
   --detach -- bash -l
 ```
 
@@ -166,7 +166,8 @@ The image ships three agents, all from the `llm-agents` flake input
 (overlays/default.nix routes them into `pkgs`): **pi** (bun-compiled
 standalone ELF), **kimi-code** (node), **claude-code** (native binary).
 Credentials are never baked in — the attached providers inject them as
-env vars ($KIMI_API_KEY, $ANTHROPIC_AUTH_TOKEN) at sandbox start, and
+env vars ($KIMI_API_KEY, $CLAUDE_CODE_OAUTH_TOKEN or
+$ANTHROPIC_AUTH_TOKEN) at sandbox start, and
 each CLI's config only *references* those env var names.
 
 **Interactive, inside the sandbox terminal:**
@@ -229,8 +230,19 @@ openshell profile import --file openshell/profiles/kimi-for-coding.yaml   # once
 openshell provider create --name kimi-for-coding --type kimi-for-coding \
   --credential KIMI_API_KEY    # bare KEY reads the value from the env
 
-# claude-code (Claude Teams subscription token, not a platform API key)
-export ANTHROPIC_AUTH_TOKEN=<token>
+# claude-subscription (default claude provider — Pro/Max/Team subscription:
+# 1-year OAuth token from `claude setup-token`, injected as
+# $CLAUDE_CODE_OAUTH_TOKEN so Claude Code bills the subscription)
+claude setup-token   # browser flow on any machine; token prints once
+export CLAUDE_CODE_OAUTH_TOKEN=<token>
+openshell profile import --file openshell/profiles/claude-subscription.yaml  # once
+openshell provider create --name claude-subscription --type claude-subscription \
+  --credential CLAUDE_CODE_OAUTH_TOKEN
+
+# claude-code (platform alternative: Console API key, pay-per-token —
+# attach INSTEAD of claude-subscription, never both: $ANTHROPIC_AUTH_TOKEN
+# outranks $CLAUDE_CODE_OAUTH_TOKEN in Claude Code's credential precedence)
+export ANTHROPIC_AUTH_TOKEN=<Console platform API key, sk-ant-api...>
 openshell profile import --file openshell/profiles/claude-code.yaml       # once
 openshell provider create --name claude-code --type claude-code \
   --credential ANTHROPIC_AUTH_TOKEN

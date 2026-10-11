@@ -144,8 +144,11 @@ recreating the sandbox; filesystem/image changes require recreation.
 ## MCP trio failure modes
 
 - `headroom` — `headroom mcp serve`; wrapper maps the injected
-  `$ANTHROPIC_AUTH_TOKEN` onto `ANTHROPIC_API_KEY`. Broken when the
-  claude-code provider is missing.
+  `$ANTHROPIC_AUTH_TOKEN` onto `ANTHROPIC_API_KEY`. Its LLM transforms
+  need the claude-code (platform key) provider; with the default
+  claude-subscription provider the mapping stays unset on purpose
+  (subscription tokens 400 on raw-API calls) and headroom falls back to
+  local structural compression.
 - `nixos` — `mcp-nixos`; package/option `info` answers from a local
   index, `search`-family queries call the `search.nixos.org` backend.
   Policy: the `mcp_nixos` rule admits all of the server's live source
@@ -180,7 +183,8 @@ recreating the sandbox; filesystem/image changes require recreation.
   `gh auth status` failing is expected; egress substitution is what
   authenticates. Real keys never enter the image.
 - Nothing secret is baked in. API keys arrive only via attached
-  providers (`kimi-for-coding`, `claude-code`, `github-agent`).
+  providers (`kimi-for-coding`, `claude-subscription` (default) or
+  `claude-code` (platform key) — never both, `github-agent`).
 
 ## Recipes
 

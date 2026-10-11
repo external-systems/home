@@ -48,7 +48,7 @@ Flake outputs that make this work:
 | `packages.code-agent-image` + `apps.load-code-agent-image` | The sandbox OCI image, built with nix2container (section 2) |
 | `packages.openshell`, `openshell-gateway`, `openshell-driver-vm` | CLI (built from the pinned input), gateway/driver release binaries |
 | `openshell/policies/code-agent.yaml` | The sandbox security contract (filesystem + network) |
-| `openshell/profiles/*.yaml` | Provider profiles (kimi-for-coding, claude-code, github-agent) |
+| `openshell/profiles/*.yaml` | Provider profiles (kimi-for-coding, claude-subscription, claude-code, github-agent) |
 | `openshell/providers/*.yaml` | Provider catalog definitions (github, openrouter) — no secrets; import with `openshell provider import --file` |
 
 ## 1. Consuming the gateway NixOS module
@@ -123,9 +123,11 @@ What the image bakes in (all nixpkgs/`llm-agents`-pinned, no secrets):
   `models.json` reads `$KIMI_API_KEY`), `kimi-code` (baked
   `~/.kimi-code/config.toml`: `type = "kimi"` against
   `https://api.kimi.com/coding/v1`, `apiKeyEnv = "KIMI_API_KEY"` — the
-  subscription over the wire Moonshot's own CLI speaks), and `claude-code`
-  (baked onboarding skip; `$ANTHROPIC_AUTH_TOKEN` from the attached
-  provider).
+  subscription over the wire Moonshot's own CLI speaks), and `claude`
+  (baked onboarding skip; subscription OAuth token as
+  `$CLAUDE_CODE_OAUTH_TOKEN` from the attached claude-subscription
+  provider, or a Console platform key as `$ANTHROPIC_AUTH_TOKEN` from
+  claude-code — attach ONE, never both).
 - **Repo skills baked at `/opt/skills`** — the same merged skill tree
   `inputs.agents.lib.mkSkills` builds for the NixOS hosts (the home
   repo's `skills/` tree + external flake-input skill sources), wired
@@ -164,7 +166,7 @@ equivalent:
 ```bash
 openshell sandbox create --name code --from code-agent:latest \
   --policy openshell/policies/code-agent.yaml \
-  --provider kimi-for-coding --provider claude-code --provider github-agent \
+  --provider kimi-for-coding --provider claude-subscription --provider github-agent \
   --detach -- bash -l
 
 openshell sandbox connect code                    # attach; Ctrl-P Ctrl-Q detaches
@@ -214,7 +216,11 @@ e.g. after manual `sandbox create`s — run `code-sandbox ssh-config`.)
 pi       # kimi-for-coding subscription, key via attached kimi-for-coding provider
 kimi     # pre-wired for the same subscription (baked config.toml, apiKeyEnv
          # $KIMI_API_KEY) — no /login; the OAuth hosts are policy-unreachable
-claude   # Claude Teams subscription token via attached claude-code provider
+claude   # Claude Pro/Max/Team subscription via the attached
+         # claude-subscription provider (`claude setup-token` OAuth token,
+         # injected as $CLAUDE_CODE_OAUTH_TOKEN); platform-key billing via
+         # claude-code instead — never attach both (bearer precedence
+         # shadows the subscription token)
          # (platform.claude.com preflight + auth-login polling admitted in policy)
 ```
 
@@ -251,8 +257,17 @@ openshell profile import --file openshell/profiles/kimi-for-coding.yaml
 openshell provider create --name kimi-for-coding --type kimi-for-coding \
   --credential KIMI_API_KEY
 
-# Claude Teams subscription token (bearer, not a platform API key)
-export ANTHROPIC_AUTH_TOKEN=<token>
+# Claude Pro/Max/Team subscription (default): mint a 1-year OAuth token
+# (browser flow, works on any machine with the claude CLI), never stored:
+claude setup-token
+export CLAUDE_CODE_OAUTH_TOKEN=<token from setup-token>
+openshell profile import --file openshell/profiles/claude-subscription.yaml
+openshell provider create --name claude-subscription --type claude-subscription \
+  --credential CLAUDE_CODE_OAUTH_TOKEN
+
+# Platform-key alternative (Console pay-per-token credits) — attach INSTEAD
+# of claude-subscription, never both:
+export ANTHROPIC_AUTH_TOKEN=<Console platform API key, sk-ant-api...>
 openshell profile import --file openshell/profiles/claude-code.yaml
 openshell provider create --name claude-code --type claude-code \
   --credential ANTHROPIC_AUTH_TOKEN

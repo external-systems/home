@@ -141,7 +141,9 @@ disables); a flake without the attr warns and continues.
                          github:external-systems/home remote HEAD)
     --provider N         attach provider N INSTEAD of the defaults
                          (repeatable; defaults: github-agent
-                         kimi-for-coding claude-code)
+                         kimi-for-coding claude-subscription —
+                         claude-code is the platform-key alternative;
+                         never attach both claude providers)
     --no-sync            skip the profile sync before create
     --include-workdir    toggle the policy's include_workdir BIT (see below)
     --no-include-workdir explicit default

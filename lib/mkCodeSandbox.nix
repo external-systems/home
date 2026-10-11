@@ -48,11 +48,19 @@
   envAttr ? "code-agent-env",
   # Gateway-side provider profile id (sync/doctor drift-check this one).
   profileId ? "github-agent",
-  # Providers attached at create; checked by sync/doctor. claude-code
-  # is in the defaults (not opt-in) because the baked headroom MCP
-  # server compresses through api.anthropic.com with the claude
-  # provider's token — without it headroom's LLM transforms fail auth.
-  providers ? ["github-agent" "kimi-for-coding" "claude-code"],
+  # Providers attached at create; checked by sync/doctor. The default
+  # claude provider is claude-subscription (Pro/Max/Team OAuth token
+  # from `claude setup-token`, injected as $CLAUDE_CODE_OAUTH_TOKEN) —
+  # the owner's working credential. Platform-key users pass
+  # `--provider claude-code` instead. NEVER attach both: Claude Code's
+  # precedence ranks $ANTHROPIC_AUTH_TOKEN above $CLAUDE_CODE_OAUTH_TOKEN,
+  # so a $0-credit platform key would shadow the subscription. Note the
+  # baked headroom MCP server's LLM transforms need a PLATFORM key (a
+  # subscription token only bills correctly on Claude-Code-shaped
+  # requests) — with the subscription provider they degrade to local
+  # structural compression; the headroom proxy's compressors are all
+  # local and unaffected either way.
+  providers ? ["github-agent" "kimi-for-coding" "claude-subscription"],
   # OCI image name for the content-hash tag.
   imageName ? "code-agent",
   # Sandbox name prefix.

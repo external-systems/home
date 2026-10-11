@@ -717,11 +717,17 @@
       exec ${lib.getExe pkgs.unstable.github-mcp-server} stdio "$@"
     '';
 
-    # Headroom wrapper: the attached claude-code provider injects the
-    # subscription bearer as $ANTHROPIC_AUTH_TOKEN, but headroom's
+    # Headroom wrapper: the attached claude-code (platform key) provider
+    # injects the bearer as $ANTHROPIC_AUTH_TOKEN, but headroom's
     # Anthropic client reads ANTHROPIC_API_KEY — map one onto the other
     # so `headroom mcp serve` can compress against api.anthropic.com
-    # (already admitted by the policy). headroom-slim (core+proxy+mcp)
+    # (already admitted by the policy). With the claude-subscription
+    # provider instead ($CLAUDE_CODE_OAUTH_TOKEN) this mapping does not
+    # fire ON PURPOSE: a subscription token only bills correctly on
+    # Claude-Code-shaped requests, so headroom's raw-API LLM transforms
+    # would 400 "credit balance too low" — without a key headroom falls
+    # back to its local structural compressors, which is where the bulk
+    # of the savings are anyway. headroom-slim (core+proxy+mcp)
     # is enough for the MCP server and keeps the image closure small.
     sandboxHeadroom = pkgs.writeShellScriptBin "headroom" ''
       if [ -z "''${ANTHROPIC_API_KEY:-}" ] && [ -n "''${ANTHROPIC_AUTH_TOKEN:-}" ]; then
@@ -930,7 +936,7 @@
 
         ## Identity and secrets
         - Git commits are authored as the andrewthomaslee-agent bot.
-        - No secrets are baked into the image. API keys arrive via attached providers: $KIMI_API_KEY (kimi), $ANTHROPIC_AUTH_TOKEN (claude), $GITHUB_TOKEN (git credential helper).
+        - No secrets are baked into the image. API keys arrive via attached providers: $KIMI_API_KEY (kimi), $ANTHROPIC_AUTH_TOKEN (claude-code platform provider) or $CLAUDE_CODE_OAUTH_TOKEN (claude-subscription provider — the default; never attach both, the bearer shadows it), $GITHUB_TOKEN (git credential helper).
         - This is a clean sandbox, NOT a checkout of the home repo — clone github.com/external-systems/home if repo work is needed.
 
         ## Troubleshooting

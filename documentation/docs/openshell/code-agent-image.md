@@ -217,7 +217,7 @@ The equivalent manual steps:
 ```bash
 openshell sandbox create --name code --from code-agent:latest \
   --policy openshell/policies/code-agent.yaml \
-  --provider kimi-for-coding --provider claude-code --provider github-agent \
+  --provider kimi-for-coding --provider claude-subscription --provider github-agent \
   --cpu 4 --memory 8Gi --detach -- bash -l
 
 openshell sandbox connect code     # attach; Ctrl-P Ctrl-Q detaches
@@ -358,7 +358,7 @@ nix run .#load-code-agent-image
 openshell sandbox delete code
 openshell sandbox create --name code --from code-agent:latest \
   --policy openshell/policies/code-agent.yaml \
-  --provider kimi-for-coding --provider claude-code --provider github-agent \
+  --provider kimi-for-coding --provider claude-subscription --provider github-agent \
   --cpu 4 --memory 8Gi --detach -- bash -l
 
 # 4. smoke-test the fresh sandbox
