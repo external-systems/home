@@ -97,6 +97,13 @@ architecture and the lessons that shaped the design, see the
   fallback `/etc/hosts` — container runtimes bind-mount their own over
   it, so the baked copy only serves runtimes that don't. Login shells
   also get a sane `umask 022` from `/etc/profile`.
+- **Shell dotfiles + full terminfo** for every ssh/editor session
+  flavor: baked `~/.bashrc` (sources the idempotent `/etc/profile`,
+  sets prompt/history/aliases and a TERM fallback) and
+  `~/.bash_profile` at BOTH `$HOME` roots, and a merged ncurses +
+  ghostty terminfo db at `/usr/share/terminfo` (with `/etc/terminfo` /
+  `/lib/terminfo` links and `TERMINFO_DIRS`) — see
+  [Remote access](#remote-access-ssh-vscodium-vs-code).
 - **nix with flakes**, pre-initialized store db, and baked substituters:
   the repo's cachix caches (openshell, devenv, nix-community,
   chaotic-nyx) + the clan niks3 cache (`cache.geninf.io` /
@@ -111,7 +118,8 @@ architecture and the lessons that shaped the design, see the
   policy additionally
   admits the clan cache hosts and any `*.cachix.org` cache.
 - **VSCodium Remote-SSH server pre-baked** — first connect is instant,
-  offline (see the overview for editor setup).
+  offline; Microsoft VS Code's server downloads on demand through the
+  admitted CDN endpoints (see [Remote access](#remote-access-ssh-vscodium-vs-code)).
 
 ## Build and load
 
@@ -195,6 +203,87 @@ of the nixos.org estate (read-only: releases/channels/tarballs/hydra),
 GitHub (read, incl. `raw`/`gist.githubusercontent.com` and the asset
 CDNs), `git.clan.lol` (read-write git transport), the kimi/claude API
 endpoints, and the VSCodium bootstrap fallback.
+
+## Remote access: SSH, VSCodium, VS Code
+
+Every sandbox is reachable over real SSH — no daemon to install: the
+OpenShell supervisor in the microVM speaks SSH itself (there is NO
+OpenSSH sshd inside; `sshd_config` tricks do not apply). `code-sandbox
+create` appends a ready-made Remote-SSH block to
+`~/.ssh/config.local` per sandbox (managed, comment-delimited, replaced
+on re-runs; `code-sandbox ssh-config` rewrites the blocks for ALL
+active sandboxes — e.g. after a manual `openshell sandbox create`):
+
+```bash
+ssh openshell-code-<imghash>.default                    # interactive shell
+ssh openshell-code-<imghash>.default nix --version      # remote command
+scp notes.txt openshell-code-<imghash>.default:         # lands in /sandbox
+```
+
+The block's `ProxyCommand` is `openshell ssh-proxy`, auth rides the
+gateway's mTLS, host-key checking is intentionally off (sandboxes are
+ephemeral), and the remote user (`sandbox`) maps to uid 1000 `agent`
+with the session landing in `/sandbox`. `openshell ssh <name>` and
+`openshell sandbox connect <name>` ride the same transport.
+
+### The shell-environment model
+
+(Why ssh sessions used to "lose" env vars — and why they no longer
+do.) The supervisor spawns every sandbox process with a SCRUBBED
+environment (`env_clear`): only `HOME`/`USER`/`PATH`/`TERM`/`SHELL`,
+the injected TLS bundle vars (`SSL_CERT_FILE`, `GIT_SSL_CAINFO`, …),
+and attached provider credentials survive. The OCI image `Env` is NOT
+propagated under the VM driver. Three channels rebuild the full
+environment, covering every spawn path:
+
+| Spawn path | Where it gets its env |
+|---|---|
+| remote command / editor bootstrap (`bash -lc`) | baked `/etc/profile` (idempotent) |
+| interactive session (`bash -i` — raw ssh, editor integrated terminals) | baked `~/.bashrc` at BOTH `$HOME` roots (`/sandbox` and `/home/agent`) — sources `/etc/profile`, then prompt/history/aliases/TERM fallback |
+| everything, incl. non-shell exec and a workdir-masked HOME | create-time `--env` (`packages.code-agent-env`, passed by `code-sandbox create`): `LD_LIBRARY_PATH`, `NIX_LD`, `NIX_LD_LIBRARY_PATH`, `TERMINFO_DIRS` |
+
+Client `SetEnv`/`SendEnv` requests are accepted and discarded by design
+(the environment is policy-controlled) — `TERM` is the exception: it
+arrives verbatim from the client's pty request. The image therefore
+bakes a FULL terminfo db (ncurses 6.6 plus ghostty's own
+`xterm-ghostty`, which ncurses does not ship) at
+`/usr/share/terminfo` (+ `/etc/terminfo` and `/lib/terminfo` links for
+Debian-style fallback lists) with `TERMINFO_DIRS` exported from every
+env channel, and `.bashrc` falls back to `xterm-256color` when a client
+TERM has no entry. ghostty, kitty, WezTerm, alacritty, tmux-256color —
+all resolve.
+
+### VSCodium / Code OSS (first-class, zero download)
+
+Install jeanp413 **Open Remote - SSH** from open-vsx (the MS
+Marketplace Remote-SSH extension is license-restricted to Microsoft
+builds), make sure `~/.ssh/config` includes the generated file (`Include
+~/.ssh/config.local`), then connect to `openshell-<name>.default` and
+open `/sandbox`. The reh server is PRE-BAKED at
+`/sandbox/.vscodium-server/bin/<commit>` — first connect is instant and
+offline. The baked commit (`vscodiumVersion`/`vscodiumCommit` in
+`flake-parts/ociImages/code-agent.nix`, matching the fleet's codium) is
+the only coupling: after a client upgrade, the install script falls
+back to downloading the matching server from GitHub (admitted in the
+policy), which then runs through the nix-ld shim.
+
+### Microsoft VS Code
+
+The official Remote-SSH extension downloads its proprietary
+`server-linux-x64` on EVERY connect (commit-coupled and
+non-redistributable, so nothing is pre-baked). The policy admits
+`update.code.visualstudio.com` + `vscode.download.prss.microsoft.com`
+for curl/wget (the `vscode_server` entry), and the downloaded node runs
+via the nix-ld shim — the stock connect flow works. Mind the
+extension's license (Microsoft products only); VSCodium above is the
+recommended path.
+
+### File transfer
+
+`scp` and `sftp` work over the same ssh config. Note the supervisor's
+SFTP subsystem is ROOTED AT THE WORKDIR: paths are relative to
+`/sandbox`, and absolute paths outside it fail. `rsync` rides the ssh
+transport normally (baked into the image).
 
 ## Refreshing the image / sandbox
 

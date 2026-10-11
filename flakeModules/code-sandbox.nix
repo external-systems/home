@@ -71,6 +71,16 @@ in {
       default = "github-agent-profile";
       description = "Flake attr of the rendered provider profile YAML.";
     };
+    envAttr = mkOption {
+      type = types.nullOr types.str;
+      default = "code-agent-env";
+      description = ''
+        Flake attr of the create-time sandbox env file (KEY=VALUE lines,
+        passed as `openshell sandbox create --env` flags) — the channel
+        that survives the supervisor's env scrub on every spawn path.
+        A missing attr warns and continues; null disables.
+      '';
+    };
     profileId = mkOption {
       type = types.str;
       default = "github-agent";
@@ -122,7 +132,7 @@ in {
   in
     lib.mkIf cfg.enable {
       packages.code-sandbox = pkgs.writeShellScriptBin "code-sandbox" (mkCodeSandbox {
-        inherit (cfg) flakeRef remoteFlake imageAttr loaderApp policyAttr profileAttr profileId providers imageName defaultName includeWorkdir cpu memory;
+        inherit (cfg) flakeRef remoteFlake imageAttr loaderApp policyAttr profileAttr envAttr profileId providers imageName defaultName includeWorkdir cpu memory;
       });
       apps.code-sandbox.program = "${config.packages.code-sandbox}/bin/code-sandbox";
     };

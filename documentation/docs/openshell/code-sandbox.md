@@ -112,6 +112,24 @@ the `dirty` pin when the tree is dirty). `remoteFlake` and
 `alwaysRemote` are generator parameters (`lib/mkCodeSandbox.nix` /
 `perSystem.codeSandbox.*`).
 
+## Create-time sandbox env (`--env` channel)
+
+`create` also builds the flake's `#code-agent-env` file (KEY=VALUE
+lines, rendered from the SAME resolved source as the image) and passes
+each line as `openshell sandbox create --env`. Why it exists: the
+supervisor spawns every sandbox process with a scrubbed environment
+(`env_clear`), and spec env is the ONLY channel that reaches every
+spawn path — interactive `bash -i` ssh sessions (which read only
+`~/.bashrc`), editor servers, and non-shell exec consumers. Shells
+otherwise recover the image env from the baked `/etc/profile` +
+`~/.bashrc`; the `--env` set additionally covers a HOME whose dotfiles
+are masked by an `--include-workdir` mount. The file carries only
+static runtime plumbing (`LD_LIBRARY_PATH`, `NIX_LD`,
+`NIX_LD_LIBRARY_PATH`, `TERMINFO_DIRS`) — never secrets (credentials go
+through providers). The attr name is the generator's `envAttr`
+(`perSystem.codeSandbox.envAttr` for flake consumers; `null`
+disables); a flake without the attr warns and continues.
+
 ## Options
 
 ```

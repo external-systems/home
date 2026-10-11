@@ -1,6 +1,6 @@
 ---
 name: sandbox-environment
-description: Deep reference for the OpenShell code-agent sandbox OCI image — full admitted-egress host list with the reasoning, nix registry/substituter setup with trusted keys, the baked MCP trio's failure modes, VSCodium Remote-SSH contract, and troubleshooting recipes. Load when working inside the OpenShell code-agent sandbox and the inline APPEND_SYSTEM.md/SYSTEM.md/CLAUDE.md briefing is not enough (policy misses, cache failures, MCP errors, image layout questions).
+description: Deep reference for the OpenShell code-agent sandbox OCI image — full admitted-egress host list with the reasoning, nix registry/substituter setup with trusted keys, the baked MCP trio's failure modes, the SSH/shell environment model (no OpenSSH sshd; env scrub; bash -i vs -lc), VSCodium Remote-SSH contract, and troubleshooting recipes. Load when working inside the OpenShell code-agent sandbox and the inline APPEND_SYSTEM.md/SYSTEM.md/CLAUDE.md briefing is not enough (policy misses, cache failures, MCP errors, image layout questions).
 ---
 
 # Sandbox environment — deep reference
@@ -24,10 +24,26 @@ grows.
   corrupt its own toolset, but the blast radius ends at the disposable
   VM. `/tmp` is mode 1777. Long-running scratch space: `/sandbox`.
 - The VSCodium Remote-SSH server is pre-baked at
-  `/sandbox/.vscodium-server/bin/<commit>` (also `/home/agent/...`); the
-  in-VM sshd runs extension commands with a store-only PATH, which is
-  why the image also carries a `/usr/local/bin` toolchain and an
-  `/etc/profile` PATH prefix for login shells.
+  `/sandbox/.vscodium-server/bin/<commit>` (also `/home/agent/...`).
+- SSH/shell environment model (source: openshell-sandbox
+  boundary_exec.rs, openshell-supervisor-process ssh.rs): there is NO
+  OpenSSH sshd — the supervisor speaks ssh itself and spawns every
+  process with a SCRUBBED env (`env_clear`; only HOME/USER/PATH/TERM/
+  SHELL + injected TLS vars + provider creds survive; the OCI image Env
+  does NOT propagate under the VM driver). Interactive sessions are
+  `bash -i` (read the baked ~/.bashrc, which sources the idempotent
+  /etc/profile), remote commands/editor bootstraps are `bash -lc`
+  (/etc/profile), and the create-time `--env` set (packages.code-agent-env,
+  passed by code-sandbox create: LD_LIBRARY_PATH, NIX_LD,
+  NIX_LD_LIBRARY_PATH, TERMINFO_DIRS) is the only channel on EVERY spawn
+  path — including a workdir-masked HOME (--include-workdir mounts over
+  /sandbox's dotfiles). Client SetEnv/SendEnv requests are accepted and
+  DISCARDED; TERM arrives verbatim via the pty request, so the image
+  bakes the full ncurses + ghostty (`xterm-ghostty`) terminfo db at
+  /usr/share/terminfo (+ /etc/terminfo, /lib/terminfo links) with
+  TERMINFO_DIRS exported from every env channel. This is also why the
+  image carries a /usr/local/bin toolchain and an /etc/profile PATH
+  prefix.
 - Foreign glibc ELFs run via the nix-ld shim: `/lib64/ld-linux-
   x86-64.so.2` is the shim; it reads `NIX_LD` (the real loader) and
   `NIX_LD_LIBRARY_PATH` (extra store lib dirs) from the env. (The old
@@ -55,6 +71,7 @@ PyPI is python3/uv/nix-only and curl is refused. Admitted hosts (from
 | `github.com` `/**/git-receive-pack` (via github-agent profile) | POST | `git push` |
 | `api.github.com` | read; read-write with github-agent provider | gh + github MCP |
 | `codeload.github.com`, `raw.githubusercontent.com`, `gist.github.com`, `*.githubusercontent.com` asset hosts | read | tarballs, raw files, release assets (VSCodium fallback download) |
+| `update.code.visualstudio.com`, `vscode.download.prss.microsoft.com` | read (curl/wget only) | Microsoft VS Code Remote-SSH server bootstrap (proprietary server downloads on every connect; runs via the nix-ld shim) |
 | `*.nixos.org` | read | cache.nixos.org substitution, releases/channels/tarballs |
 | `*.cachix.org` | read | cachix binary caches (the repo's openshell/devenv/nix-community/chaotic-nyx are baked substituters) |
 | `api.flakehub.io`, `api.flakehub.com` | read | flakehub: inputs (the cache.flakehub.com binary caches were dropped: 401 Unauthorized anonymously — dead substituters) |

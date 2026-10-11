@@ -15,8 +15,9 @@
 # GitHub over HTTPS (git clone/fetch, curl downloads), read-write
 # git+HTTPS to the
 # fleet's gitea (git.clan.lol — clan flake inputs and agent push work),
-# and the VSCodium server bootstrap fallback (only hit when the
-# pre-baked server commit no longer matches the client's VSCodium).
+# and the editor Remote-SSH server bootstrap fallbacks (VSCodium: only
+# hit when the pre-baked server commit no longer matches the client's
+# VSCodium; VS Code: the proprietary server downloads on EVERY connect).
 # Attach providers for private repos or credentials.
 #
 #   code-sandbox create              (renders this file from the flake)
@@ -432,3 +433,21 @@ network_policies:
           protocol: rest, enforcement: enforce, access: read-only }
     binaries:
       - { path: @bin_curl@ }
+
+  # Microsoft VS Code Remote-SSH bootstrap (the official, proprietary
+  # server): nothing is pre-baked (the blob is commit-coupled and
+  # non-redistributable), so EVERY connect downloads server-linux-x64
+  # from update.code.visualstudio.com, which 302s to the
+  # vscode.download.prss.microsoft.com CDN. Read-only; the downloaded
+  # node runs via the image's nix-ld shim. VSCodium (pre-baked server)
+  # remains the zero-download first-class path.
+  vscode_server:
+    name: vscode_server
+    endpoints:
+      - { host: update.code.visualstudio.com, port: 443, protocol: rest,
+          enforcement: enforce, access: read-only }
+      - { host: vscode.download.prss.microsoft.com, port: 443,
+          protocol: rest, enforcement: enforce, access: read-only }
+    binaries:
+      - { path: @bin_curl@ }
+      - { path: @bin_wget@ }

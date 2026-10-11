@@ -138,6 +138,7 @@
         bin_nix = "${pkgs.nix}/bin/nix";
         bin_git = "${pkgs.git}/bin/git";
         bin_curl = "${pkgs.curl}/bin/curl";
+        bin_wget = "${pkgs.wget}/bin/wget";
         bin_claude = "${pkgs.claude-code}/bin/claude";
         bin_claude_wrapped = "${pkgs.claude-code}/bin/.claude-wrapped";
         bin_pi = "${pkgs.pi-coding-agent}/libexec/pi/pi";

@@ -30,7 +30,7 @@ separate, purpose-built artifact.
 │  openshell-gateway.service (user: openshell, loopback + mTLS :17670)        │
 │    └── openshell-driver-vm (spawned, gRPC over compute-driver.sock)         │
 │          └── per sandbox: libkrun microVM (OCI rootfs + rw overlay)         │
-│                └── supervisor: sshd, policy proxy, seccomp stack            │
+│                └── supervisor: built-in ssh server, policy proxy, seccomp │
 │                      └── YOUR WORKLOAD (bash -l, pi, claude, ...)           │
 │                                                                             │
 │  /etc/openshell/  system CLI registry (gateway "local" + mTLS bundle)       │
@@ -112,8 +112,9 @@ nix run .#load-code-agent-image
 
 What the image bakes in (all nixpkgs/`llm-agents`-pinned, no secrets):
 
-- **Toolset on the sshd default PATH**: bash, coreutils, git, gh, curl, jq,
-  ripgrep, openssh, tmux, nix — running as user `agent` (UID 1000).
+- **Toolset on every PATH the supervisor hands out**: bash, coreutils,
+  git, gh, curl, jq, ripgrep, openssh, tmux, nix in `/bin` + `/usr/bin`
+  + `/usr/local/bin` — running as user `agent` (UID 1000).
 - **nix** with flakes and a pre-initialized store db; runtime package adds
   via `nix profile install nixpkgs#<pkg>` (substitution-only — see
   "no /dev/kvm" below).
@@ -217,14 +218,20 @@ claude   # Claude Teams subscription token via attached claude-code provider
          # (platform.claude.com preflight + auth-login polling admitted in policy)
 ```
 
-**From the outside via VSCodium** (review/editing without entering the
-sandbox): the CLI emits a working Remote-SSH config, and `code-sandbox`
-already appends it to `~/.ssh/config.local` at create time (managed
-per-sandbox block, replaced not duplicated; `--no-ssh-config` to skip):
+**From the outside via ssh/editors** (review/editing without entering
+the sandbox): the CLI emits a working Remote-SSH config, and
+`code-sandbox` already appends it to `~/.ssh/config.local` at create
+time (managed per-sandbox block, replaced not duplicated;
+`--no-ssh-config` to skip):
 
 ```bash
 openshell sandbox ssh-config code >> ~/.ssh/config
+ssh openshell-code.default                 # raw interactive ssh works too
 ```
+
+Raw ssh, VSCodium and Microsoft VS Code all work — full details (the
+supervisor's env-scrub model, terminfo, scp/sftp rooting) in the
+[image guide's Remote access section](code-agent-image.md#remote-access-ssh-vscodium-vs-code).
 
 VSCodium (jeanp413 **Open Remote - SSH** from open-vsx — the MS Marketplace
 extension is license-restricted) → connect to `openshell-code.default` →
@@ -287,9 +294,18 @@ Image/driver interplay:
   Also: images need a `Cmd`/`Entrypoint` (the driver's `docker create`
   export step fails otherwise), and nix2container `perms` need an explicit
   `mode` (the store default 0555 leaves the workdir read-only).
-- **The in-VM sshd runs extension commands with a store-only PATH** — the
-  Remote-SSH toolchain lives in `/usr/local/bin` (+ `/etc/profile` for
-  login shells), not behind an image entrypoint (the supervisor sets
+- **There is no OpenSSH sshd in the sandbox** — the supervisor speaks
+  ssh itself and spawns every process with a scrubbed env
+  (`env_clear`; the image Env is NOT propagated under the VM driver).
+  Interactive sessions are `bash -i` (read the baked `~/.bashrc`,
+  which sources `/etc/profile`), remote commands are `bash -lc` (read
+  `/etc/profile`), and create-time `--env`
+  (`packages.code-agent-env`, passed by `code-sandbox create`) is the
+  only channel covering every spawn path. Client SetEnv/SendEnv
+  requests are discarded; the client TERM arrives verbatim via the pty
+  request, so the image bakes a full ncurses + ghostty terminfo db at
+  `/usr/share/terminfo`. The Remote-SSH toolchain lives in
+  `/usr/local/bin`, not behind an image entrypoint (the supervisor sets
   `HOME` to the workdir and doesn't run workload commands through one).
 - **Foreign glibc binaries run through nix-ld, not an ld.so.cache**:
   nixpkgs glibc's compiled-in cache path is its own read-only store

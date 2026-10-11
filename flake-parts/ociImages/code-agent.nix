@@ -19,14 +19,26 @@
   # `nix run .#load-code-agent-image` (skopeo copy into docker-daemon:)
   # is enough; OCI registry pull is the fallback.
   #
-  # Remote-SSH contract (learned the hard way): the in-VM sshd runs
-  # extension commands with a store-only PATH, so the install-script
-  # toolchain lives in /usr/local/bin (+ /etc/profile for login shells)
-  # on top of /bin from the base toolset; the vscodium-reh tarball's
-  # bundled node is a foreign glibc binary — it gets patchelf'd to the
-  # image glibc (pre-baked server below), and the nix-ld shim
-  # (/lib64/ld-linux-x86-64.so.2 + NIX_LD env, rootfs below) covers any
-  # other downloaded glibc ELF.
+  # Remote-SSH contract (learned the hard way): there is NO OpenSSH sshd
+  # in the sandbox — the OpenShell supervisor speaks ssh itself, spawns
+  # every process with a SCRUBBED env (env_clear: only HOME/USER/PATH/
+  # TERM/SHELL + injected TLS vars + provider creds; the image Env below
+  # never reaches in-VM processes), runs interactive sessions as
+  # `bash -i` (NON-login: reads ~/.bashrc ONLY) and remote commands /
+  # editor bootstraps as `bash -lc` (login: /etc/profile). Client ssh
+  # SetEnv/SendEnv requests are accepted and discarded, but the client's
+  # TERM arrives verbatim via the pty request — so the image must carry
+  # the terminfo entry for every terminal a user connects from (ghostty
+  # included). The image answers all of it: /etc/profile + baked
+  # ~/.bashrc/.bash_profile at BOTH $HOME roots, a full terminfo db at
+  # the FHS locations (terminfoDb below), the /usr/local/bin toolchain
+  # on top of /bin, and the create-time --env set
+  # (packages.code-agent-env, passed by code-sandbox create) as the env
+  # channel that survives even a workdir-masked HOME. The vscodium-reh
+  # tarball's bundled node is a foreign glibc binary — it gets
+  # patchelf'd to the image glibc (pre-baked server below), and the
+  # nix-ld shim (/lib64/ld-linux-x86-64.so.2 + NIX_LD env, rootfs below)
+  # covers any other downloaded glibc ELF.
   perSystem = {
     pkgs,
     inputs',
@@ -74,6 +86,95 @@
         runHook postInstall
       '';
     };
+
+    # Full terminal database: ncurses' complete terminfo set plus
+    # ghostty's own entries. ncurses 6.6 ships g/ghostty but NOT
+    # xterm-ghostty — which is exactly the TERM a ghostty client sends
+    # (raw ssh passes the client's TERM through the pty request; the
+    # supervisor's ssh server does not rewrite it). ghostty's official
+    # entries win over ncurses' derivations of them.
+    terminfoDb = pkgs.runCommand "code-agent-terminfo" {} ''
+      mkdir -p $out/share
+      cp -r ${pkgs.ncurses}/share/terminfo $out/share/terminfo
+      chmod -R u+w $out/share/terminfo
+      cp -fL ${pkgs.ghostty.terminfo}/share/terminfo/x/xterm-ghostty \
+        $out/share/terminfo/x/xterm-ghostty
+      cp -fL ${pkgs.ghostty.terminfo}/share/terminfo/g/ghostty \
+        $out/share/terminfo/g/ghostty
+    '';
+
+    # Agent shell dotfiles, baked at BOTH $HOME roots (/home/agent and
+    # /sandbox — the supervisor points HOME at /sandbox). ~/.bashrc is
+    # LOAD-BEARING here: the supervisor's ssh server spawns interactive
+    # sessions as `bash -i` — a non-login shell that reads ~/.bashrc and
+    # nothing else. Without a baked one, raw interactive ssh ran with
+    # the scrubbed boundary env (no wheel-deps/nix-ld vars, bare
+    # prompt). /etc/profile is idempotent (repeat sourcing appends
+    # nothing), so sourcing it from ~/.bashrc is safe.
+    agentBashrc = pkgs.writeText "code-agent-bashrc" ''
+      # shellcheck shell=bash
+      # code-agent image bashrc. Sourced by bash for interactive shells —
+      # crucially the `bash -i` sessions the OpenShell supervisor's ssh
+      # server spawns for raw ssh / editor terminals, which never read
+      # /etc/profile on their own.
+
+      # Environment: reuse the login-shell block (POSIX, idempotent —
+      # repeat sourcing is a no-op).
+      # shellcheck source=/etc/profile
+      if [ -r /etc/profile ]; then
+        . /etc/profile
+      fi
+
+      # Interactive-only setup below.
+      case $- in
+        *i*) ;;
+        *) return 0 ;;
+      esac
+
+      # History: append, dedup, generous size (agent sessions are long).
+      shopt -s histappend
+      HISTSIZE=10000
+      HISTFILESIZE=20000
+      HISTCONTROL=ignoreboth:erasedups
+
+      # TERM fallback: ssh forwards the CLIENT's TERM via the pty request
+      # (the supervisor does not rewrite it), so a terminal without a
+      # baked terminfo entry would degrade to a broken line editor.
+      # Fall back to xterm-256color (always in the db) instead.
+      if [ -n "''${TERM:-}" ] && ! infocmp "$TERM" >/dev/null 2>&1; then
+        export TERM=xterm-256color
+      fi
+
+      # Prompt: unmistakable sandbox marker + cwd — the machine you are
+      # typing into is a disposable microVM, not the host.
+      PS1='\[\e[1;35m\][sandbox]\[\e[0m\] \[\e[1;34m\]\w\[\e[0m\]\$ '
+
+      # Quality-of-life aliases (all tools baked into the image).
+      alias ll='ls -alF --color=auto'
+      alias la='ls -A --color=auto'
+      alias l='ls -CF --color=auto'
+      alias grep='grep --color=auto'
+
+      # nix inside the sandbox: nix's getifaddrs heuristic reports "no
+      # Internet" in the microVM and silently disables substitution —
+      # force it back on for interactive use. Scripts should pass
+      # --option substitute true explicitly (aliases don't reach them).
+      alias nix='nix --option substitute true'
+    '';
+
+    # Login shells: /etc/profile (environment) then the shared
+    # interactive setup. Kept minimal — the logic lives in those files.
+    agentBashProfile = pkgs.writeText "code-agent-bash-profile" ''
+      # shellcheck shell=bash
+      # shellcheck source=/etc/profile
+      if [ -r /etc/profile ]; then
+        . /etc/profile
+      fi
+      # shellcheck source=/dev/null
+      if [ -r "$HOME/.bashrc" ]; then
+        . "$HOME/.bashrc"
+      fi
+    '';
 
     # Repo skill set baked read-only at /opt/skills, built by
     # inputs.agents.lib.mkSkills — the same helper (and the same repo
@@ -266,8 +367,8 @@
     #    or an ld.so.cache (nixpkgs glibc never reads /etc/ld.so.cache;
     #    its compiled-in cache path is the read-only store etc/).
     rootfs = pkgs.runCommand "code-agent-rootfs" {} ''
-      mkdir -p $out/usr/local/bin $out/etc \
-        $out/lib64 $out/usr/lib/wheel-deps
+      mkdir -p $out/usr/local/bin $out/etc $out/usr/share \
+        $out/lib $out/lib64 $out/usr/lib/wheel-deps
 
       # sshd-default-PATH toolchain.
       ln -s ${pkgs.bashInteractive}/bin/bash        $out/usr/local/bin/bash
@@ -289,6 +390,8 @@
       ln -s ${pkgs.tmux}/bin/tmux                   $out/usr/local/bin/tmux
       ln -s ${pkgs.less}/bin/less                   $out/usr/local/bin/less
       ln -s ${pkgs.openssh}/bin/ssh                 $out/usr/local/bin/ssh
+      ln -s ${pkgs.openssh}/bin/scp                 $out/usr/local/bin/scp
+      ln -s ${pkgs.openssh}/bin/sftp                $out/usr/local/bin/sftp
       ln -s ${pkgs.nix}/bin/nix                     $out/usr/local/bin/nix
       ln -s ${pkgs.pi-coding-agent}/bin/pi          $out/usr/local/bin/pi
       ln -s ${pkgs.kimi-code}/bin/kimi              $out/usr/local/bin/kimi
@@ -320,6 +423,15 @@
       ln -s ${pkgs.go}/bin/gofmt                    $out/usr/local/bin/gofmt
       ln -s ${pkgs.which}/bin/which                 $out/usr/local/bin/which
       ln -s ${pkgs.ncurses}/bin/clear               $out/usr/local/bin/clear
+      ln -s ${pkgs.ncurses}/bin/infocmp             $out/usr/local/bin/infocmp
+      ln -s ${pkgs.ncurses}/bin/tput                $out/usr/local/bin/tput
+      # Terminfo db at the FHS search locations (terminfoDb above):
+      # /usr/share/terminfo for TERMINFO_DIRS + modern ncurses
+      # defaults, /etc/terminfo and /lib/terminfo for the Debian-style
+      # fallback lists foreign binaries are often compiled with.
+      ln -s ${terminfoDb}/share/terminfo            $out/usr/share/terminfo
+      ln -s ${terminfoDb}/share/terminfo            $out/etc/terminfo
+      ln -s ${terminfoDb}/share/terminfo            $out/lib/terminfo
       # headroom via the env-mapping wrapper (MCP configs and
       # interactive use both resolve to this PATH entry).
       ln -s ${sandboxHeadroom}/bin/headroom         $out/usr/local/bin/headroom
@@ -340,6 +452,7 @@
       # Env values; a shell that scrubbed its env still gets them, but
       # an existing value is never re-appended to).
       cat > $out/etc/profile <<'EOF'
+      # shellcheck shell=sh
       # Login shells default to a sane umask regardless of what the
       # spawning process (supervisor, sshd, vscodium server) inherited.
       umask 022
@@ -362,6 +475,12 @@
       fi
       if [ -z "''${NIX_LD_LIBRARY_PATH:-}" ]; then
         export NIX_LD_LIBRARY_PATH="${nixLdLibs}"
+      fi
+      # Terminfo: the baked db (full ncurses + ghostty) at the FHS
+      # location. ssh forwards the client's TERM via the pty request, so
+      # exotic terminals (xterm-ghostty, ...) must resolve in-image.
+      if [ -z "''${TERMINFO_DIRS:-}" ]; then
+        export TERMINFO_DIRS="/usr/share/terminfo:${pkgs.ncurses}/share/terminfo"
       fi
       # FOD builders inherit NIX_SSL_CERT_FILE via impureEnvVars and
       # hang git/curl fetchers off it (buildGoModule sets
@@ -516,6 +635,17 @@
       # under the supervisor): script present means "already installed",
       # so connect is instant and offline.
       ln -s ${vscodium-server} $out/sandbox/.vscodium-server/bin/${vscodiumCommit}
+
+      # Shell dotfiles at BOTH $HOME roots (see agentBashrc above for
+      # why ~/.bashrc is load-bearing: interactive ssh sessions are
+      # `bash -i` and read nothing else). NOTE: with
+      # --include-workdir the host directory mounts OVER /sandbox and
+      # hides these — the create-time --env set (packages.code-agent-env,
+      # passed by code-sandbox) is the channel that still applies then.
+      cp ${agentBashrc} $out/sandbox/.bashrc
+      cp ${agentBashrc} $out/home/agent/.bashrc
+      cp ${agentBashProfile} $out/sandbox/.bash_profile
+      cp ${agentBashProfile} $out/home/agent/.bash_profile
 
       # pi's kimi-for-coding wiring: models.json overrides the built-in
       # kimi-coding provider to read its key from $KIMI_API_KEY (env
@@ -832,6 +962,16 @@
         - Foreign glibc binaries (downloaded FHS ELFs) run via the
           nix-ld shim: /lib64/ld-linux-x86-64.so.2 reads NIX_LD and
           NIX_LD_LIBRARY_PATH from the env.
+        - Shell environment: login/exec shells (`bash -lc`, how ssh remote
+          commands and `openshell sandbox exec` run) read /etc/profile;
+          interactive ssh/editor-terminal shells are `bash -i` and read
+          ~/.bashrc (baked at both $HOME roots, sources /etc/profile).
+          Both are idempotent. The OCI image Env does NOT survive the
+          supervisor's env scrub — TLS vars and provider credentials are
+          injected per-process, and the create-time --env set (passed by
+          code-sandbox) covers the rest. The full terminfo db (ncurses +
+          ghostty) lives at /usr/share/terminfo; TERM arrives verbatim
+          from the client's pty request.
         - Do NOT run the NixOS VM tests (`nix run .#vm-test`): they need /dev/kvm, which the guest does not have. VM tests are CI's job — flag the gap rather than running them.
 
         ## MCP servers
@@ -908,94 +1048,121 @@
       "extra-trusted-public-keys = openshell.cachix.org-1:OAr5MunsfH5PZvUsfD08OtGx5RtcwdNZGJdU5FqLm5w= devenv.cachix.org-1:w1cLUi8dv3hnoSPGAuibQv+f9TZLr6cv/Hm9XgU50cw= nix-community.cachix.org-1:mB9FSh9qf2dCimDSUo8Zy7bkq5CX+/rkCWyvRCYg3Fs= chaotic-nyx.cachix.org-1:HfnXSw4pj95iI/n8ae7W70yP3m9y9633ndgliTLGsQI= cache.geninf.io-1:uhEViaczNKSoerYM+w7uqXUzlAhnbEBKsFzgg9n3cvI= cache.clan.lol-1:3KztgSAB5R1M+Dz7vzkBGzXdodizbgLXGXKXlcQLA28="
     ];
   in {
-    packages.code-agent-image = n2c.buildImage {
-      name = "code-agent";
-      tag = "latest";
+    packages = {
+      # Create-time sandbox environment (`openshell sandbox create
+      # --env KEY=VALUE`, one per line — code-sandbox create passes
+      # them): the supervisor spawns every sandbox process with a
+      # SCRUBBED env (env_clear: only HOME/USER/PATH/TERM/SHELL +
+      # injected TLS vars + provider creds), so the image Env above
+      # never reaches in-VM sandbox processes. Shells recover the
+      # runtime env from /etc/profile and the baked ~/.bashrc, but spec
+      # env is the ONLY channel that covers EVERY spawn path —
+      # including `bash -i` interactive ssh sessions whose HOME
+      # dotfiles are masked by an --include-workdir mount, and
+      # non-shell exec consumers (SDKs). Keep it free of
+      # runtime-dependent values: NIX_SSL_CERT_FILE stays out on
+      # purpose (the supervisor injects the TLS bundle paths itself;
+      # /etc/profile has the plain-docker fallback).
+      code-agent-env = pkgs.writeText "code-agent-env" ''
+        LD_LIBRARY_PATH=/usr/lib/wheel-deps
+        NIX_LD=${pkgs.glibc}/lib/ld-linux-x86-64.so.2
+        NIX_LD_LIBRARY_PATH=${nixLdLibs}
+        TERMINFO_DIRS=/usr/share/terminfo:${pkgs.ncurses}/share/terminfo
+      '';
 
-      copyToRoot = [baseTools rootfs agentDirs agentMaterial tmpDir];
+      code-agent-image = n2c.buildImage {
+        name = "code-agent";
+        tag = "latest";
 
-      # Register the image store paths in the nix db at build time so
-      # `nix` works in-sandbox without a db init.
-      initializeNixDatabase = true;
-      nixUid = 1000;
-      nixGid = 1000;
+        copyToRoot = [baseTools rootfs agentDirs agentMaterial tmpDir];
 
-      maxLayers = 128;
+        # Register the image store paths in the nix db at build time so
+        # `nix` works in-sandbox without a db init.
+        initializeNixDatabase = true;
+        nixUid = 1000;
+        nixGid = 1000;
 
-      perms = [
-        {
-          path = agentDirs;
-          regex = ".*";
-          # nix store defaults are 0555; without an explicit mode the
-          # workdir would be read-only for the runtime user.
-          mode = "0755";
-          uid = 1000;
-          gid = 1000;
-          uname = "agent";
-          gname = "agent";
-        }
-        {
-          path = tmpDir;
-          regex = "/tmp";
-          mode = "1777";
-          uid = 0;
-          gid = 0;
-          uname = "root";
-          gname = "root";
-        }
-      ];
+        maxLayers = 128;
 
-      config = {
-        User = "agent";
-        WorkingDir = "/sandbox";
-        # OCI provenance labels: which repo (and which commit of it)
-        # built this image. `docker inspect` / skopeo answer the
-        # provenance question without the in-image briefing.
-        Labels = {
-          "org.opencontainers.image.title" = "code-agent";
-          "org.opencontainers.image.description" = "General-purpose OpenShell coding sandbox image (nix + agent CLIs + baked toolset), built with nix2container from external-systems/home.";
-          "org.opencontainers.image.source" = "https://github.com/external-systems/home";
-          "org.opencontainers.image.revision" = imageRev;
-          "org.opencontainers.image.licenses" = "GPL-3.0-only";
-        };
-        Env = [
-          "HOME=/home/agent"
-          "NIX_CONFIG=${nixConfig}"
-          "SSL_CERT_FILE=${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt"
-          # pi defaults to the kimi-for-coding subscription endpoint; the
-          # key itself is injected by the attached kimi-for-coding
-          # provider (models.json above reads it from $KIMI_API_KEY).
-          "PI_PROVIDER=kimi-coding"
-          "PI_MODEL=kimi-for-coding"
-          # kimi-code: no models.dev catalog fetch on start (no catalog
-          # egress under the sandbox policy — the provider/model is
-          # baked in config.toml) and no telemetry.
-          "KIMI_CODE_MODEL_CATALOG_REFRESH_ON_START=false"
-          "KIMI_DISABLE_TELEMETRY=1"
-          # claude-code: updater/telemetry/error-reporting/survey traffic
-          # all targets hosts the policy does not admit; disabling keeps
-          # the DENIED log to real API traffic. (The startup connectivity
-          # preflight is NOT telemetry — platform.claude.com is admitted
-          # in openshell/policies/code-agent.yaml for it and for
-          # `claude auth login` token polling.)
-          "DISABLE_AUTOUPDATER=1"
-          "DISABLE_TELEMETRY=1"
-          "DISABLE_ERROR_REPORTING=1"
-          "DISABLE_BUG_COMMAND=1"
-          "DISABLE_GROWTHBOOK=1"
-          "DISABLE_FEEDBACK_SURVEY=1"
-          # Foreign-glibc + manylinux-wheel runtime (see rootfs): the
-          # nix-ld shim at /lib64/ld-linux-x86-64.so.2 reads NIX_LD /
-          # NIX_LD_LIBRARY_PATH when a downloaded FHS binary execs, and
-          # python wheel extensions resolve libstdc++/libgcc_s/libz from
-          # the scoped wheel-deps dir. Deliberately narrow: a broader
-          # LD_LIBRARY_PATH would shadow nix store RUNPATHs
-          # process-wide (search order puts it before DT_RUNPATH).
-          "LD_LIBRARY_PATH=/usr/lib/wheel-deps"
-          "NIX_LD=${pkgs.glibc}/lib/ld-linux-x86-64.so.2"
-          "NIX_LD_LIBRARY_PATH=${nixLdLibs}"
+        perms = [
+          {
+            path = agentDirs;
+            regex = ".*";
+            # nix store defaults are 0555; without an explicit mode the
+            # workdir would be read-only for the runtime user.
+            mode = "0755";
+            uid = 1000;
+            gid = 1000;
+            uname = "agent";
+            gname = "agent";
+          }
+          {
+            path = tmpDir;
+            regex = "/tmp";
+            mode = "1777";
+            uid = 0;
+            gid = 0;
+            uname = "root";
+            gname = "root";
+          }
         ];
-        Cmd = ["${pkgs.bashInteractive}/bin/bash" "-l"];
+
+        config = {
+          User = "agent";
+          WorkingDir = "/sandbox";
+          # OCI provenance labels: which repo (and which commit of it)
+          # built this image. `docker inspect` / skopeo answer the
+          # provenance question without the in-image briefing.
+          Labels = {
+            "org.opencontainers.image.title" = "code-agent";
+            "org.opencontainers.image.description" = "General-purpose OpenShell coding sandbox image (nix + agent CLIs + baked toolset), built with nix2container from external-systems/home.";
+            "org.opencontainers.image.source" = "https://github.com/external-systems/home";
+            "org.opencontainers.image.revision" = imageRev;
+            "org.opencontainers.image.licenses" = "GPL-3.0-only";
+          };
+          Env = [
+            "HOME=/home/agent"
+            "NIX_CONFIG=${nixConfig}"
+            "SSL_CERT_FILE=${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt"
+            # pi defaults to the kimi-for-coding subscription endpoint; the
+            # key itself is injected by the attached kimi-for-coding
+            # provider (models.json above reads it from $KIMI_API_KEY).
+            "PI_PROVIDER=kimi-coding"
+            "PI_MODEL=kimi-for-coding"
+            # kimi-code: no models.dev catalog fetch on start (no catalog
+            # egress under the sandbox policy — the provider/model is
+            # baked in config.toml) and no telemetry.
+            "KIMI_CODE_MODEL_CATALOG_REFRESH_ON_START=false"
+            "KIMI_DISABLE_TELEMETRY=1"
+            # claude-code: updater/telemetry/error-reporting/survey traffic
+            # all targets hosts the policy does not admit; disabling keeps
+            # the DENIED log to real API traffic. (The startup connectivity
+            # preflight is NOT telemetry — platform.claude.com is admitted
+            # in openshell/policies/code-agent.yaml for it and for
+            # `claude auth login` token polling.)
+            "DISABLE_AUTOUPDATER=1"
+            "DISABLE_TELEMETRY=1"
+            "DISABLE_ERROR_REPORTING=1"
+            "DISABLE_BUG_COMMAND=1"
+            "DISABLE_GROWTHBOOK=1"
+            "DISABLE_FEEDBACK_SURVEY=1"
+            # Foreign-glibc + manylinux-wheel runtime (see rootfs): the
+            # nix-ld shim at /lib64/ld-linux-x86-64.so.2 reads NIX_LD /
+            # NIX_LD_LIBRARY_PATH when a downloaded FHS binary execs, and
+            # python wheel extensions resolve libstdc++/libgcc_s/libz from
+            # the scoped wheel-deps dir. Deliberately narrow: a broader
+            # LD_LIBRARY_PATH would shadow nix store RUNPATHs
+            # process-wide (search order puts it before DT_RUNPATH).
+            "LD_LIBRARY_PATH=/usr/lib/wheel-deps"
+            "NIX_LD=${pkgs.glibc}/lib/ld-linux-x86-64.so.2"
+            "NIX_LD_LIBRARY_PATH=${nixLdLibs}"
+            # Terminfo db for plain-docker runs (under the supervisor the
+            # same value comes from /etc/profile + ~/.bashrc + the
+            # create-time --env set; see terminfoDb above).
+            "TERMINFO_DIRS=/usr/share/terminfo:${pkgs.ncurses}/share/terminfo"
+          ];
+          Cmd = ["${pkgs.bashInteractive}/bin/bash" "-l"];
+        };
       };
     };
 

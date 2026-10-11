@@ -38,6 +38,14 @@
   loaderApp ? "load-code-agent-image",
   policyAttr ? "code-agent-policy",
   profileAttr ? "github-agent-profile",
+  # Attr name of the create-time sandbox env file (KEY=VALUE lines,
+  # passed as `openshell sandbox create --env` flags at create). The
+  # supervisor spawns every sandbox process with a scrubbed env, and
+  # spec env is the ONLY channel that survives on every spawn path —
+  # shells otherwise recover the env from the in-image /etc/profile +
+  # ~/.bashrc. A missing attr warns and continues without it (generic
+  # consumers may not define one). null disables.
+  envAttr ? "code-agent-env",
   # Gateway-side provider profile id (sync/doctor drift-check this one).
   profileId ? "github-agent",
   # Providers attached at create; checked by sync/doctor.
@@ -59,6 +67,10 @@
     if remoteFlake == null
     then ""
     else remoteFlake;
+  envAttrStr =
+    if envAttr == null
+    then ""
+    else envAttr;
 in ''
   set -euo pipefail
 
@@ -128,6 +140,15 @@ in ''
   status and per-sandbox policy/provider health. Never `openshell
   profile import` by hand after editing — one-shot imports are exactly
   how gateway copies go stale.
+
+  Sandbox env: create also passes the flake's #${envAttrStr} file
+  (KEY=VALUE lines) as `openshell sandbox create --env` flags. The
+  supervisor spawns every sandbox process with a scrubbed environment,
+  and that spec env is the ONLY channel reaching every spawn path
+  (interactive `bash -i` ssh sessions, editor servers, non-shell
+  exec) — shells otherwise recover the image env from the baked
+  /etc/profile + ~/.bashrc. A flake without the attr warns and
+  continues.
 
   Requires on the host: the `openshell` CLI configured against a gateway,
   and the configured providers created there (sync/doctor print the exact
@@ -640,6 +661,26 @@ in ''
     provider_args+=(--provider "$p")
   done
 
+  # Create-time sandbox env: spec env survives the supervisor's env
+  # scrub on EVERY spawn path (raw ssh, editor servers, non-shell
+  # exec), unlike the image Env. Rendered from the SAME resolved source
+  # as the image. A flake without the attr warns and continues.
+  env_args=()
+  # shellcheck disable=SC2157 # envAttrStr is nix-interpolated per
+  # instantiation — a compile-time constant in the emitted script.
+  if [ -n "${envAttrStr}" ]; then
+    if env_path="$(nix build "''${ref}#${envAttrStr}" --no-link --print-out-paths 2>/dev/null)"; then
+      while IFS= read -r env_line; do
+        case "$env_line" in
+          "" | \#*) ;;
+          *) env_args+=(--env "$env_line") ;;
+        esac
+      done <"$env_path"
+    else
+      echo "code-sandbox: WARNING: $ref has no #${envAttrStr} — skipping create-time sandbox env (in-image shell env still applies)" >&2
+    fi
+  fi
+
   create_policy="$policy_path"
   if [ "$include_workdir" = 1 ]; then
     # The rendered policy ships include_workdir: false (clean, ephemeral
@@ -652,6 +693,7 @@ in ''
   openshell sandbox create --name "$name" --from "$tag" \
     --policy "$create_policy" \
     "''${provider_args[@]}" \
+    "''${env_args[@]}" \
     --cpu "$cpu" --memory "$memory" \
     --detach -- bash -l
 
