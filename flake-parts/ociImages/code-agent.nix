@@ -455,6 +455,20 @@
       if [ -z "''${TERMINFO_DIRS:-}" ]; then
         export TERMINFO_DIRS="/usr/share/terminfo:${pkgs.ncurses}/share/terminfo"
       fi
+      # XDG_RUNTIME_DIR: no systemd-logind in the microVM creates
+      # /run/user/<uid>, so tools that consult the variable (podman-style
+      # runtimes, CLI state sockets) would fall back to odd locations.
+      # Point at a private /tmp dir instead. NOTE: claude-code's
+      # cross-session messaging cannot use it — its sockets-dir walk
+      # refuses '/' itself (owned by the VM host's overflow ids) — the
+      # claude launcher wrapper passes --messaging-socket-path instead.
+      if [ -z "''${XDG_RUNTIME_DIR:-}" ]; then
+        _xdg_runtime="/tmp/xdg-runtime-$(id -u 2>/dev/null || echo 1000)"
+        if mkdir -p "$_xdg_runtime" 2>/dev/null && chmod 700 "$_xdg_runtime" 2>/dev/null; then
+          export XDG_RUNTIME_DIR="$_xdg_runtime"
+        fi
+        unset _xdg_runtime
+      fi
       # FOD builders inherit NIX_SSL_CERT_FILE via impureEnvVars and
       # hang git/curl fetchers off it (buildGoModule sets
       # GIT_SSL_CAINFO=$NIX_SSL_CERT_FILE): point it at the supervisor
@@ -749,18 +763,131 @@
       exit 0
     '';
 
-    # Agent launcher wrappers: ensure the agent's headroom proxy, then
-    # exec the real CLI — /proc/pid/exe resolves to the REAL binary, so
-    # the policy's binary pins (pi ELF, the node wildcard,
+    # Workspace-trust pre-seed for kimi-code and claude-code: both gate
+    # project-level features (project MCP servers, project settings)
+    # behind an interactive per-folder trust prompt, and both persist
+    # trust per ABSOLUTE PATH with no wildcard support — kimi as JSON
+    # records in $KIMI_CODE_HOME/workspace-trust/wd_<slug>_<sha256(cwd)
+    # [:12]> (trustRecord.ts in kimi-code 2.1.1), claude as
+    # projects[<cwd>].hasTrustDialogAccepted in ~/.claude.json. This
+    # script marks the cwd — plus its git toplevel, since kimi's
+    # workspace root may resolve to the repo root — trusted when it
+    # lives under /sandbox (the disposable sandbox IS the trust
+    # boundary). Verified live in-sandbox 2026-10 against both CLIs'
+    # interactive trust prompts.
+    agentPreTrust = pkgs.writeText "agent-pretrust.py" ''
+      import fcntl
+      import hashlib
+      import json
+      import os
+      import re
+      import subprocess
+      import sys
+      import time
+
+      SANDBOX_ROOT = "/sandbox"
+
+
+      def targets():
+          cwd = os.getcwd()
+          out = [cwd]
+          try:
+              top = subprocess.run(
+                  ["git", "rev-parse", "--show-toplevel"],
+                  capture_output=True,
+                  text=True,
+                  timeout=5,
+              ).stdout.strip()
+              if top:
+                  out.append(top)
+          except Exception:
+              pass
+          return [
+              p
+              for p in dict.fromkeys(out)
+              if p == SANDBOX_ROOT or p.startswith(SANDBOX_ROOT + "/")
+          ]
+
+
+      def kimi_trust(dirs):
+          home = os.environ.get("KIMI_CODE_HOME") or os.path.join(
+              os.path.expanduser("~"), ".kimi-code"
+          )
+          store = os.path.join(home, "workspace-trust")
+          os.makedirs(store, exist_ok=True)
+          for d in dirs:
+              norm = d.replace("\\", "/").rstrip("/") or "/"
+              slug = re.sub(r"[^a-z0-9._-]+", "-", norm.split("/")[-1].lower())
+              slug = slug.strip("-")[:40].strip("-")
+              if slug in ("", ".", ".."):
+                  slug = "workspace"
+              key = f"wd_{slug}_{hashlib.sha256(norm.encode()).hexdigest()[:12]}"
+              path = os.path.join(store, key)
+              if not os.path.exists(path):
+                  with open(path, "w") as f:
+                      json.dump({"root": norm, "trustedAt": int(time.time() * 1000)}, f)
+
+
+      def claude_trust(dirs):
+          path = os.path.join(os.path.expanduser("~"), ".claude.json")
+          os.makedirs(os.path.dirname(path), exist_ok=True)
+          with open(path, "a+") as f:
+              fcntl.flock(f, fcntl.LOCK_EX)
+              f.seek(0)
+              try:
+                  data = json.load(f)
+              except Exception:
+                  data = {}
+              projects = data.setdefault("projects", {})
+              for d in dirs:
+                  projects.setdefault(d, {})["hasTrustDialogAccepted"] = True
+              f.seek(0)
+              f.truncate()
+              json.dump(data, f, indent=2)
+
+
+      if __name__ == "__main__":
+          dirs = targets()
+          if dirs:
+              {"kimi": kimi_trust, "claude": claude_trust}[sys.argv[1]](dirs)
+    '';
+
+    # Agent launcher wrappers: ensure the agent's headroom proxy, run
+    # the agent's pre-exec setup (trust pre-seed, messaging socket),
+    # then exec the real CLI — /proc/pid/exe resolves to the REAL
+    # binary, so the policy's binary pins (pi ELF, the node wildcard,
     # .claude-wrapped) keep matching.
-    mkAgentLauncher = name: realBin: port: upstream:
+    mkAgentLauncher = name: realBin: port: upstream: preExec:
       pkgs.writeShellScriptBin name ''
+        ${preExec}
         ${headroomProxyEnsure}/bin/headroom-proxy-ensure ${toString port} "${upstream}"
         exec ${realBin} "$@"
       '';
-    sandboxPi = mkAgentLauncher "pi" "${pkgs.pi-coding-agent}/bin/pi" headroomKimiPort "https://api.kimi.com/coding";
-    sandboxKimi = mkAgentLauncher "kimi" "${pkgs.kimi-code}/bin/kimi" headroomKimiPort "https://api.kimi.com/coding";
-    sandboxClaude = mkAgentLauncher "claude" "${pkgs.claude-code}/bin/claude" headroomAnthropicPort "";
+    sandboxPi = mkAgentLauncher "pi" "${pkgs.pi-coding-agent}/bin/pi" headroomKimiPort "https://api.kimi.com/coding" "";
+    sandboxKimi = mkAgentLauncher "kimi" "${pkgs.kimi-code}/bin/kimi" headroomKimiPort "https://api.kimi.com/coding" ''
+      # Pre-trust /sandbox folders (see agentPreTrust): kimi's startup
+      # gate prompts per folder otherwise and project MCP servers stay
+      # disabled while untrusted.
+      ${pkgs.python3}/bin/python3 ${agentPreTrust} kimi 2>/dev/null || true
+    '';
+    sandboxClaude = mkAgentLauncher "claude" "${pkgs.claude-code}/bin/claude" headroomAnthropicPort "" ''
+      # Pre-trust /sandbox folders (see agentPreTrust).
+      ${pkgs.python3}/bin/python3 ${agentPreTrust} claude 2>/dev/null || true
+      # Cross-session messaging: '/' in this microVM is owned by the
+      # host's overflow ids (991:987, not root), so claude's sockets-dir
+      # component walk ("owned by you or root") refuses EVERY
+      # auto-generated location — XDG_RUNTIME_DIR included (verified
+      # 2026-10 via --debug-file). The escape hatch is an explicit
+      # --messaging-socket-path, which skips the '/' walk: a unique
+      # socket per session inside one shared private dir (the dir is
+      # the rendezvous — the default behavior also uses per-session
+      # sockets under a shared dir; two sessions on ONE fixed path
+      # collide and the second exits 1).
+      claudeMsgDir=/tmp/claude-code-messaging
+      if ${pkgs.coreutils}/bin/install -d -m 700 "$claudeMsgDir" 2>/dev/null; then
+        set -- --messaging-socket-path "$claudeMsgDir/sock-$$-$RANDOM" "$@"
+      fi
+    '';
 
     # The sandbox's mandatory agent defaults as a home-manager module:
     # homeSpec.agents.* (homeModules/agents.nix) renders the MCP trio,
@@ -791,48 +918,113 @@
         pi = {
           enabled = true;
           installPackage = false;
-          # The baked skills tree as an explicit resource path
-          # (absolute paths supported; resolves regardless of HOME).
-          settings.skills = ["/opt/skills"];
-          # kimi-for-coding subscription, key from the
-          # provider-injected $KIMI_API_KEY, routed through the
-          # kimi-upstream headroom proxy. A baseUrl-only override
-          # preserves pi's built-in model catalog for the provider
-          # (pi custom-provider docs).
-          models.providers.kimi-coding = {
-            apiKey = "$KIMI_API_KEY";
-            baseUrl = "http://127.0.0.1:${toString headroomKimiPort}";
+          settings = {
+            # The baked skills tree as an explicit resource path
+            # (absolute paths supported; resolves regardless of HOME).
+            skills = ["/opt/skills"];
+            # Startup defaults. The image Env's PI_PROVIDER/PI_MODEL do
+            # NOT survive the supervisor's env scrub — settings.json is
+            # the file channel that does.
+            defaultProvider = "kimi-coding";
+            defaultModel = "kimi-for-coding";
+            defaultThinkingLevel = "max";
+            # The disposable sandbox is the trust boundary: don't gate
+            # .pi project config behind an interactive trust prompt.
+            defaultProjectTrust = "always";
+          };
+          models.providers = {
+            # kimi-for-coding subscription, key from the
+            # provider-injected $KIMI_API_KEY, routed through the
+            # kimi-upstream headroom proxy. A baseUrl-only override
+            # preserves pi's built-in model catalog for the provider
+            # (pi custom-provider docs).
+            kimi-coding = {
+              apiKey = "$KIMI_API_KEY";
+              baseUrl = "http://127.0.0.1:${toString headroomKimiPort}";
+            };
+            # Claude models ride the claude-code PLATFORM provider's
+            # $ANTHROPIC_AUTH_TOKEN through the anthropic-upstream
+            # proxy. Under the default claude-subscription provider
+            # this var is unset and the provider fails fast on use —
+            # ON PURPOSE: a subscription OAuth token only bills on
+            # Claude-Code-shaped requests; pi's raw /v1/messages calls
+            # 429 against it (verified live in-sandbox 2026-10), so
+            # there is nothing to route here without the platform key.
+            anthropic = {
+              apiKey = "$ANTHROPIC_AUTH_TOKEN";
+              baseUrl = "http://127.0.0.1:${toString headroomAnthropicPort}";
+            };
           };
           appendSystemMd = sandboxContext-pi;
         };
         kimi = {
           enabled = true;
           installPackage = false;
+          # snake_case keys: kimi-code 2.1.1 accepts both conventions
+          # (camelCase is the legacy alias set), but newer sections
+          # (secondary_model, support_efforts) only exist in the
+          # snake_case schema — verified live in-sandbox 2026-10
+          # (kimi doctor + k3 session through the headroom proxy).
           config = {
-            defaultProvider = "kimi-for-coding";
-            defaultModel = "kimi-for-coding";
+            # k3 at high thinking effort is the sandbox default; all
+            # models ride the same Kimi for Coding subscription over
+            # the Anthropic wire through the headroom proxy (type
+            # "anthropic" verified live in-sandbox 2026-10 — the kimi
+            # wire, OpenAI-style chat completions, is not proxyable).
+            default_model = "k3";
+            # kimi 2.1.1 permission modes (verified via `kimi --help`):
+            # "yolo" = Ask When Needed (routine actions run, risky
+            # ones still ask), "auto" = Never Ask (never interrupts).
+            # The sandbox default is Never Ask — the microVM is the
+            # isolation boundary.
+            default_permission_mode = "auto";
             providers.kimi-for-coding = {
-              # type "anthropic" (verified live in-sandbox 2026-10):
-              # the same api.kimi.com/coding subscription pi speaks,
-              # routable through headroom's anthropic pipeline — the
-              # kimi wire (OpenAI-style chat completions) is not.
               type = "anthropic";
-              baseUrl = "http://127.0.0.1:${toString headroomKimiPort}";
-              apiKeyEnv = "KIMI_API_KEY";
+              base_url = "http://127.0.0.1:${toString headroomKimiPort}";
+              api_key_env = "KIMI_API_KEY";
             };
-            models.kimi-for-coding = {
-              provider = "kimi-for-coding";
-              model = "kimi-for-coding";
-              maxContextSize = 1048576;
-              maxOutputSize = 32768;
+            models = {
+              k3 = {
+                provider = "kimi-for-coding";
+                model = "k3";
+                max_context_size = 1048576;
+                capabilities = ["thinking" "always_thinking" "image_in" "video_in" "tool_use"];
+                support_efforts = ["low" "high" "max"];
+                default_effort = "high";
+              };
+              kimi-for-coding = {
+                provider = "kimi-for-coding";
+                model = "kimi-for-coding";
+                max_context_size = 262144;
+                capabilities = ["thinking" "always_thinking" "image_in" "video_in" "tool_use"];
+              };
+              kimi-for-coding-highspeed = {
+                provider = "kimi-for-coding";
+                model = "kimi-for-coding-highspeed";
+                max_context_size = 262144;
+                capabilities = ["thinking" "always_thinking" "image_in" "video_in" "tool_use"];
+              };
+            };
+            thinking = {
+              enabled = true;
+              effort = "high";
+            };
+            # Subagents default to the fast model; the pool lets the
+            # main agent escalate per spawn (k3 for hard problems).
+            secondary_model = {
+              default_model = "kimi-for-coding-highspeed";
+              models = {
+                k3 = "Pick this for hard problems. Strong at complex reasoning, algorithm design, deep debugging, math, and systematic challenges.";
+                kimi-for-coding-highspeed = "Fast but priced higher. Good for latency-sensitive tasks: daily refactoring, code explanation, small edits, and summaries.";
+                kimi-for-coding = "A balanced coding workhorse. Good for most feature development and code-change tasks.";
+              };
             };
             identity = {
               name = "code-agent";
               slug = "code-agent";
             };
-            # MCP permission rules: the local/offline servers are safe
-            # to auto-allow; github MCP can write, so it stays on
-            # per-call approval (the default permission mode is manual).
+            # MCP permission rules: redundant under Never Ask but kept
+            # as documentation and for sessions started in another mode.
             permission.rules = [
               {
                 decision = "allow";
@@ -852,6 +1044,16 @@
           settings = {
             hasCompletedOnboarding = true;
             theme = "dark";
+            # Opus 5.5 as the default model (subscription-billed via
+            # $CLAUDE_CODE_OAUTH_TOKEN; verified live in-sandbox
+            # 2026-10 through the headroom proxy).
+            model = "claude-opus-5-5";
+            # Never-ask default for the disposable sandbox. Only takes
+            # effect from USER settings (which this is) — project/local
+            # files can't set bypassPermissions since claude v2.1.257.
+            # "auto" is the softer classifier-driven alternative (never
+            # asks, but silently blocks what it judges risky).
+            permissions.defaultMode = "bypassPermissions";
             # Route claude through the anthropic-upstream headroom
             # proxy. The settings.json env block applies to claude's
             # own process — the file channel survives the supervisor's
@@ -1001,11 +1203,20 @@
       ${notes}
     '';
 
-    sandboxContext-pi = sandboxContext "pi" "- MCP exposure: all three servers are `direct` — their tools are listed in the system prompt at session start; the github server still needs the github-agent provider attached to answer calls. Diagnose servers with `pi mcp list`; add project-only servers with `pi mcp add -l <name> -- <cmd>`.";
+    sandboxContext-pi = sandboxContext "pi" ''
+      - MCP exposure: all three servers are `direct` — their tools are listed in the system prompt at session start; the github server still needs the github-agent provider attached to answer calls. Diagnose servers with `pi mcp list`; add project-only servers with `pi mcp add -l <name> -- <cmd>`.
+      - Defaults (baked ~/.pi/agent/settings.json): kimi-coding/kimi-for-coding at max thinking; project trust auto-granted. A claude provider (anthropic, via :8787) is wired too, but only works when the claude-code PLATFORM provider is attached ($ANTHROPIC_AUTH_TOKEN) — the subscription token 429s on pi's raw-API request shape.
+    '';
 
-    sandboxContext-kimi = sandboxContext "\${product_name}" "- Inspect MCP connections with `/mcp`. Pre-approved by baked permission rules: mcp__nixos__* and mcp__headroom__*; mcp__github__* asks per call — approve for the session only when doing GitHub work.";
+    sandboxContext-kimi = sandboxContext "\${product_name}" ''
+      - Inspect MCP connections with `/mcp`. Sessions start in Never Ask mode (default_permission_mode = "auto"); folders under /sandbox are pre-trusted by the launcher wrapper.
+      - Default model is k3 at high thinking effort; subagents default to kimi-for-coding-highspeed (pool: k3 / kimi-for-coding / kimi-for-coding-highspeed, `/secondary-model` to change).
+    '';
 
-    sandboxContext-claude = sandboxContext "Claude Code" "- Inspect MCP connections with `/mcp`. Servers ride the baked ~/.claude/settings.json mcpServers table; ~/.claude.json is claude's mutable state file and stays writable.";
+    sandboxContext-claude = sandboxContext "Claude Code" ''
+      - Inspect MCP connections with `/mcp`. Servers ride the baked ~/.claude/settings.json mcpServers table; ~/.claude.json is claude's mutable state file and stays writable.
+      - Defaults (baked settings.json): model claude-opus-5-5, permissions.defaultMode bypassPermissions. Folders under /sandbox are pre-trusted by the launcher wrapper, which also passes a per-session --messaging-socket-path (the auto socket-dir walk refuses '/' — owned by the VM host's overflow ids — so cross-session messaging would stay off otherwise).
+    '';
 
     tmpDir = pkgs.runCommand "code-agent-tmp" {} "mkdir -p $out/tmp";
 
@@ -1067,6 +1278,7 @@
         NIX_LD=${pkgs.glibc}/lib/ld-linux-x86-64.so.2
         NIX_LD_LIBRARY_PATH=${nixLdLibs}
         TERMINFO_DIRS=/usr/share/terminfo:${pkgs.ncurses}/share/terminfo
+        XDG_RUNTIME_DIR=/tmp/xdg-runtime-1000
       '';
 
       code-agent-image = n2c.buildImage {

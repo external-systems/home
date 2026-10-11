@@ -120,11 +120,16 @@ What the image bakes in (all nixpkgs/`llm-agents`-pinned, no secrets):
   "no /dev/kvm" below).
 - **Three AI coding agents** from the `llm-agents` flake input, each
   pre-wired so no interactive login is ever needed: `pi` (baked
-  `models.json` reads `$KIMI_API_KEY`), `kimi-code` (baked
+  `models.json` reads `$KIMI_API_KEY`, plus an `anthropic` provider
+  entry that rides `$ANTHROPIC_AUTH_TOKEN` when the claude-code
+  platform provider is attached), `kimi-code` (baked
   `~/.kimi-code/config.toml`: `type = "anthropic"` against the
   headroom proxy — the same Kimi for Coding subscription pi speaks,
-  `apiKeyEnv = "KIMI_API_KEY"`), and `claude`
-  (baked onboarding skip; subscription OAuth token as
+  `api_key_env = "KIMI_API_KEY"`, default model k3 at high effort,
+  Never Ask permission mode), and `claude`
+  (baked onboarding skip, default model claude-opus-5-5,
+  `permissions.defaultMode = "bypassPermissions"`; subscription OAuth
+  token as
   `$CLAUDE_CODE_OAUTH_TOKEN` from the attached claude-subscription
   provider, or a Console platform key as `$ANTHROPIC_AUTH_TOKEN` from
   claude-code — attach ONE, never both). All agent user configs are
@@ -143,6 +148,16 @@ What the image bakes in (all nixpkgs/`llm-agents`-pinned, no secrets):
   location — at both `$HOME` roots (`/sandbox` under the supervisor,
   `/home/agent` in plain docker).
 - **Nix language tooling**: `nixd`, `alejandra`, `statix`, `deadnix`.
+- **Sandbox-friendly agent defaults**: folders under `/sandbox` are
+  pre-trusted for kimi-code and claude-code by their launcher wrappers
+  (both persist trust per absolute path with no wildcard — kimi via
+  `~/.kimi-code/workspace-trust/` JSON records, claude via
+  `~/.claude.json` `projects[]`), pi auto-grants project trust
+  (`defaultProjectTrust = "always"`), and claude's cross-session
+  messaging gets a per-session `--messaging-socket-path` in a shared
+  private `/tmp` dir (its auto socket-dir walk refuses `/` — owned by
+  the VM host's overflow ids). `XDG_RUNTIME_DIR` defaults to a private
+  `/tmp/xdg-runtime-<uid>` dir.
 - **Non-API agent traffic disabled in env** (kimi models.dev catalog
   refresh + telemetry; claude updater/telemetry/error-reporting) so the
   deny-by-default egress log shows only real API denials.

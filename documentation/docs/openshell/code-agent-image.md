@@ -121,18 +121,46 @@ architecture and the lessons that shaped the design, see the
   proxy-routed traffic (verified).
 - The agents, one line each:
   - `pi` — Kimi for Coding subscription, key from the attached provider's
-    `$KIMI_API_KEY`, via the `:8788` proxy.
+    `$KIMI_API_KEY`, via the `:8788` proxy. Baked defaults
+    (`~/.pi/agent/settings.json`): kimi-for-coding at `max` thinking,
+    `defaultProjectTrust = "always"`. An `anthropic` provider entry
+    (`:8787`, `$ANTHROPIC_AUTH_TOKEN`) is wired for claude models, but
+    only works with the claude-code PLATFORM provider attached — a
+    subscription token 429s on pi's raw-API request shape (verified
+    2026-10).
   - `kimi` — same subscription via the baked `config.toml`
-    (`type = "anthropic"`, proxy baseUrl, `apiKeyEnv = "KIMI_API_KEY"`).
-    Do **not** run `/login` — the OAuth hosts are unreachable on purpose.
+    (`type = "anthropic"`, proxy base_url, `api_key_env = "KIMI_API_KEY"`).
+    Baked defaults: model k3 at high thinking effort, subagents on
+    kimi-for-coding-highspeed (`[secondary_model]` pool: k3 /
+    kimi-for-coding / kimi-for-coding-highspeed), Never Ask sessions
+    (`default_permission_mode = "auto"` — in kimi 2.1.1 `yolo` is Ask
+    When Needed and `auto` is Never Ask, per `kimi --help`). Do **not**
+    run `/login` — the OAuth hosts are unreachable on purpose.
   - `claude` — via the `:8787` proxy. Credential from the attached
     provider: **claude-subscription** (default — Pro/Max/Team OAuth
     token from `claude setup-token`, injected as
     `$CLAUDE_CODE_OAUTH_TOKEN` so Claude Code bills the subscription)
     or **claude-code** (Console platform API key, `$ANTHROPIC_AUTH_TOKEN`
     bearer) — attach ONE, never both (bearer precedence shadows the
-    subscription token). Onboarding pre-completed; the
-    `platform.claude.com` startup preflight is admitted by the policy.
+    subscription token). Onboarding pre-completed; baked defaults:
+    model `claude-opus-5-5`, `permissions.defaultMode =
+    "bypassPermissions"` (user-scope settings; project/local can't set
+    it). The `platform.claude.com` startup preflight is admitted by
+    the policy.
+  - Workspace trust: the kimi and claude launcher wrappers pre-trust
+    the cwd (and its git toplevel) when it lives under `/sandbox` —
+    both CLIs persist trust per absolute path with no wildcard (kimi:
+    `~/.kimi-code/workspace-trust/wd_<slug>_<sha256(cwd)[:12]>` JSON
+    records; claude: `~/.claude.json` `projects[<cwd>].
+    hasTrustDialogAccepted`).
+  - Cross-session messaging (claude): the auto socket-dir walk refuses
+    `/` in the microVM — it is owned by the VM host's overflow ids
+    (991:987), failing claude's "owned by you or root" check for every
+    auto location including `$XDG_RUNTIME_DIR` (verified via
+    `--debug-file` 2026-10). The claude wrapper therefore passes a
+    per-session `--messaging-socket-path` (unique name, shared 0700
+    dir `/tmp/claude-code-messaging` — the escape hatch that skips the
+    `/` walk; one FIXED path would collide across concurrent sessions).
 - **Repo skills at `/opt/skills`** — the same merged skill tree
   `inputs.agents.lib.mkSkills` builds for the NixOS hosts (the home
   repo's `skills/` tree + external flake-input skill sources), wired

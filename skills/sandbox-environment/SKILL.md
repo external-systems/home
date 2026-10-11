@@ -246,3 +246,20 @@ health-checks routing; `headroom savings` shows the numbers.
   /usr /lib /lib64 /etc /opt /proc read_only and /sandbox /tmp /nix
   /home read_write — `/` itself is in neither list (deny by default),
   so it cannot be LISTED; every real path below it works normally.
+- claude warns "Cross-session messaging is off: its socket directory
+  could not be set up: '/' is not owned by you or root (owner
+  991:987 ...)" — `/` belongs to the VM host's overflow ids, and
+  claude's sockets-dir walk requires every component owned by the user
+  or root, so EVERY auto location fails (XDG_RUNTIME_DIR included).
+  Fixed in-image: the claude launcher wrapper passes a per-session
+  `--messaging-socket-path` (unique name in the shared 0700 dir
+  `/tmp/claude-code-messaging`), which skips the `/` walk. If you see
+  the warning anyway, you're bypassing the wrapper — invoke claude via
+  `/usr/local/bin/claude`.
+- kimi/claude interactive "Trust this folder" prompts for workdirs
+  under /sandbox: the launcher wrappers pre-trust the cwd (and its git
+  toplevel) — kimi via `~/.kimi-code/workspace-trust/
+  wd_<slug>_<sha256(cwd)[:12]>` JSON records, claude via
+  `~/.claude.json` `projects[<cwd>].hasTrustDialogAccepted`. Both CLIs
+  persist trust per ABSOLUTE PATH with no wildcard, hence the wrapper
+  approach. Outside /sandbox the prompt still appears by design.
