@@ -408,8 +408,30 @@ network_policies:
   mcp_nixos:
     name: mcp_nixos
     endpoints:
-      - { host: search.nixos.org, port: 443, protocol: rest,
-          enforcement: enforce, access: read-only }
+      # search.nixos.org is an Elasticsearch backend: every search-family
+      # call (base.py/nixos.py/flakes.py channel probes + _count stats +
+      # caches.py alias probes) POSTs to /backend/{index}/_search and
+      # /_count with the query in the body — GET-only read-only access
+      # denies them (verified 2026-10 in-sandbox: gateway L7 answered
+      # 403 policy_denied on POST /backend/.../_search), so this host
+      # needs explicit POST rules while the rest stay GET-only.
+      - host: search.nixos.org
+        port: 443
+        protocol: rest
+        enforcement: enforce
+        rules:
+          - allow:
+              method: GET
+              path: "**"
+          - allow:
+              method: HEAD
+              path: "**"
+          - allow:
+              method: OPTIONS
+              path: "**"
+          - allow:
+              method: POST
+              path: "/backend/**"
       - { host: wiki.nixos.org, port: 443, protocol: rest,
           enforcement: enforce, access: read-only }
       - { host: cache.nixos.org, port: 443, protocol: rest,

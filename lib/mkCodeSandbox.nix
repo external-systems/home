@@ -48,8 +48,11 @@
   envAttr ? "code-agent-env",
   # Gateway-side provider profile id (sync/doctor drift-check this one).
   profileId ? "github-agent",
-  # Providers attached at create; checked by sync/doctor.
-  providers ? ["github-agent" "kimi-for-coding"],
+  # Providers attached at create; checked by sync/doctor. claude-code
+  # is in the defaults (not opt-in) because the baked headroom MCP
+  # server compresses through api.anthropic.com with the claude
+  # provider's token — without it headroom's LLM transforms fail auth.
+  providers ? ["github-agent" "kimi-for-coding" "claude-code"],
   # OCI image name for the content-hash tag.
   imageName ? "code-agent",
   # Sandbox name prefix.

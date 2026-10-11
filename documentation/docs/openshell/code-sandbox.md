@@ -140,7 +140,8 @@ disables); a flake without the attr warns and continues.
                          (installed wrapper default: the live
                          github:external-systems/home remote HEAD)
     --provider N         attach provider N INSTEAD of the defaults
-                         (repeatable; defaults: github-agent kimi-for-coding)
+                         (repeatable; defaults: github-agent
+                         kimi-for-coding claude-code)
     --no-sync            skip the profile sync before create
     --include-workdir    toggle the policy's include_workdir BIT (see below)
     --no-include-workdir explicit default
