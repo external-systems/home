@@ -252,9 +252,10 @@
         # fallback path), hand-applied patches (diff/patch), k8s clients
         # (kubectl/helm — cluster API egress rides an attached provider
         # or port-forward, so no policy host is bound here), agent
-        # ergonomics (fd/sd), shell vetting (shellcheck/shfmt), DNS
-        # digs for policy debugging (dnsutils), and rsync for
-        # backup/world-file work.
+        # ergonomics (fd/sd), shell vetting (shellcheck/shfmt), and DNS
+        # digs for policy debugging (dnsutils). No rsync here or in the
+        # HM profile — its receiver is denied in-sandbox (see
+        # profile-agent-base).
         unzip
         zstd
         wget
@@ -269,7 +270,6 @@
         shellcheck
         shfmt
         dnsutils
-        rsync
         # Go toolchain: module/toolchain fetches ride the golang policy
         # entry (proxy.golang.org + sum.golang.org admitted for the go
         # binary; direct-VCS fallback reuses git's github/gitea
@@ -367,7 +367,6 @@
       ln -s ${pkgs.shellcheck}/bin/shellcheck       $out/usr/local/bin/shellcheck
       ln -s ${pkgs.shfmt}/bin/shfmt                 $out/usr/local/bin/shfmt
       ln -s ${pkgs.dnsutils}/bin/dig                $out/usr/local/bin/dig
-      ln -s ${pkgs.rsync}/bin/rsync                 $out/usr/local/bin/rsync
       # uv comes from the HM profile's home-path (programs.uv in
       # profile-agent) — same pkgs.uv store path, so this fixed FHS
       # symlink target is unchanged.

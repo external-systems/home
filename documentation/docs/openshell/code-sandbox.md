@@ -133,8 +133,9 @@ disables); a flake without the attr warns and continues.
 
 ```
 -y, --yes                don't prompt when the sandbox already exists
-    --cpu N              CPUs (default 4)
-    --memory SIZE        memory (default 8Gi)
+    --cpu N              CPUs (default 4) — accepted but IGNORED by the VM
+                         driver (sizing is driver-wide gateway config there)
+    --memory SIZE        memory (default 8Gi) — same
     --flake REF          build image/policy/profile from another flake
                          (installed wrapper default: the live
                          github:external-systems/home remote HEAD)

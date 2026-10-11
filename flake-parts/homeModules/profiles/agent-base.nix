@@ -156,7 +156,10 @@
       file
       which
       dnsutils
-      rsync
+      # no rsync: in an OpenShell sandbox its receiver is denied by the
+      # supervisor's filesystem mediation (change_dir EACCES even for
+      # /tmp→/tmp — verified 2026-10); hosts still get rsync system-wide
+      # via clanServices/machine-type (environment.systemPackages).
       shellcheck
       shfmt
       kubectl

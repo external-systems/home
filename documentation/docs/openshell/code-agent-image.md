@@ -15,7 +15,7 @@ architecture and the lessons that shaped the design, see the
   `statix`, `deadnix`), shell vetting (`shellcheck`, `shfmt`), archive
   tools (`unzip`, `zstd`, `wget`), ELF inspection (`file`, `readelf`,
   `objdump`, `ldd`), patching (`diff`, `patch`), k8s clients
-  (`kubectl`, `helm`), and `dig`/`rsync` — with a **starship** prompt.
+  (`kubectl`, `helm`), and `dig` — with a **starship** prompt.
   The user-level half of this list (everything an agent sandbox user
   needs, incl. the agent CLIs) comes from the baked home-manager
   profile (`profile-agent-base` + the `profile-agent` OCI flavor, see
@@ -328,8 +328,12 @@ recommended path.
 
 `scp` and `sftp` work over the same ssh config. Note the supervisor's
 SFTP subsystem is ROOTED AT THE WORKDIR: paths are relative to
-`/sandbox`, and absolute paths outside it fail. `rsync` rides the ssh
-transport normally (baked into the image).
+`/sandbox`, and absolute paths outside it fail. For whole directories,
+prefer the CLI's native `openshell sandbox upload`/`download` (see the
+[code-sandbox guide](code-sandbox.md#moving-files-between-host-and-sandbox)).
+There is deliberately no `rsync` in the image: its receiver is denied
+by the supervisor's filesystem mediation (`change_dir` EACCES even for
+a local /tmp→/tmp copy — verified 2026-10).
 
 ## Refreshing the image / sandbox
 

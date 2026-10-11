@@ -92,6 +92,8 @@ in ''
     -y, --yes          don't prompt when the sandbox already exists (delete + recreate)
         --cpu N        CPUs for the sandbox (default: ${cpu})
         --memory SIZE  memory for the sandbox (default: ${memory})
+                       both are accepted but IGNORED by the VM driver — sizing
+                       there is driver-wide gateway config, not per-sandbox
         --flake REF    build image/policy/profile from flake REF — ${
     if alwaysRemote
     then "default is ${remoteFlakeStr}@<remote HEAD> (the live repo head), so this runs from ANY directory"
