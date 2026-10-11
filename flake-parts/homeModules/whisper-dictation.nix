@@ -5,11 +5,7 @@
   # (flake.nixosModules.whisper-dictation, which provides the service,
   # ydotoold, and the group memberships). This module only declaratively
   # manages the config the daemon reads at startup.
-  flake.homeModules.whisper-dictation = {
-    config,
-    pkgs,
-    ...
-  }: let
+  flake.homeModules.whisper-dictation = {config, ...}: let
     cfg = config.homeSpec.programs.whisper-dictation;
 
     # Upstream (config.py) yaml.safe_load()s this file and merges it over
@@ -96,16 +92,6 @@
 
     config = lib.mkIf cfg.enable {
       xdg.configFile."whisper-dictation/config.yaml".text = configFile;
-
-      # The daemon reads config.yaml only at startup, so restart the user
-      # service when the managed config changes. The unit only exists on
-      # machines where the NixOS module is enabled; elsewhere this is a
-      # no-op (config.yaml alone is inert).
-      home.activation.restartWhisperDictation = lib.hm.dag.entryAfter ["writeBoundary"] ''
-        if ${pkgs.systemd}/bin/systemctl --user cat whisper-dictation.service >/dev/null 2>&1; then
-          ${pkgs.systemd}/bin/systemctl --user try-restart whisper-dictation.service || true
-        fi
-      '';
     };
   };
 }

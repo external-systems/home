@@ -39,9 +39,11 @@ Options: `enable`, `user` (default `netsa`).
 
 `config.yaml` is managed declaratively by the home-manager module
 `flake.homeModules.whisper-dictation` (enabled in `profile-netsa`), which
-writes `~/.config/whisper-dictation/config.yaml` and restarts the user
-service when it changes. Options: `inputDevice` (name substring or event
-path; null = upstream auto-select), `hotkey.modifiers` (`super`/`ctrl`/
+writes `~/.config/whisper-dictation/config.yaml`. The daemon only reads
+it at startup — restart the unit after changes
+(`systemctl --user restart whisper-dictation`).
+Options: `inputDevice` (name substring or event path; null = upstream
+auto-select), `hotkey.modifiers` (`super`/`ctrl`/
 `alt`/`shift`, each matches left AND right), `hotkey.key` (`period`,
 `comma`, `space`, `slash`, `semicolon` — anything else silently falls
 back to `period`), `whisper.model`, `whisper.language`, and `extraConfig`
