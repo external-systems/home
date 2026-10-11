@@ -111,16 +111,24 @@ architecture and the lessons that shaped the design, see the
   also get a sane `umask 022` from `/etc/profile`.
 - **Shell dotfiles + full terminfo** for every ssh/editor session
   flavor: `~/.bashrc` (sources the idempotent `/etc/profile`,
-  sets history/aliases and a TERM fallback), `~/.bash_profile`
-  and `~/.profile` at BOTH `$HOME` roots — generated at image-build
-  time by a standalone home-manager evaluation of the minimal
-  `profile-agent` module (`flake-parts/homeModules/profiles/agent.nix`;
-  home-manager is used strictly as a dotfile generator: no activation,
-  no systemd, no runtime `home-manager switch`). The prompt is
-  **starship** (the fleet's shared `homeModules.starship` config plus
-  a literal `[sandbox]` marker; initialized from the store path, and
-  the CLI is on PATH via the HM home-path merged into the image
-  toolset) — plus a merged ncurses +
+  sets history/aliases and a TERM fallback), `~/.bash_profile`,
+  `~/.profile`, `~/.config/git/config`, `~/.config/gh/config.yml`,
+  `~/.config/starship.toml` and `~/.config/uv/uv.toml` at BOTH `$HOME`
+  roots — generated at image-build time by a standalone home-manager
+  evaluation of `profile-agent`
+  (`flake-parts/homeModules/profiles/agent.nix`; home-manager is used
+  strictly as a dotfile + package-set generator: no activation, no
+  systemd, no runtime `home-manager switch`). The profile is split for
+  reuse: `profile-agent-base` (profiles/agent-base.nix) is the
+  PORTABLE agent user environment — bash/starship, git/gh, uv, go,
+  bun and the CLI toolbelt incl. the agent CLIs — and `profile-agent`
+  adds only the OCI quirks (static uid-1000 identity, no systemd, env
+  via `/etc/profile`, `[sandbox]` prompt marker). A future
+  NixOS/kubevirt agent sandbox composes `profile-agent-base` with HM
+  running normally. The prompt is **starship** (the fleet's shared
+  `homeModules.starship` config plus a literal `[sandbox]` marker;
+  initialized from the store path, and the CLI is on PATH via the HM
+  home-path merged into the image toolset) — plus a merged ncurses +
   ghostty terminfo db at `/usr/share/terminfo` (with `/etc/terminfo` /
   `/lib/terminfo` links and `TERMINFO_DIRS`) — see
   [Remote access](#remote-access-ssh-vscodium-vs-code).
@@ -320,8 +328,8 @@ nix flake check --show-trace
 nix run .#load-code-agent-image
 
 # 3. recreate the sandbox — filesystem-policy and image changes
-#    (e.g. /opt, /etc/gitconfig, NIX_CONFIG, /etc/nix) only apply to new
-#    sandboxes; network_policies hot-reload, everything else does not.
+#    (e.g. /opt, the baked HM dotfiles, NIX_CONFIG, /etc/nix) only apply
+#    to new sandboxes; network_policies hot-reload, everything else does not.
 openshell sandbox delete code
 openshell sandbox create --name code --from code-agent:latest \
   --policy openshell/policies/code-agent.yaml \

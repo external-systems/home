@@ -374,6 +374,7 @@
       ln -s ${hmAgentHomePath}/bin/uv                 $out/usr/local/bin/uv
       ln -s ${pkgs.go}/bin/go                       $out/usr/local/bin/go
       ln -s ${pkgs.go}/bin/gofmt                    $out/usr/local/bin/gofmt
+      ln -s ${pkgs.bun}/bin/bun                     $out/usr/local/bin/bun
       ln -s ${pkgs.which}/bin/which                 $out/usr/local/bin/which
       ln -s ${pkgs.ncurses}/bin/clear               $out/usr/local/bin/clear
       ln -s ${pkgs.ncurses}/bin/infocmp             $out/usr/local/bin/infocmp
@@ -522,24 +523,10 @@
       ::1 localhost ip6-localhost ip6-loopback
       EOF
 
-      # Git defaults: the org bot identity (andrewthomaslee-agent, per
-      # the external-systems org — per-repo config can still override),
-      # main as the default init branch (agents create scratch repos
-      # constantly; the 'master' default + hint noise trips scripts),
-      # and a credential helper scoped to github.com that feeds git the
-      # provider-injected $GITHUB_TOKEN — without it git prompts for
-      # credentials on every https push. Scoped by URL on purpose: only
-      # github.com receives the (opaque) handle; the supervisor
-      # substitutes the real token at egress.
-      cat > $out/etc/gitconfig <<'EOF'
-      [user]
-      	name = andrewthomaslee-agent
-      	email = andrewthomaslee-agent@users.noreply.github.com
-      [init]
-      	defaultBranch = main
-      [credential "https://github.com"]
-      	helper = "!f() { echo username=x-access-token; echo password=$GITHUB_TOKEN; }; f"
-      EOF
+      # Git identity + credential helper live in the HM profile
+      # (programs.git in homeModules.profile-agent-base →
+      # ~/.config/git/config at both $HOME roots) — user-level config
+      # is what makes it reusable on NixOS hosts.
 
       # Minimal identity database: nix resolves the user's home via
       # getpwuid, and the vscodium server spawns shells for uid 1000.
@@ -864,7 +851,7 @@
         You are ${agentName}, running inside an OpenShell code-agent sandbox: an isolated microVM with deny-by-default network egress, running as uid 1000 (agent), workdir /sandbox, HOME=/home/agent. Image: code-agent @ ${imageRev}.
 
         ## Toolset
-        A full toolset is pre-baked on PATH (/bin, /usr/bin, /usr/local/bin): shell + coreutils, git/gh, curl/wget/jq/yq, python3 + uv, go, ripgrep/fd/sd/tmux/less, which/clear, archive + foreign-ELF tools (file/readelf/objdump/ldd), kubectl/helm, shellcheck/shfmt, nix (+ nixd/alejandra/statix/deadnix), the clan CLI, and the pi/kimi/claude CLIs.
+        A full toolset is pre-baked on PATH (/bin, /usr/bin, /usr/local/bin): shell + coreutils, git/gh, curl/wget/jq/yq, python3 + uv, go, bun, ripgrep/fd/sd/tmux/less, which/clear, archive + foreign-ELF tools (file/readelf/objdump/ldd), kubectl/helm, shellcheck/shfmt, nix (+ nixd/alejandra/statix/deadnix), the clan CLI, and the pi/kimi/claude CLIs. The user-level toolset + dotfiles come from the baked home-manager profile (homeModules.profile-agent-base + the profile-agent OCI flavor); the system layer (/etc, nix-ld, terminfo, coreutils) is image-level.
 
         - Use baked tools directly. NEVER `nix run` or `nix profile install` a package that is already installed.
         - The nix store is single-user and WRITABLE by design
