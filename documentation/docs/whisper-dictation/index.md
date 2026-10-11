@@ -8,7 +8,7 @@ works offline.
 ## Usage
 
 1. Click into any text field
-2. Hold <kbd>Ctrl</kbd>+<kbd>Period</kbd>
+2. Hold <kbd>Super</kbd>+<kbd>Semicolon</kbd>
 3. Speak naturally
 4. Release the key — the transcription is typed into the focused window
 
@@ -35,21 +35,83 @@ NixOS-specific glue (everything else is upstream stock):
 
 Options: `enable`, `user` (default `netsa`).
 
-## Manual configuration (`~/.config/whisper-dictation/config.yaml`)
+## Configuration (`homeSpec.programs.whisper-dictation`)
 
-Edit freely and restart the unit (`systemctl --user restart
-whisper-dictation`) after changes. Key settings:
+`config.yaml` is managed declaratively by the home-manager module
+`flake.homeModules.whisper-dictation` (enabled in `profile-netsa`), which
+writes `~/.config/whisper-dictation/config.yaml` and restarts the user
+service when it changes. Options: `inputDevice` (name substring or event
+path; null = upstream auto-select), `hotkey.modifiers` (`super`/`ctrl`/
+`alt`/`shift`, each matches left AND right), `hotkey.key` (`period`,
+`comma`, `space`, `slash`, `semicolon` — anything else silently falls
+back to `period`), `whisper.model`, `whisper.language`, and `extraConfig`
+for remaining upstream keys (`processing`, `typing`, `ui`).
 
-- `input_device: /dev/input/event1` — **pin the push-to-talk keyboard**. On
-  kamrui-h1 `event1` is the wired Logitech keyboard's typing interface. If
-  dictation ever goes silent after a reboot/replug (node renumbering), check
-  `readlink -f /dev/input/by-id/usb-Logitech_LogiG_MKeyboard-event-kbd` and
-  update the pin. Do not pin a bare name like `Logitech` (matches the mouse)
-  or the dongle's phantom `Wireless Keyboard PID:4023` (never emits keys).
-- `hotkey` — `ctrl` + `period` (default; `super`+`period` collides with the
-  KDE Plasma emoji picker)
+The current profile pins the Samsers KT06 bluetooth keyboard with
+<kbd>Super</kbd>+<kbd>Semicolon</kbd>.
+
+Key settings to know:
+
+- `inputDevice` — **pin the push-to-talk keyboard** by name substring
+  (event nodes renumber across reboots/reconnects, so don't pin
+  `/dev/input/eventN`). First substring match wins: pick a string unique
+  to the keyboard's typing interface (a bare vendor word can match the
+  mouse or a phantom dongle node that never emits keys).
+- `hotkey` — Super+Semicolon here; `super`+`period` collides with the
+  KDE Plasma emoji picker
 - `whisper.model` — `small` (provisioned), `tiny`, `base`, `medium`
 - `whisper.language` — `en` (or `auto`)
+
+## Bluetooth / compact keyboards
+
+The daemon watches exactly **one** evdev device — the one pinned by
+`input_device` (or its single auto-pick). A bluetooth keyboard is a
+different input node than the wired Logitech, so the stock `event1` pin
+never sees its keys: a hotkey that "does nothing" on a new keyboard is
+almost always the **device pin**, not the binding.
+
+1. Find the bluetooth keyboard's evdev name (the typing interface):
+   `libinput list-devices` or `grep -B1 -A5 Keyboard /proc/bus/input/devices`
+2. Pin a distinctive substring of it in config.yaml:
+   `input_device: "<name>"` — substring match, first hit wins, so pick a
+   string unique to the keyboard (a bare vendor word like `Logitech` can
+   match the mouse or a phantom dongle node). BT keyboards often expose
+   several nodes (consumer-control etc.); pin the one that emits letters.
+3. `systemctl --user restart whisper-dictation` and confirm
+   `Found configured device:` in the journal.
+
+### Supported hotkey values
+
+Only these are recognized (upstream `config.py`):
+
+- modifiers: `super`, `ctrl`, `alt`, `shift` — each matches **both** left
+  and right, so "no right ctrl" is a non-issue: left ctrl already works.
+  Combine as a list (`["ctrl", "alt"]`).
+- trigger keys: `period`, `comma`, `space`, `slash`, `semicolon`.
+  **Anything else silently falls back to `period`** — F-keys etc. are not
+  supported as the trigger.
+
+### Suggested bindings for compact keyboards
+
+| Binding | Notes |
+| --- | --- |
+| `alt` + `semicolon` | one-handed (Alt by the spacebar), no KDE conflict; `alt` includes RightAlt — AltGr layouts beware |
+| `ctrl` + `semicolon` | classic, free on KDE |
+| `super` + `semicolon` | safe on KDE; Super can be a "meta" key on some BT keyboards |
+| `ctrl`+`alt` + `period` | two modifiers, zero collisions anywhere |
+
+Avoid: `shift`+key (typing `>`/`<` would trigger dictation),
+`super`+`period` (KDE emoji picker), `ctrl`+`slash` (comment toggle in
+editors), `ctrl`+`comma` (settings/zoom), `ctrl`+`space` (IME / IntelliSense).
+
+Example config.yaml for a bluetooth keyboard:
+
+```yaml
+input_device: "<your BT keyboard evdev name>"
+hotkey:
+  modifiers: ["alt"]
+  key: "semicolon"
+```
 
 ## Model
 

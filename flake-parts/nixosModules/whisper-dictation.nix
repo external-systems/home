@@ -4,11 +4,12 @@
   # https://github.com/jacopone/whisper-dictation
   #
   # Deliberately minimal, upstream-faithful: user service + ydotool glue
-  # only. Model, config.yaml and the push-to-talk keyboard are managed
-  # manually in $HOME (see documentation/docs/whisper-dictation). On
-  # kamrui-h1 the wired keyboard is pinned via input_device:
-  # /dev/input/event1 — if it ever renumbers, re-check
-  # readlink -f /dev/input/by-id/usb-Logitech_LogiG_MKeyboard-event-kbd.
+  # only. The model lives in $HOME (see documentation/docs/whisper-dictation);
+  # config.yaml is managed declaratively by the home-manager module
+  # flake.homeModules.whisper-dictation (homeSpec.programs.whisper-dictation).
+  # On kamrui-h1 the Samsers KT06 bluetooth keyboard is pinned via
+  # input_device: the daemon watches exactly one device, so the pin must
+  # name the keyboard that triggers dictation.
   flake.nixosModules.whisper-dictation = {
     config,
     lib,
