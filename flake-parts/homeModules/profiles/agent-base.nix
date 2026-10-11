@@ -31,6 +31,19 @@
     imports = [self.homeModules.starship];
     homeSpec.programs.starship.enable = true;
 
+    # No container runtime exists in any agent sandbox — in the
+    # OpenShell microVM docker/podman are outright impossible (user
+    # namespaces are seccomp-blocked, no root, no /var/lib; see
+    # documentation/docs/openshell/index.md §5). The OCI rootfs still
+    # carries a baked /.dockerenv (host `docker create` image-prep
+    # artifact), which makes starship's `container` module print a
+    # bogus "⬢ [Docker]" on every prompt, and `docker_context` would
+    # fire on Dockerfiles in agent workdirs — disable both.
+    programs.starship.settings = {
+      container.disabled = true;
+      docker_context.disabled = true;
+    };
+
     programs = {
       bash = {
         enable = true;

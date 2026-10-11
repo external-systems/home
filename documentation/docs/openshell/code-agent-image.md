@@ -140,7 +140,13 @@ architecture and the lessons that shaped the design, see the
   running normally. The prompt is **starship** (the fleet's shared
   `homeModules.starship` config plus a literal `[sandbox]` marker;
   initialized from the store path, and the CLI is on PATH via the HM
-  home-path merged into the image toolset) — plus a merged ncurses +
+  home-path merged into the image toolset). Starship's `container` and
+  `docker_context` modules are disabled in `profile-agent-base`: the
+  rootfs carries a baked `/.dockerenv` (host `docker create` image-prep
+  artifact) that would otherwise print a bogus `⬢ [Docker]` indicator,
+  and no container runtime can run in the microVM anyway (see
+  [OpenShell §5](index.md#5-lessons-learned-read-before-changing-any-of-this))
+  — plus a merged ncurses +
   ghostty terminfo db at `/usr/share/terminfo` (with `/etc/terminfo` /
   `/lib/terminfo` links and `TERMINFO_DIRS`) — see
   [Remote access](#remote-access-ssh-vscodium-vs-code).

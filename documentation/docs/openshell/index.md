@@ -346,6 +346,20 @@ Image/driver interplay:
   the OAuth device flow (whose `auth.kimi.com` hosts stay policy-closed),
   and `KIMI_CODE_MODEL_CATALOG_REFRESH_ON_START=false` stops the models.dev
   fetch failure from littering startup.
+- **No docker/podman inside sandboxes — and starship shouldn't pretend
+  otherwise.** The image rootfs carries a baked `/.dockerenv` (artifact of
+  the host `docker create` image-prep), which made starship's `container`
+  module show a bogus `⬢ [Docker]` indicator on every prompt; the agent
+  home-manager profile disables the `container` and `docker_context`
+  modules. A container runtime is not possible in the microVM anyway
+  (verified in-sandbox): workloads run as uid 1000 and user namespaces
+  are blocked (`unshare --user --map-root-user` → EPERM under the
+  supervisor's 5-filter seccomp stack), which kills rootless docker and
+  rootless podman outright; there is no `/var/lib` (filesystem policy),
+  no systemd for a rootful daemon, and registry egress
+  (`registry-1.docker.io`) is policy-denied. If a task needs containers,
+  run them on the host or in a VM test — the microVM itself is the
+  isolation boundary.
 - **`openshell ... | grep -q` panics the CLI on EPIPE (exit 101)** —
   redirect to a file, then grep.
 
