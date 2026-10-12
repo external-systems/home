@@ -9,8 +9,6 @@
       "https://nix-community.cachix.org"
       "https://chaotic-nyx.cachix.org"
       "https://cache.geninf.io"
-      # numtide/llm-agents.nix builds kimi-code from source; its daily CI
-      # pushes the result here, so consuming the input does not rebuild it.
       "https://cache.numtide.com"
     ];
     extra-trusted-public-keys = [
