@@ -1,0 +1,38 @@
+name: Builds
+# Heavy builds: every machine toplevel + the docs site. MANUAL ONLY
+# (org rule): the only automatic push workflow is ci.yml's flake check.
+# Dispatch from Actions → Builds → Run workflow, or:
+#   gh workflow run builds.yml --repo external-systems/home
+permissions:
+  contents: read
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
+
+jobs:
+  build-machines:
+    # Machine toplevels: proves every NixOS configuration still builds.
+    strategy:
+      fail-fast: false
+      matrix:
+        machine: [nixos, kamrui-h1, ghost, hp-notebook, nixos-installer]
+    runs-on: [self-hosted, external-systems]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6.0.2
+
+      - name: Build Machine ${{ matrix.machine }}
+        run: nix build .#nixosConfigurations.${{ matrix.machine }}.config.system.build.toplevel --show-trace -L
+
+  build-docs:
+    runs-on: [self-hosted, external-systems]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6.0.2
+
+      - name: Build MkDocs
+        run: nix build .#documentation --show-trace -L

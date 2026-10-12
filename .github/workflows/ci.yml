@@ -1,0 +1,37 @@
+name: CI
+# Runs on the external-systems org's self-hosted NixOS runners
+# (kamrui-h1): nix, git, gh, jq, yq, curl and KVM are already on the
+# host — no setup actions, no Determinate Nix. The runner user is a nix
+# trusted user with accept-flake-config, so this repo's nixConfig
+# substituters (cachix caches in flake.nix) are used automatically.
+#
+# TRIGGER POLICY (org rule): this is the ONLY workflow that runs
+# automatically on push — and only the flake check. Builds are manual
+# (builds.yml), VM tests are manual (vm-tests.yml). Pushes to main are
+# auto-tagged by release.yml.
+permissions:
+  contents: read
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  flake-check:
+    # Lint gate (alejandra/statix/deadnix via checks.lint), the VM test
+    # resource gate (checks.vm-test-resources), all other checks and
+    # devShell builds. -L streams full build logs into the job log, so a
+    # red job's errors are readable via `gh run view --log-failed`.
+    runs-on: [self-hosted, external-systems]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6.0.2
+
+      - name: Nix Flake Check
+        run: nix flake check --show-trace -L
