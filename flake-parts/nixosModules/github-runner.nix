@@ -1,8 +1,4 @@
-{
-  lib,
-  pkgs,
-  ...
-}: {
+_: {
   # ------ NixOS Modules ------ #
   # Self-hosted GitHub Actions runners for nix CI, org runners only.
   #
@@ -52,7 +48,12 @@
   # The runner user is a nix trusted user (jobs drive the system nix
   # daemon) and is in the kvm group, with /dev/kvm exposed to the nix
   # build sandbox so NixOS VM tests get KVM.
-  flake.nixosModules.github-runner = {config, ...}: let
+  flake.nixosModules.github-runner = {
+    config,
+    pkgs,
+    lib,
+    ...
+  }: let
     cfg = config.hostSpec.services.github-runner;
     inherit (config.networking) hostName;
     inherit (config.nixpkgs.hostPlatform) system;
