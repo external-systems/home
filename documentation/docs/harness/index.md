@@ -48,7 +48,7 @@ declarative configuration.
 | `machineContext.environment` | `null` | Host-environment annotation written after the `Machine:` line (e.g. `vm (KubeVirt guest)`). NixOS has no eval-time VM marker, so VM images set this explicitly; NixOS containers are auto-detected (`boot.isContainer`); bare metal stays unset (no line) |
 | `machineContext.facterReport` | `null` | Synthetic nixos-facter report overriding the `machines/<hostname>/facter.json` read (VM tests). Null reads the real file |
 | `machineContext.extraText` | `null` | Optional per-machine notes appended to the generated file (set from `machines/<hostname>/configuration.nix`) |
-| `mcp.<name>.enable` | see [MCP Servers](mcp-servers.md) | MCP servers under `mcp.<name>.enable`, merged into native V2 `mcp.servers.*` |
+| `mcp.<name>.enable` | see [MCP Servers](mcp-servers.md) | Shared MCP servers under `homeSpec.agents.mcp.<name>`, written into every enabled agent's config (opencode `mcp.servers.*`, pi/kimi `mcp.json`, claude `~/.claude.json` via activation merge) |
 
 ## What the module configures (opencode)
 
@@ -57,13 +57,13 @@ declarative configuration.
 - **Ordered `permissions` array** (native V2 shape, last match wins):
   `read` + `external_directory` for `/nix/store/**` and `/tmp/**`,
   `read` for `/home/netsa/.config/opencode/` and `/etc/hostname`.
-- **MCP servers** — under `mcp.<name>.enable`, merged into native V2
-  `mcp.servers.*`. See [MCP Servers](mcp-servers.md).
+- **MCP servers** — the shared `homeSpec.agents.mcp.<name>` set, rendered
+  into opencode's native V2 `mcp.servers.*`. See [MCP Servers](mcp-servers.md).
 - **Headroom integration** — when
-  `homeSpec.programs.headroom.enable` is on, `mcp.servers.headroom`
-  plus `providers.deepseek/anthropic/openai.settings.baseURL` overrides
-  routing traffic through the local compression proxy. See
-  [Headroom](headroom.md).
+  `homeSpec.programs.headroom.enable` is on, the headroom MCP server joins
+  the shared set and every agent's provider traffic is routed through the
+  local compression proxy (opencode: `providers.anthropic.settings.baseURL`).
+  See [Headroom](headroom.md).
 - **Skills** — the shared skills tree symlinked at
   `~/.config/opencode/skills`. See [Skills](skills.md).
 - **Machine context** — a compact, matter-of-fact machine descriptor
@@ -120,8 +120,11 @@ they are installed via the home module, not as standalone packages.
   `flake.homeModules.profile-netsa`) — applied to `netsa` on the
   netsa-tagged dev machines (nixos, kamrui-h1, ghost) through the users
   clan service in `inventory.nix`. Enables the shared skills plus all
-  four agents (`homeSpec.agents.skills/opencode/pi/kimi/claude`), with
-  the opencode MCP defaults (nix + github oauth).
+  four agents (`homeSpec.agents.skills/opencode/pi/kimi/claude`), enables
+  the headroom proxy (`homeSpec.programs.headroom`) with provider reroute
+  for all four agents, and uses the github MCP in PAT mode
+  (`mcp.github.auth = "pat"` — clan vars generator provisions the shared
+  PAT to `/run/secrets/vars/shared/github-mcp/pat`).
 - **root profile** (`profiles/root.nix`) — shell/ssh/starship/k9s only,
   no agents.
 - **wife profile** (`profiles/wife.nix`) — plasma-manager/firefox/media
@@ -133,7 +136,7 @@ they are installed via the home module, not as standalone packages.
 
 | File | Purpose |
 |---|---|
-| `flake-parts/homeModules/agents.nix` | everything agent-related: `homeSpec.agents.{skills,opencode,pi,kimi,claude}` — per-agent enable + package, shared `skillsDir` via `inputs.agents.lib.mkSkills`, opencode MCP under `mcp.<name>.enable` merged into native V2 `mcp.servers.*`, ordered `permissions` array, model/title/compaction settings, machine context (`machineContext.*`), PAT wrapper |
+| `flake-parts/homeModules/agents.nix` | everything agent-related: `homeSpec.agents.{skills,opencode,pi,kimi,claude}` — per-agent enable + package, shared `skillsDir` via `inputs.agents.lib.mkSkills`, shared MCP set under `homeSpec.agents.mcp.<name>` (opencode native V2 `mcp.servers.*`, pi/kimi `mcp.json`, claude activation-merge into `~/.claude.json`), headroom provider reroute per agent, ordered `permissions` array, model/title/compaction settings, machine context (`machineContext.*`), PAT wrapper |
 | `flake-parts/homeModules/headroom.nix` | headroom options + `headroom-proxy.service` user unit — see [Headroom](headroom.md) |
 | `flake-parts/homeModules/profiles/netsa.nix` | dev profile: enables skills + all four agents |
 | `flake-parts/homeModules/profiles/root.nix`, `profiles/wife.nix` | minimal profiles without agents |

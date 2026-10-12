@@ -37,6 +37,30 @@
     # gates whether the agents get the MCP server (and claude the
     # provider reroute).
     headroomMcpEnabled = mcpCfg.headroom.enable && headroomEnabled;
+    # Provider-traffic reroute through the headroom proxy (token savings),
+    # gated separately from the headroom MCP server. Per agent:
+    #   claude   — ANTHROPIC_BASE_URL session var (documented flow)
+    #   opencode — providers.anthropic.settings.baseURL (native V2 shape)
+    #   pi       — models.json provider overrides (kimi-coding rides the
+    #     Anthropic pipeline with a per-request x-headroom-base-url
+    #     override to api.kimi.com/coding — pi hardwires that provider to
+    #     the anthropic-messages wire —, anthropic rides the default
+    #     pipeline). baseUrl/headers-only overrides preserve pi's built-in
+    #     model catalogs and auth.json credentials.
+    #   kimi     — KIMI_CODE_BASE_URL session var (the documented managed
+    #     OAuth service base override), but only when kimi.config is null:
+    #     a managed config.toml (the sandbox image) sets base_url itself.
+    headroomRouteProviders = headroomMcpEnabled && mcpCfg.headroom.routeProviders;
+    headroomProxyRoot = "http://${headroomCfg.proxy.host}:${toString headroomCfg.proxy.port}";
+    headroomPiModels = {
+      providers = {
+        kimi-coding = {
+          baseUrl = headroomProxyRoot;
+          headers."x-headroom-base-url" = "https://api.kimi.com/coding";
+        };
+        anthropic.baseUrl = headroomProxyRoot;
+      };
+    };
 
     # ---- Shared skills tree (homeSpec.agents.skills) ---- #
     # inputs.agents.lib.mkSkills merges the repo's skills/ tree with
@@ -624,11 +648,15 @@
             type = lib.types.bool;
             default = true;
             description = ''
-              Route claude-code provider traffic through the headroom proxy
-              (the documented ANTHROPIC_BASE_URL flow; the proxy's systemd user
-              service holds Restart=always). pi/kimi are NOT rerouted: the
-              proxy speaks the anthropic/openai wires, not the kimi wire —
-              they use headroom through the MCP tools instead.
+              Route every enabled agent's provider traffic through the headroom
+              proxy (the proxy's systemd user service holds Restart=always):
+              claude via ANTHROPIC_BASE_URL, opencode via providers.anthropic
+              baseURL, pi via models.json provider overrides (kimi-coding rides
+              a per-request x-headroom-base-url override; anthropic the default
+              pipeline), kimi via KIMI_CODE_BASE_URL (skipped when kimi.config
+              is managed — the sandbox sets base_url in config.toml itself).
+              Requires the proxy upstreams pinned in
+              homeSpec.programs.headroom.proxy.{anthropic,openai}ApiUrl.
             '';
           };
         };
@@ -726,8 +754,17 @@
           (lib.optionalAttrs (cfg.pi.settings != {}) {
             ".pi/agent/settings.json".text = builtins.toJSON cfg.pi.settings;
           })
-          (lib.optionalAttrs (cfg.pi.models != null) {
-            ".pi/agent/models.json".text = builtins.toJSON cfg.pi.models;
+          (lib.optionalAttrs (cfg.pi.models != null || headroomRouteProviders) {
+            ".pi/agent/models.json".text = builtins.toJSON (
+              if headroomRouteProviders
+              then
+                lib.recursiveUpdate headroomPiModels (
+                  if cfg.pi.models == null
+                  then {}
+                  else cfg.pi.models
+                )
+              else cfg.pi.models
+            );
           })
           (lib.optionalAttrs (cfg.pi.appendSystemMd != null) {
             ".pi/agent/APPEND_SYSTEM.md".text = cfg.pi.appendSystemMd;
@@ -737,27 +774,40 @@
 
       # ---- kimi-code ---- #
       (lib.mkIf cfg.kimi.enabled {
-        home.packages = lib.optional cfg.kimi.installPackage cfg.kimi.package;
-        home.file = lib.mkMerge [
-          (lib.mkIf cfg.skills.enabled {
-            ".kimi-code/skills".source = skillsDir;
-          })
-          # kimi-code user-level AGENTS.md ($KIMI_CODE_HOME/AGENTS.md),
-          # same machine context as the other agents.
-          (lib.optionalAttrs (oc.machineContext.enable && hostName != "") {
-            ".kimi-code/AGENTS.md".text = machineContextText;
-          })
-          # kimi MCP servers: ~/.kimi-code/mcp.json, same shared set.
-          (lib.optionalAttrs (sharedMcpCommands != {}) {
-            ".kimi-code/mcp.json".text = sharedMcpJson;
-          })
-          (lib.optionalAttrs (cfg.kimi.config != null) {
-            ".kimi-code/config.toml".source = tomlFmt.generate "kimi-config.toml" cfg.kimi.config;
-          })
-          (lib.optionalAttrs (cfg.kimi.systemMd != null) {
-            ".kimi-code/SYSTEM.md".text = cfg.kimi.systemMd;
-          })
-        ];
+        home = {
+          packages = lib.optional cfg.kimi.installPackage cfg.kimi.package;
+          file = lib.mkMerge [
+            (lib.mkIf cfg.skills.enabled {
+              ".kimi-code/skills".source = skillsDir;
+            })
+            # kimi-code user-level AGENTS.md ($KIMI_CODE_HOME/AGENTS.md),
+            # same machine context as the other agents.
+            (lib.optionalAttrs (oc.machineContext.enable && hostName != "") {
+              ".kimi-code/AGENTS.md".text = machineContextText;
+            })
+            # kimi MCP servers: ~/.kimi-code/mcp.json, same shared set.
+            (lib.optionalAttrs (sharedMcpCommands != {}) {
+              ".kimi-code/mcp.json".text = sharedMcpJson;
+            })
+            (lib.optionalAttrs (cfg.kimi.config != null) {
+              ".kimi-code/config.toml".source = tomlFmt.generate "kimi-config.toml" cfg.kimi.config;
+            })
+            (lib.optionalAttrs (cfg.kimi.systemMd != null) {
+              ".kimi-code/SYSTEM.md".text = cfg.kimi.systemMd;
+            })
+          ];
+          # Route kimi's OAuth-managed provider traffic through the headroom
+          # proxy via the documented managed-base override (env-vars docs:
+          # KIMI_CODE_BASE_URL is the managed API base URL used after OAuth
+          # login). Skipped when kimi.config is managed (the sandbox image
+          # sets providers.*.base_url in config.toml itself). Requires the
+          # proxy's OpenAI pipeline pinned at the managed service upstream
+          # (homeSpec.programs.headroom.proxy.openaiApiUrl =
+          # https://api.kimi.ai/coding/v1 — the netsa profile sets it).
+          sessionVariables = lib.mkIf (headroomRouteProviders && cfg.kimi.config == null) {
+            KIMI_CODE_BASE_URL = headroomProxyUrl;
+          };
+        };
       })
 
       # ---- claude-code ---- #
@@ -778,10 +828,11 @@
             (lib.optionalAttrs (cfg.claude.claudeMd != null) {
               ".claude/CLAUDE.md".text = cfg.claude.claudeMd;
             })
-            # claude MCP servers: ~/.claude/settings.json mcpServers (NOT
-            # ~/.claude.json — that is claude's mutable state file and
-            # must stay writable), same shared set, merged with the
-            # caller's extra settings attrs (claude.settings).
+            # claude settings: ~/.claude/settings.json, same shared MCP
+            # set merged with the caller's extra settings attrs
+            # (claude.settings). NOTE: current claude-code IGNORES
+            # settings.json mcpServers — the live MCP wiring is the
+            # activation-time merge into ~/.claude.json below.
             (lib.optionalAttrs (sharedMcpCommands != {} || cfg.claude.settings != {}) {
               ".claude/settings.json".text = claudeSettingsJson;
             })
@@ -794,11 +845,39 @@
           ];
           # Route claude-code provider traffic through the headroom proxy
           # (documented ANTHROPIC_BASE_URL flow; the proxy systemd user
-          # service holds Restart=always). pi/kimi are NOT rerouted: the
-          # proxy speaks anthropic/openai wires, not the kimi wire — they
-          # use headroom through the MCP tools instead.
-          sessionVariables = lib.mkIf (headroomMcpEnabled && cfg.mcp.headroom.routeProviders) {
+          # service holds Restart=always).
+          sessionVariables = lib.mkIf headroomRouteProviders {
             ANTHROPIC_BASE_URL = headroomProxyUrl;
+          };
+          # claude-code reads user-scope MCP servers from ~/.claude.json's
+          # top-level mcpServers — the settings.json mcpServers table is
+          # IGNORED (verified with `claude mcp list` on kamrui-h1, 2026-10;
+          # the settings.json write above stays as documentation / for
+          # versions that do read it). ~/.claude.json is claude's mutable
+          # state file, so HM can't own it — merge the shared set in at
+          # activation instead, preserving every other key. Skipped when
+          # writeClaudeJson already baked the file (the sandbox image: HM
+          # owns ~/.claude.json there, and merging into a store symlink
+          # would corrupt the link).
+          activation = lib.mkIf (sharedMcpCommands != {} && !cfg.claude.writeClaudeJson) {
+            claudeMcpServers = config.lib.dag.entryAfter ["writeBoundary"] ''
+              claudeJson="${config.home.homeDirectory}/.claude.json"
+              if [ -L "$claudeJson" ]; then
+                echo "claudeMcpServers: $claudeJson is a symlink — skipping mcpServers merge" >&2
+              else
+                [ -f "$claudeJson" ] || echo '{}' > "$claudeJson"
+                servers='${builtins.toJSON sharedMcpServersClaude}'
+                tmp=$(mktemp)
+                if ${lib.getExe pkgs.jq} --argjson servers "$servers" \
+                    '.mcpServers = ((.mcpServers // {}) * $servers)' \
+                    "$claudeJson" > "$tmp"; then
+                  cat "$tmp" > "$claudeJson"
+                else
+                  echo "claudeMcpServers: jq merge failed, leaving $claudeJson untouched" >&2
+                fi
+                rm -f "$tmp"
+              fi
+            '';
           };
         };
       })
@@ -920,12 +999,14 @@
             # only loads V2 plugins ({ id, setup }); headroom compresses
             # via these providers.*.settings.baseURL overrides (native V2
             # shape; V1 was provider.<p>.options.baseURL) plus its MCP
-            # compress/retrieve tools.
-            (lib.mkIf headroomMcpEnabled {
+            # compress/retrieve tools. Anthropic only: the proxy carries
+            # ONE upstream per wire pipeline and its OpenAI pipeline is
+            # pinned at kimi-code's managed service (for the kimi reroute)
+            # — an opencode openai/deepseek baseURL override would land
+            # on the wrong upstream.
+            (lib.mkIf headroomRouteProviders {
               providers = {
-                deepseek.settings.baseURL = headroomProxyUrl;
                 anthropic.settings.baseURL = headroomProxyUrl;
-                openai.settings.baseURL = headroomProxyUrl;
               };
             })
             # Varlock docs: hosted docs-search server

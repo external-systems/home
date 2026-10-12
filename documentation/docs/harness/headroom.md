@@ -103,7 +103,7 @@ process env):
 
 ## Package
 
-`flake-parts/packages/headroom.nix` builds `headroom-ai` **v0.37.0** from
+`flake-parts/packages/headroom.nix` builds `headroom-ai` **v0.40.0** from
 the prebuilt manylinux wheel pinned as the `headroom` flake input (abi3,
 CPython 3.10–3.13), patched with `autoPatchelfHook` and propagated with the
 `[all]` runtime dependency set from `nixpkgs#python313Packages` (including
@@ -130,6 +130,8 @@ can be pointed at the full package via `homeSpec.programs.headroom.package`.
 | `proxy.port` | `8787` | Proxy listen port |
 | `proxy.host` | `127.0.0.1` | Proxy bind host |
 | `proxy.mode` | `cache` | `cache` (prefix-cache friendly) or `token` (max compression) |
+| `proxy.anthropicApiUrl` | `null` | `--anthropic-api-url` (Anthropic wire upstream); `null` = headroom's default (api.anthropic.com) |
+| `proxy.openaiApiUrl` | `null` | `--openai-api-url` (OpenAI wire upstream); `null` = headroom's default. The netsa profile pins it to `https://api.kimi.ai/coding/v1` (kimi-code's managed service) so the kimi reroute lands on the right upstream |
 | `proxy.memory` | `false` | Persistent cross-session memory (off by default: proxy-injected memory tools have no executor in opencode; also pulls embedding models at startup) |
 | `proxy.learn` | `false` | Live traffic learning |
 | `proxy.extraArgs` | `[]` | Extra CLI args for `headroom proxy` |
@@ -142,28 +144,29 @@ The service (`headroom-proxy.service`) is `Restart=always` and
     startup; with an empty `HOME` cache this can stall the service for a
     long while. Leave both off for a fast first boot.
 
-## OpenCode integration
+## Host integration (NixOS hosts)
 
-`flake-parts/homeModules/agents.nix` declaratively merges the following
-into `programs.opencode.settings` when headroom is enabled (no
-`headroom wrap opencode` needed — wrap is unusable on a read-only
-home-manager config):
+`flake-parts/homeModules/agents.nix` wires headroom into every enabled
+agent when `homeSpec.programs.headroom.enable` is on, in two layers:
 
-- **MCP server** — `mcp.servers.headroom = { type = "local"; command = ["headroom" "mcp" "serve"]; }`
-  (native V2 shape: servers live under `mcp.servers`, there is no
-  `enabled` toggle — present means enabled)
-- **Provider baseURL overrides** — `providers.deepseek/anthropic/openai.settings.baseURL`
-  point at `http://127.0.0.1:8787/v1` (native V2 provider shape; the
-  compression path — *every* request through those providers is routed
-  through the proxy).
+- **MCP server** — `mcp.headroom.enable` (default `true`) adds
+  `headroom mcp serve` to the shared MCP set of all four agents. The MCP
+  server shares the proxy's CCR store, so `headroom_retrieve` resolves
+  proxy-placed `<<ccr:…>>` markers.
+- **Provider reroute** — `mcp.headroom.routeProviders` (default `true`)
+  routes each agent's provider traffic through the proxy, per agent:
 
-Providers NOT overridden (intentionally):
+  | Agent | Mechanism |
+  |---|---|
+  | claude-code | `ANTHROPIC_BASE_URL = http://127.0.0.1:8787/v1` (HM session variable; the documented flow) |
+  | kimi-code | `KIMI_CODE_BASE_URL = http://127.0.0.1:8787/v1` — the documented managed-OAuth base override, so `config.toml` stays kimi-managed and `/login` keeps working. Skipped when `kimi.config` is set (the sandbox image manages `base_url` itself). Requires `proxy.openaiApiUrl = https://api.kimi.ai/coding/v1` |
+  | pi | `~/.pi/agent/models.json` provider overrides: `anthropic.baseUrl` → proxy (default pipeline), `kimi-coding.baseUrl` → proxy + `headers."x-headroom-base-url": https://api.kimi.com/coding` (pi hardwires kimi-coding to the anthropic-messages wire; the per-request header re-points just those requests). baseUrl/headers-only overrides preserve pi's built-in model catalogs and auth.json credentials |
+  | opencode | `providers.anthropic.settings.baseURL` → `http://127.0.0.1:8787/v1` (native V2 shape). **Anthropic only**: the proxy carries one upstream per wire pipeline and its OpenAI pipeline is pinned at kimi-code's managed service — an openai/deepseek override would land on the wrong upstream |
 
-- **openrouter / google gemini** — native OpenCode providers resolved from
-  models.dev. Keep their real upstream baseURLs; the proxy's OpenAI handler
-  honors its routing headers and its Gemini handler serves
-  `/v1beta/models/...` natively. Config-level entries for them are
-  unnecessary (and would break upstream selection).
-- **Auth** — use `/connect` in the TUI (writes
-  `~/.local/share/opencode/auth.json`) or provider env vars
-  (`OPENROUTER_API_KEY`, `GEMINI_API_KEY`). Never in the read-only store.
+  Providers NOT overridden (intentionally): opencode's openrouter /
+  google gemini — native providers resolved from models.dev; keep their
+  real upstream baseURLs. Auth: use `/connect` in the TUI or provider
+  env vars, never the read-only store.
+
+No `headroom wrap <agent>` is used — wrap mutates config files in place,
+which fails on home-manager's read-only store symlinks.

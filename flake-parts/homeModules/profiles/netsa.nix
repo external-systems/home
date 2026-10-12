@@ -14,8 +14,25 @@
           kimi.enabled = true;
           pi.enabled = true;
           claude.enabled = true;
+          # GitHub MCP via the local stdio server + the shared clan-var PAT
+          # (/run/secrets/vars/shared/github-mcp/pat, generator declared by
+          # nixosModules/github-mcp when auth = "pat"). The default "oauth"
+          # only works for opencode's browser flow and — worse — the PAT
+          # generator is gated on "pat", so pi/kimi/claude's PAT wrapper had
+          # no token at all under "oauth".
+          mcp.github.auth = "pat";
         };
         programs = {
+          # Headroom context-compression proxy (systemd user service on
+          # 127.0.0.1:8787): every agent gets the headroom MCP server and
+          # its provider traffic is rerouted (homeSpec.agents.mcp.headroom).
+          # The OpenAI wire pipeline is pinned at kimi-code's managed
+          # service so the kimi reroute (KIMI_CODE_BASE_URL) lands on the
+          # right upstream; Anthropic keeps the default api.anthropic.com.
+          headroom = {
+            enable = true;
+            proxy.openaiApiUrl = "https://api.kimi.ai/coding/v1";
+          };
           plasma-manager.enable = true;
           docker.enable = true;
           devenv.enabled = true;

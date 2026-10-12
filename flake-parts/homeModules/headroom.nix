@@ -52,6 +52,21 @@
           default = false;
           description = "Enable live traffic learning.";
         };
+        # The proxy carries ONE upstream per wire pipeline. Pin them
+        # explicitly when routing agents whose providers are not the
+        # pipeline defaults (Anthropic defaults to api.anthropic.com):
+        # host kimi-code rides the OpenAI pipeline to Moonshot's managed
+        # service, and pi's kimi-coding provider overrides per request.
+        anthropicApiUrl = lib.mkOption {
+          type = with lib.types; nullOr str;
+          default = null;
+          description = "--anthropic-api-url for 'headroom proxy' (Anthropic wire upstream); null = headroom's default (api.anthropic.com).";
+        };
+        openaiApiUrl = lib.mkOption {
+          type = with lib.types; nullOr str;
+          default = null;
+          description = "--openai-api-url for 'headroom proxy' (OpenAI wire upstream); null = headroom's default. Set to the kimi-code managed service URL (https://api.kimi.ai/coding/v1) when routing kimi-code through the proxy.";
+        };
         extraArgs = lib.mkOption {
           type = lib.types.listOf lib.types.str;
           default = [];
@@ -89,6 +104,14 @@
               (toString cfg.proxy.port)
               "--mode"
               cfg.proxy.mode
+            ]
+            ++ lib.optionals (cfg.proxy.anthropicApiUrl != null) [
+              "--anthropic-api-url"
+              cfg.proxy.anthropicApiUrl
+            ]
+            ++ lib.optionals (cfg.proxy.openaiApiUrl != null) [
+              "--openai-api-url"
+              cfg.proxy.openaiApiUrl
             ]
             ++ lib.optional cfg.proxy.memory "--memory"
             ++ lib.optional cfg.proxy.learn "--learn"
