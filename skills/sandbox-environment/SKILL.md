@@ -144,28 +144,41 @@ recreating the sandbox; filesystem/image changes require recreation.
 ## Headroom proxy (inference routing)
 
 ALL agent inference routes through ONE baked headroom proxy on
-`127.0.0.1:8787` — a proxy process has ONE Anthropic-wire upstream
-target, and each sandbox is dedicated to a single coding agent at
-create time: `code-sandbox --agent pi|kimi|claude` stamps `$CODE_AGENT`
-into the create-time env (the channel that survives the supervisor's
-env scrub) and attaches only the matching credential provider
-(kimi-for-coding for pi/kimi, claude-subscription for claude) on top of
-github-agent. The proxy's upstream follows the sandbox's agent:
-pi/kimi → `api.kimi.com/coding` (kimi-code speaks the Anthropic wire
-here — `type = "anthropic"` in the baked config.toml, verified live
-2026-10), claude → `api.anthropic.com` (the default target). No systemd
+`127.0.0.1:8787` — one process, TWO wire pipelines: Anthropic
+`/v1/messages` → `api.anthropic.com` (claude; pi's anthropic provider)
+and OpenAI `/v1/chat/completions` → `api.kimi.com/coding/v1`
+(kimi-code's native `type = "kimi"` wire, verified live 2026-10). pi's
+built-in kimi-coding provider is hardwired to the Anthropic wire, so it
+rides the Anthropic pipeline with a per-request
+`x-headroom-base-url: https://api.kimi.com/coding` override (baked in
+models.json). The proxy's SSRF guard RESOLVES override hosts — inside
+the sandbox the gateway's interception DNS maps admitted hosts to fake
+198.18.0.0/15 IPs the guard classes as internal, so the proxy runs with
+`HEADROOM_ALLOWED_BASE_URLS=https://api.kimi.com/coding` (allowlist
+mode: admit by name, no resolution). `code-sandbox --inference
+<menu|all>` (default `all`) only selects which inference credential
+providers attach (menu: kimi-for-coding, claude-subscription,
+claude-code, openrouter; `all` auto-attaches every menu provider
+PRESENT on the gateway except claude-code, which would shadow
+claude-subscription) on top of github-agent — it does NOT restrict
+which CLIs run, and the image never changes per provider set. pi's
+openrouter provider is the one DIRECT inference path (native catalog,
+no proxy — one x-headroom-base-url value can't serve the catalog's
+mixed wire/path layouts). No systemd
 in the microVM: each agent's /usr/local/bin launcher wrapper
-lazy-starts the proxy via `headroom-proxy-ensure <port> [upstream]`
+lazy-starts the proxy via `headroom-proxy-ensure <port>`
 (flock-serialized, `--stateless`, `--disable-kompress` — the image
 ships headroom-slim without the [ml] extra and huggingface.co is NOT
 admitted, so the optional ML compressor could never load; the
 structural compressors carry the measured savings — telemetry/
-update-check off, those hosts are not admitted), verifies the running
-proxy's `/health` upstream matches its own routing family, refuses to
-run an agent stamped for the OTHER family, and `exec`s the real CLI, so
+update-check off, those hosts are not admitted), refuses to run against
+a STALE proxy from an older image generation (whose Anthropic pipeline
+was bound to the kimi upstream — `pkill -f 'headroom proxy'` and
+retry), and `exec`s the real CLI, so
 policy binary pins still match. Routing lives in the HM-generated
 config FILES (claude settings.json `env.ANTHROPIC_BASE_URL`, pi
-models.json `baseUrl`, kimi config.toml `baseUrl`) — the file channel
+models.json `baseUrl` + the override header, kimi config.toml
+`base_url` with `/v1` suffix) — the file channel
 survives the supervisor's env scrub. Failure modes: agent errors
 connecting to 127.0.0.1:8787 → proxy not running; start it with the
 ensure command above, log at /tmp/headroom-proxy-8787.log. 502 through

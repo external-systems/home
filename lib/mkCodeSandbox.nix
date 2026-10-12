@@ -48,32 +48,39 @@
   envAttr ? "code-agent-env",
   # Gateway-side provider profile id (sync/doctor drift-check this one).
   profileId ? "github-agent",
-  # BASE providers attached to every sandbox; checked by sync/doctor.
-  # The credential provider for the sandbox's coding agent is added on
-  # top, derived from --agent: pi/kimi → kimi-for-coding, claude →
-  # claude-subscription (Pro/Max/Team OAuth token from
-  # `claude setup-token`, injected as $CLAUDE_CODE_OAUTH_TOKEN) — the
-  # owner's working credential. Platform-key users pass
-  # `--agent claude --provider github-agent --provider claude-code`
-  # instead (--provider replaces the whole list). NEVER attach both
-  # claude providers: Claude Code's precedence ranks
-  # $ANTHROPIC_AUTH_TOKEN above $CLAUDE_CODE_OAUTH_TOKEN, so a $0-credit
-  # platform key would shadow the subscription. Note the baked headroom
+  # BASE providers attached to every sandbox (github-agent — git push
+  # work is always wanted); checked by sync/doctor. The INFERENCE
+  # credential providers are added on top, selected by --inference (a
+  # comma-separated subset of `inferenceProviders`, or `all`). NEVER
+  # attach both claude providers: Claude Code's precedence ranks
+  # $ANTHROPIC_AUTH_TOKEN above $CLAUDE_CODE_OAUTH_TOKEN, so a
+  # $0-credit platform key would shadow the subscription — the script
+  # rejects that combination. Note the baked headroom
   # MCP server's LLM transforms need a PLATFORM key (a subscription
-  # token only bills correctly on Claude-Code-shaped requests) — with
+  # token only bills correctly on Claude-Code-shaped
+  # requests) — with
   # the subscription provider they degrade to local structural
-  # compression; the headroom proxy's compressors are all local and
-  # unaffected either way.
+  # compression; the headroom proxy's compressors are all
+  # local and unaffected either way.
   providers ? ["github-agent"],
-  # Coding agent each created sandbox is dedicated to (--agent
-  # overrides): stamped into the sandbox as CODE_AGENT via the
-  # create-time --env channel (the only env channel that survives the
-  # supervisor's scrub on every spawn path), selecting both the
-  # headroom proxy's upstream (pi/kimi → api.kimi.com/coding, claude →
-  # api.anthropic.com) and the auto-attached credential provider. The
-  # image's launcher wrappers refuse to run an agent from the wrong
-  # routing family.
-  defaultAgent ? "kimi",
+  # The inference-provider menu for --inference: the known inference
+  # credential providers a sandbox can attach at create time. The OCI
+  # image never changes — every CLI (pi/kimi/claude) is baked in and
+  # the single dual-pipeline headroom proxy serves them all; --inference
+  # only decides which API keys are present. Provider reality per CLI:
+  # kimi-code only speaks kimi-for-coding; claude only speaks
+  # claude-subscription/claude-code; pi uses whatever is attached
+  # (kimi-coding always; anthropic only with the claude-code PLATFORM
+  # key — a subscription token 429s on pi's raw-API shape; openrouter
+  # rides pi's native catalog DIRECT, no proxy).
+  inferenceProviders ? ["kimi-for-coding" "claude-subscription" "claude-code" "openrouter"],
+  # Default --inference value: "all" = every menu provider PRESENT on
+  # the gateway, EXCEPT claude-code — never auto-attached because it
+  # would shadow claude-subscription (pass --inference claude-code
+  # explicitly for platform-key sandboxes). Missing providers warn and
+  # are skipped under `all`; an explicit list is strict (missing
+  # provider = create aborts, since its egress fails closed).
+  defaultInference ? "all",
   # OCI image name for the content-hash tag.
   imageName ? "code-agent",
   # Sandbox name prefix.
@@ -91,6 +98,7 @@
   memory ? "8Gi",
 }: let
   providersStr = builtins.concatStringsSep " " providers;
+  inferenceMenuStr = builtins.concatStringsSep " " inferenceProviders;
   remoteFlakeStr =
     if remoteFlake == null
     then ""
@@ -114,13 +122,20 @@ in ''
 
   options:
     -y, --yes          don't prompt when the sandbox already exists (delete + recreate)
-        --agent A      dedicate the sandbox to one coding agent: pi, kimi or claude
-                       (default: ${defaultAgent}). Stamps CODE_AGENT into the sandbox's
-                       create-time env, selects the headroom proxy's upstream
-                       (pi/kimi → api.kimi.com/coding, claude → api.anthropic.com),
-                       and attaches the matching credential provider on top of the
-                       base providers (${providersStr}): kimi-for-coding for pi/kimi,
-                       claude-subscription for claude
+        --inference L  which inference providers' API keys are present in the
+                       sandbox: a comma-separated subset of the known menu
+                       (${inferenceMenuStr}), or all (default: ${defaultInference}).
+                       The image never changes — every CLI (pi/kimi/claude) is
+                       baked in and the single dual-pipeline headroom proxy
+                       serves them all; this only decides which credential
+                       providers attach on top of the always-present base
+                       providers (${providersStr}). `all` attaches every menu
+                       provider PRESENT on the gateway EXCEPT claude-code
+                       (it would shadow claude-subscription — Claude Code ranks
+                       $ANTHROPIC_AUTH_TOKEN over $CLAUDE_CODE_OAUTH_TOKEN);
+                       missing ones warn and are skipped. An explicit list is
+                       strict: a missing provider aborts create. Example:
+                       --inference kimi-for-coding,claude-subscription,openrouter
         --cpu N        CPUs for the sandbox (default: ${cpu})
         --memory SIZE  memory for the sandbox (default: ${memory})
                        both are accepted but IGNORED by the VM driver — sizing
@@ -131,9 +146,10 @@ in ''
     else "default is the flake baked in at install time, so this runs from ANY directory"
   }; "." = the flake enclosing the cwd (for working
                        on that flake itself)
-        --provider N   attach provider N INSTEAD of the defaults (repeatable;
-                       e.g. claude platform-key users: --agent claude
-                       --provider github-agent --provider claude-code)
+        --provider N   attach provider N INSTEAD of the whole default list
+                       (repeatable; mutually exclusive with --inference —
+                       e.g. a platform-key-only sandbox: --provider github-agent
+                       --provider claude-code)
         --no-sync      create only: skip the profile sync (default: sync before create)
       --include-workdir / --no-include-workdir
                      toggle the policy's include_workdir BIT at create (default off).
@@ -145,9 +161,13 @@ in ''
         --no-ssh-config           don't append the Remote-SSH config (default: append)
         --ssh-config-file FILE    where to append it (default: ~/.ssh/config.local)
 
-  Naming: sandboxes are <name>-<imghash> (default name: ${defaultName}-<agent>) and
+  Naming: sandboxes are <name>-<imghash> (default name: ${defaultName}) and
   images ${imageName}:<imghash> — both content-addressed, so an existing name
-  means an older image. Recreate for image changes; network policy hot-reloads
+  means an older image (or an explicit name reused with a different
+  --inference set: pass a distinct short name to run two provider sets of
+  one image side by side — the gateway caps names at 19 chars INCLUDING the
+  9-char -<imghash> suffix). Recreate for image changes; network policy
+  hot-reloads
   via `code-sandbox sync`. The image bakes its flake git rev into every agent
   briefing; --flake picks the build source (default: ${
     if alwaysRemote
@@ -424,19 +444,68 @@ in ''
     fi
   }
 
+  # Resolve --inference into the inference provider list:
+  #   all          -> every menu provider PRESENT on the gateway, EXCEPT
+  #                   claude-code (never auto-attached: Claude Code ranks
+  #                   $ANTHROPIC_AUTH_TOKEN over $CLAUDE_CODE_OAUTH_TOKEN,
+  #                   so it would shadow claude-subscription); missing
+  #                   ones warn and are skipped
+  #   a,b,c        -> explicit subset of the menu; STRICT: a missing
+  #                   provider aborts create (its egress fails closed);
+  #                   claude-code + claude-subscription together is
+  #                   rejected (same shadowing rule)
+  resolve_inference() {
+    if [ "$inference" = "all" ]; then
+      sel=""
+      for p in $inference_menu; do
+        [ "$p" = "claude-code" ] && continue
+        if openshell provider get "$p" >/dev/null 2>&1; then
+          sel="$sel''${sel:+ }$p"
+        else
+          echo "code-sandbox: --inference all: provider '$p' not on the gateway — skipping (create it first: openshell/README.md §4)" >&2
+        fi
+      done
+      printf '%s' "$sel"
+      return
+    fi
+    sel=""
+    oldifs="$IFS"
+    IFS=","
+    for p in $inference; do
+      case " $inference_menu " in
+        *" $p "*) ;;
+        *)
+          echo "code-sandbox: --inference: unknown provider '$p' (menu: $inference_menu, or 'all')" >&2
+          exit 1
+          ;;
+      esac
+      sel="$sel''${sel:+ }$p"
+    done
+    IFS="$oldifs"
+    # claude-code (platform key) and claude-subscription are mutually
+    # exclusive: $ANTHROPIC_AUTH_TOKEN shadows $CLAUDE_CODE_OAUTH_TOKEN.
+    case " $sel " in
+      *" claude-code "*)
+        case " $sel " in
+          *" claude-subscription "*)
+            echo "code-sandbox: --inference: claude-code and claude-subscription must never both attach — pick one" >&2
+            exit 1
+            ;;
+        esac
+        ;;
+    esac
+    printf '%s' "$sel"
+  }
+
   # The provider list for this invocation: --provider replaces the
-  # baked defaults entirely; otherwise the base providers plus the
-  # credential provider for the selected --agent.
+  # baked defaults entirely; otherwise the base providers (always) plus
+  # the resolved --inference selection.
   provider_list() {
     if [ -n "$extra_providers" ]; then
       printf '%s' "$extra_providers"
       return
     fi
-    case "$agent" in
-      claude) agent_credential="claude-subscription" ;;
-      *) agent_credential="kimi-for-coding" ;;
-    esac
-    printf '%s %s' "$default_providers" "$agent_credential"
+    printf '%s %s' "$default_providers" "$inference_providers"
   }
 
   cmd="create"
@@ -456,11 +525,12 @@ in ''
     then "1"
     else "0"
   }" \
-    ssh_config=1 ssh_config_file="$HOME/.ssh/config.local" agent="${defaultAgent}"
+    ssh_config=1 ssh_config_file="$HOME/.ssh/config.local" inference="${defaultInference}" inference_explicit=0 \
+    inference_menu="${inferenceMenuStr}"
   while [ $# -gt 0 ]; do
     case "$1" in
       -y | --yes) yes=1; shift ;;
-      --agent) agent="''${2:?--agent needs a value}"; shift 2 ;;
+      --inference) inference="''${2:?--inference needs a value}"; inference_explicit=1; shift 2 ;;
       --cpu) cpu="''${2:?--cpu needs a value}"; shift 2 ;;
       --memory) memory="''${2:?--memory needs a value}"; shift 2 ;;
       --flake) flake_explicit=1; flake_ref="''${2:?--flake needs a value}"; shift 2 ;;
@@ -485,10 +555,19 @@ in ''
     esac
   done
 
-  case "$agent" in
-    pi | kimi | claude) ;;
-    *) echo "code-sandbox: --agent must be pi, kimi or claude (got '$agent')" >&2; usage 1 ;;
-  esac
+  if [ -n "$extra_providers" ] && [ "$inference_explicit" = 1 ]; then
+    echo "code-sandbox: --provider and --inference are mutually exclusive (--provider replaces the whole provider list)" >&2
+    usage 1
+  fi
+
+  # Resolve the inference selection once — only the commands that attach
+  # or check providers need it (all-mode queries the gateway).
+  inference_providers=""
+  if [ -z "$extra_providers" ]; then
+    case "$cmd" in
+      create | sync | doctor) inference_providers="$(resolve_inference)" ;;
+    esac
+  fi
 
   case "$cmd" in
     delete)
@@ -634,10 +713,12 @@ in ''
   img="$(nix build "''${ref}#${imageAttr}" --no-link --print-out-paths)"
   shorthash="$(basename "$img" | cut -c1-8)"
   tag="${imageName}:$shorthash"
-  # The default name embeds the agent, so a kimi sandbox and a claude
-  # sandbox of the same image don't collide (code-kimi-<hash> vs
-  # code-claude-<hash>) — one sandbox per coding agent is the model.
-  name="''${name:-${defaultName}-$agent}-$shorthash"
+  # The default name is just <name>-<imghash>: the image never varies
+  # per provider set (only --inference does), so two provider sets of
+  # one image share the name — pass an explicit short name to run them
+  # side by side (the gateway caps names at 19 chars INCLUDING the
+  # 9-char -<imghash> suffix).
+  name="''${name:-${defaultName}}-$shorthash"
 
   echo "code-sandbox: loading image as $tag ..."
   nix run "''${ref}#${loaderApp}"
@@ -693,13 +774,6 @@ in ''
     fi
   fi
 
-  # Stamp the sandbox's coding agent: CODE_AGENT survives the env scrub
-  # on every spawn path (spec env, same channel as the file above) and
-  # the image's launcher wrappers read it to start the single headroom
-  # proxy with the right upstream — and to refuse agents from the wrong
-  # routing family.
-  env_args+=(--env "CODE_AGENT=$agent")
-
   create_policy="$policy_path"
   if [ "$include_workdir" = 1 ]; then
     # include_workdir is a POLICY BIT only (the sandbox's internal
@@ -712,7 +786,7 @@ in ''
     sed 's/^\( *\)include_workdir: false$/\1include_workdir: true/' "$policy_path" >"$create_policy"
   fi
 
-  echo "code-sandbox: creating sandbox '$name' (agent=$agent cpu=$cpu memory=$memory) ..."
+  echo "code-sandbox: creating sandbox '$name' (inference=''${inference_providers:-$extra_providers} cpu=$cpu memory=$memory) ..."
   openshell sandbox create --name "$name" --from "$tag" \
     --policy "$create_policy" \
     "''${provider_args[@]}" \

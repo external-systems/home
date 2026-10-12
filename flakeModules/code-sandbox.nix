@@ -102,19 +102,32 @@
         default = ["github-agent"];
         description = ''
           Base providers attached to every sandbox and checked by
-          sync/doctor. The credential provider for the sandbox's coding
-          agent is added on top, derived from --agent (pi/kimi →
-          kimi-for-coding, claude → claude-subscription).
+          sync/doctor (github-agent — git push work is always wanted).
+          The inference credential providers are added on top, selected
+          per create by --inference (see inferenceProviders).
         '';
       };
-      defaultAgent = mkOption {
-        type = types.enum ["pi" "kimi" "claude"];
-        default = "kimi";
+      inferenceProviders = mkOption {
+        type = types.listOf types.str;
+        default = ["kimi-for-coding" "claude-subscription" "claude-code" "openrouter"];
         description = ''
-          Coding agent created sandboxes are dedicated to by default
-          (--agent overrides per invocation): stamped as CODE_AGENT into
-          the create-time env, selecting the headroom proxy's upstream
-          and the auto-attached credential provider.
+          The inference-provider menu for --inference: which inference
+          credential providers a sandbox may attach at create time. The
+          image never changes per provider set — every CLI is baked in
+          and the single dual-pipeline headroom proxy serves them all.
+        '';
+      };
+      defaultInference = mkOption {
+        type = types.str;
+        default = "all";
+        description = ''
+          Default --inference value: a comma-separated subset of
+          inferenceProviders, or "all" — every menu provider PRESENT on
+          the gateway EXCEPT claude-code (never auto-attached: it would
+          shadow claude-subscription, Claude Code ranks
+          $ANTHROPIC_AUTH_TOKEN over $CLAUDE_CODE_OAUTH_TOKEN). Missing
+          providers warn and are skipped under "all"; an explicit list
+          is strict (a missing provider aborts create).
         '';
       };
       imageName = mkOption {
@@ -151,7 +164,7 @@
 
     config = lib.mkIf cfg.enable {
       packages.code-sandbox = pkgs.writeShellScriptBin "code-sandbox" (mkCodeSandbox {
-        inherit (cfg) flakeRef remoteFlake imageAttr loaderApp policyAttr profileAttr envAttr profileId providers defaultAgent imageName defaultName includeWorkdir cpu memory;
+        inherit (cfg) flakeRef remoteFlake imageAttr loaderApp policyAttr profileAttr envAttr profileId providers inferenceProviders defaultInference imageName defaultName includeWorkdir cpu memory;
       });
       apps.code-sandbox.program = "${config.packages.code-sandbox}/bin/code-sandbox";
     };

@@ -57,24 +57,37 @@ The code-agent OCI image wires headroom differently from the NixOS
 hosts (no systemd, no HM session variables — the supervisor scrubs the
 process env):
 
-- **One baked proxy instance per sandbox** — a proxy process has ONE
-  Anthropic-wire upstream target, and `code-sandbox --agent
-  pi|kimi|claude` dedicates each sandbox to one coding agent (stamped
-  as `$CODE_AGENT` in the create-time env): pi + kimi sandboxes route
-  `:8787` → api.kimi.com/coding (both Anthropic-wire against the Kimi
-  for Coding subscription), claude sandboxes route `:8787` →
-  api.anthropic.com (the proxy's default target).
+- **One baked proxy instance per sandbox serves EVERY agent** — a
+  proxy process carries one upstream per WIRE PIPELINE, and the two
+  pipelines this fleet needs are disjoint: Anthropic `/v1/messages` →
+  api.anthropic.com (claude-code, pi's anthropic provider), OpenAI
+  `/v1/chat/completions` → api.kimi.com/coding/v1 (kimi-code's native
+  `type = "kimi"` wire). pi's Anthropic-wired kimi-coding provider
+  rides the Anthropic pipeline with a per-request
+  `x-headroom-base-url: https://api.kimi.com/coding` override
+  (SSRF-guarded; the proxy runs with `HEADROOM_ALLOWED_BASE_URLS`
+  naming exactly that URL because the gateway's interception DNS
+  resolves admitted hosts to fake 198.18.0.0/15 IPs the guard would
+  otherwise reject). `code-sandbox --inference <menu|all>`
+  (default `all`) only selects which inference credential providers
+  attach —
+  kimi-for-coding, claude-subscription, claude-code, openrouter — with
+  `all` auto-attaching every menu provider PRESENT on the gateway except
+  claude-code (it would shadow claude-subscription). The OCI image never
+  changes per provider set.
 - **Lazy start** — each agent's `/usr/local/bin` launcher wrapper runs
-  `headroom-proxy-ensure <port> [upstream]` (flock-serialized,
+  `headroom-proxy-ensure <port>` (flock-serialized,
   `--stateless`, `--disable-kompress` — the image ships headroom-slim
   without the [ml] extra and huggingface.co is not policy-admitted, so
   the optional ML compressor could never load; the structural
-  compressors carry the savings — `HEADROOM_BEACON=off`), verifies the
-  running proxy's `/health` upstream, refuses agents stamped for the
-  other routing family, and `exec`s the real CLI.
+  compressors carry the savings — `HEADROOM_BEACON=off`), refuses to
+  run against a STALE proxy from an older image generation (whose
+  Anthropic pipeline was bound to the kimi upstream), and `exec`s the
+  real CLI.
 - **Routing via config files** — claude `settings.json`
-  `env.ANTHROPIC_BASE_URL`, pi `models.json` `baseUrl`, kimi
-  `config.toml` `type = "anthropic"` + `baseUrl` — all rendered by the
+  `env.ANTHROPIC_BASE_URL`, pi `models.json` `baseUrl` +
+  `headers."x-headroom-base-url"`, kimi `config.toml` `type = "kimi"`
+  + `base_url` (with the `/v1` suffix) — all rendered by the
   image's home-manager evaluation (`homeSpec.agents.*`, see
   `flake-parts/ociImages/code-agent.nix`).
 - **Policy**: api.anthropic.com and api.kimi.com are admitted for

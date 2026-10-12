@@ -508,13 +508,13 @@
     "headroom": {
       "flake": false,
       "locked": {
-        "narHash": "sha256-WhhLnV1hlJ9itabP4HO2Tf7qetn9vAupAYQHkxad1Gc=",
+        "narHash": "sha256-O05w17K4eV4uts/jB5+4mR32F4kdMPSpPQBJgz+NwH8=",
         "type": "file",
-        "url": "https://files.pythonhosted.org/packages/72/b8/16878cf4fe6fc390a0d22025b671468619db690ff14c1b103ace4b5e35f9/headroom_ai-0.37.0-cp310-abi3-manylinux_2_28_x86_64.whl"
+        "url": "https://files.pythonhosted.org/packages/03/1c/383f4a2d33ad18d40869037ca6221e1db24bc4da5e92befe70793220b138/headroom_ai-0.40.0-cp310-abi3-manylinux_2_28_x86_64.whl"
       },
       "original": {
         "type": "file",
-        "url": "https://files.pythonhosted.org/packages/72/b8/16878cf4fe6fc390a0d22025b671468619db690ff14c1b103ace4b5e35f9/headroom_ai-0.37.0-cp310-abi3-manylinux_2_28_x86_64.whl"
+        "url": "https://files.pythonhosted.org/packages/03/1c/383f4a2d33ad18d40869037ca6221e1db24bc4da5e92befe70793220b138/headroom_ai-0.40.0-cp310-abi3-manylinux_2_28_x86_64.whl"
       }
     },
     "home-manager": {

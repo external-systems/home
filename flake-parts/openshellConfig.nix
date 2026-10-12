@@ -126,7 +126,7 @@
                   fi
                   ;;
                 create)
-                  COMPREPLY=($(compgen -W "-y --yes --cpu --memory --flake --provider --sync --no-sync --include-workdir --no-include-workdir --ssh-config --no-ssh-config --ssh-config-file -h --help" -- "$cur"))
+                  COMPREPLY=($(compgen -W "-y --yes --inference --cpu --memory --flake --provider --sync --no-sync --include-workdir --no-include-workdir --ssh-config --no-ssh-config --ssh-config-file -h --help" -- "$cur"))
                   ;;
               esac
             }

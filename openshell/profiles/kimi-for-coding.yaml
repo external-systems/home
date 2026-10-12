@@ -1,17 +1,18 @@
 # Custom OpenShell provider profile: Moonshot AI "Kimi for Coding"
-# (Anthropic-compatible endpoint used by the pi coding agent,
-# https://api.kimi.com/coding).
+# (the api.kimi.com/coding subscription endpoint — it answers BOTH
+# wires: Anthropic /coding/v1/messages and OpenAI
+# /coding/v1/chat/completions).
 #
 # The code-agent image pre-wires BOTH consumers of this endpoint, so no
-# interactive login is ever needed inside a sandbox:
+# interactive login is ever needed inside a sandbox — both route through
+# the sandbox's single dual-pipeline headroom proxy (127.0.0.1:8787):
 #  - pi via the baked ~/.pi/agent/models.json (built-in kimi-coding
-#    provider, key from $KIMI_API_KEY);
-#  - kimi-code via the baked ~/.kimi-code/config.toml (type =
-#    "anthropic", baseUrl http://127.0.0.1:8787 — the sandbox's single
-#    headroom proxy, kimi upstream in pi/kimi sandboxes — apiKeyEnv
-#    KIMI_API_KEY; the Anthropic /messages
-#    wire pi also speaks, verified live in-sandbox 2026-10)
-#    the same subscription over the wire Moonshot's own CLI speaks).
+#    provider, Anthropic wire, key from $KIMI_API_KEY, per-request
+#    x-headroom-base-url: https://api.kimi.com/coding override);
+#  - kimi-code via the baked ~/.kimi-code/config.toml (type = "kimi" —
+#    Moonshot's NATIVE kimi-code wire, OpenAI-style /chat/completions at
+#    the proxy's OpenAI pipeline, upstream api.kimi.com/coding/v1;
+#    apiKeyEnv KIMI_API_KEY).
 # kimi-code's OAuth login flow (auth.kimi.com / auth.kimi.ai) stays
 # unreachable under the sandbox policy on purpose: credentials come from
 # this provider, not an interactive device-code flow.
@@ -26,9 +27,9 @@
 #   openshell provider create --name kimi-for-coding --type kimi-for-coding \
 #     --credential KIMI_API_KEY    # bare KEY reads the value from the env
 id: kimi-for-coding
-resource_version: 2
+resource_version: 1
 display_name: Kimi for Coding
-description: Moonshot AI Kimi coding endpoint (api.kimi.com, Anthropic-compatible)
+description: Moonshot AI Kimi coding endpoint (api.kimi.com — Anthropic-wire /coding/v1/messages + OpenAI-wire /coding/v1/chat/completions)
 category: inference
 inference_capable: true
 credentials:
@@ -44,7 +45,8 @@ endpoints:
   - host: api.kimi.com
     port: 443
     protocol: rest
-    # pi streams POST /coding/v1/messages; read-write covers POST/PUT/PATCH
+    # pi streams POST /coding/v1/messages, kimi-code streams POST
+    # /coding/v1/chat/completions; read-write covers POST/PUT/PATCH
     # and still blocks DELETE.
     access: read-write
     enforcement: enforce

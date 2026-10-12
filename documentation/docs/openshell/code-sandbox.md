@@ -37,19 +37,23 @@ driver).
 ## Quickstart
 
 ```bash
-code-sandbox                # build + load image, sync configs, create (name: code-kimi-<imghash>)
-code-sandbox --agent claude # same, dedicated to claude (name: code-claude-<imghash>)
-code-sandbox connect code-kimi-<imghash>
+code-sandbox                # build + load image, sync configs, create (name: code-<imghash>)
+                            # default --inference all: every menu provider on the gateway
+code-sandbox --inference claude-code   # only the claude platform-key provider (+ github-agent)
+code-sandbox --inference kimi-for-coding,claude-subscription,openrouter
+code-sandbox connect code-<imghash>
 code-sandbox doctor         # read-only health report; exits 1 on findings
 code-sandbox sync           # re-render + push profile if the gateway drifted
 ```
 
 The sandbox name and the docker tag are both content-addressed
-(`code-agent:<imghash>`), and the default sandbox name also embeds the
-selected agent (`code-kimi-<imghash>`, `code-claude-<imghash>`), so an
-existing name always means an older image and prompts for replacement
-(`-y` to skip the prompt), and a kimi and a claude sandbox of the same
-image coexist without colliding.
+(`code-agent:<imghash>`), so an existing name always means an older
+image and prompts for replacement (`-y` to skip the prompt). The image
+never varies per provider set — `--inference` only selects which
+credential providers attach — so two provider sets of one image share
+the default name: pass a distinct short name to run them side by side
+(the gateway caps names at 19 chars INCLUDING the 9-char `-<imghash>`
+suffix).
 
 ## Subcommands
 
@@ -130,11 +134,7 @@ otherwise recover the image env from the baked `/etc/profile` +
 static runtime plumbing (`LD_LIBRARY_PATH`, `NIX_LD`,
 `NIX_LD_LIBRARY_PATH`, `TERMINFO_DIRS`, `XDG_RUNTIME_DIR`) — never
 secrets (credentials go
-through providers). On top of the file, `create` stamps
-`CODE_AGENT=<pi|kimi|claude>` (the `--agent` value) through the same
-channel — the image's launcher wrappers read it to pick the single
-headroom proxy's upstream and to refuse agents from the wrong routing
-family. The attr name is the generator's `envAttr`
+through providers). The attr name is the generator's `envAttr`
 (`perSystem.codeSandbox.envAttr` for flake consumers; `null`
 disables); a flake without the attr warns and continues.
 
@@ -142,26 +142,31 @@ disables); a flake without the attr warns and continues.
 
 ```
 -y, --yes                don't prompt when the sandbox already exists
-    --agent A            dedicate the sandbox to one coding agent: pi, kimi
-                         or claude (default kimi). Stamps CODE_AGENT into the
-                         create-time env, selects the single headroom proxy's
-                         upstream (pi/kimi → api.kimi.com/coding, claude →
-                         api.anthropic.com), and attaches the matching
-                         credential provider (kimi-for-coding for pi/kimi,
-                         claude-subscription for claude) on top of the base
-                         providers (github-agent). The image's launcher
-                         wrappers refuse agents from the wrong routing family
-    --cpu N              CPUs (default 4) — accepted but IGNORED by the VM
-                         driver (sizing is driver-wide gateway config there)
-    --memory SIZE        memory (default 8Gi) — same
-    --flake REF          build image/policy/profile from another flake
-                         (installed wrapper default: the live
-                         github:external-systems/home remote HEAD)
-    --provider N         attach provider N INSTEAD of the defaults
-                         (repeatable; e.g. claude platform-key users:
-                         --agent claude --provider github-agent
-                         --provider claude-code — never attach both
-                         claude providers)
+    --inference L          which inference providers' API keys are present:
+                           a comma-separated subset of the known menu
+                           (kimi-for-coding, claude-subscription, claude-code,
+                           openrouter) or all (default). The image never
+                           changes — every CLI (pi/kimi/claude) is baked in
+                           and the single dual-pipeline headroom proxy serves
+                           them all; this only decides which credential
+                           providers attach on top of the always-present
+                           github-agent. `all` attaches every menu provider
+                           PRESENT on the gateway EXCEPT claude-code (it
+                           would shadow claude-subscription — Claude Code
+                           ranks $ANTHROPIC_AUTH_TOKEN over
+                           $CLAUDE_CODE_OAUTH_TOKEN); missing ones warn and
+                           are skipped. An explicit list is strict: a
+                           missing provider aborts create
+    --cpu N                CPUs (default 4) — accepted but IGNORED by the VM
+                           driver (sizing is driver-wide gateway config there)
+    --memory SIZE          memory (default 8Gi) — same
+    --flake REF            build image/policy/profile from another flake
+                           (installed wrapper default: the live
+                           github:external-systems/home remote HEAD)
+    --provider N           attach provider N INSTEAD of the whole default list
+                           (repeatable; mutually exclusive with --inference —
+                           e.g. a platform-key-only sandbox:
+                           --provider github-agent --provider claude-code)
     --no-sync            skip the profile sync before create
     --include-workdir    toggle the policy's include_workdir BIT (see below)
     --no-include-workdir explicit default

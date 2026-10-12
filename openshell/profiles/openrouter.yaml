@@ -1,0 +1,62 @@
+# Custom OpenShell provider profile: OpenRouter inference
+# (https://openrouter.ai) for the pi coding agent — pi's built-in
+# openrouter provider talks DIRECT to openrouter.ai (its catalog mixes
+# wires per model: ~380 OpenAI-style models at /api/v1 and the Anthropic
+# models at /api/v1/messages), so this traffic does NOT ride the
+# sandbox's headroom proxy: one x-headroom-base-url override value cannot
+# serve both path layouts (/api vs /api/v1) from a single provider entry,
+# and OpenRouter is the secondary inference path — kimi + claude
+# subscriptions are the compressed ones. Same shape as NVIDIA's official
+# "Run Pi with OpenRouter" tutorial (docs.nvidia.com/openshell).
+#
+# pi is pre-wired in the code-agent image: the baked
+# ~/.pi/agent/models.json overrides only the built-in openrouter
+# provider's apiKey ($OPENROUTER_API_KEY, injected by this provider) —
+# baseUrl and the model catalog stay native. With the provider attached,
+# `pi --model <pattern> --provider openrouter ...` (or /model) lists and
+# uses the catalog; without it the env var is unset and the provider
+# fails fast on use — by design.
+#
+# Import once per gateway, then create a provider bound to the endpoint:
+#
+#   export OPENROUTER_API_KEY=<key from openrouter.ai/keys>
+#   openshell profile import --file openshell/profiles/openrouter.yaml
+#   openshell provider create --name openrouter --type openrouter \
+#     --credential OPENROUTER_API_KEY   # bare KEY reads the value from the env
+#
+# Then attach at sandbox creation: code-sandbox --inference openrouter
+# (or include it in a comma-separated list). NOTE: the `all` default
+# auto-attaches it once the provider exists on the gateway.
+id: openrouter
+resource_version: 1
+display_name: OpenRouter
+description: OpenRouter inference API (openrouter.ai) — pi native catalog, direct (no headroom proxy)
+category: inference
+inference_capable: true
+credentials:
+  - name: api_key
+    description: OpenRouter API key (openrouter.ai/keys)
+    env_vars:
+      - OPENROUTER_API_KEY
+    required: true
+    auth_style: bearer
+    header_name: authorization
+    query_param: ""
+endpoints:
+  - host: openrouter.ai
+    port: 443
+    protocol: rest
+    # pi streams POST /api/v1/chat/completions and /api/v1/messages;
+    # read-write covers POST/PUT/PATCH and still blocks DELETE.
+    access: read-write
+    enforcement: enforce
+binaries:
+  # Resolved process image (the supervisor matches /proc/<pid>/exe, not
+  # the PATH wrapper): pi (llm-agents package `pi`) is a bun-compiled
+  # standalone ELF at libexec/pi/pi (bin/pi is just a wrapper). Direct
+  # egress — openrouter traffic does not ride the headroom proxy (see
+  # the header comment), so the proxy's python is deliberately NOT here.
+  - /nix/store/*-pi-*/libexec/pi/pi
+discovery:
+  credentials:
+    - api_key

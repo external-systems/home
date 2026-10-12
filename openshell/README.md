@@ -151,7 +151,8 @@ openshell sandbox connect code      # detach with Ctrl-P, then Ctrl-Q
 openshell sandbox exec -n code -- nix --version
 ```
 
-Attach providers (kimi-for-coding, claude-subscription, github-agent) at create:
+Attach providers at create — day-to-day, don't type this: `code-sandbox`
+composes the set from `--inference` (github-agent is always attached):
 
 ```bash
 openshell sandbox create --name code --from code-agent:latest \
@@ -165,9 +166,10 @@ openshell sandbox create --name code --from code-agent:latest \
 The image ships three agents, all from the `llm-agents` flake input
 (overlays/default.nix routes them into `pkgs`): **pi** (bun-compiled
 standalone ELF), **kimi-code** (node), **claude-code** (native binary).
-Credentials are never baked in — the attached providers inject them as
-env vars ($KIMI_API_KEY, $CLAUDE_CODE_OAUTH_TOKEN or
-$ANTHROPIC_AUTH_TOKEN) at sandbox start, and
+Credentials are never baked in — the attached providers (the sandbox's
+`--inference` set) inject them as
+env vars ($KIMI_API_KEY, $CLAUDE_CODE_OAUTH_TOKEN,
+$ANTHROPIC_AUTH_TOKEN, $OPENROUTER_API_KEY) at sandbox start, and
 each CLI's config only *references* those env var names.
 
 **Interactive, inside the sandbox terminal:**
@@ -175,23 +177,38 @@ each CLI's config only *references* those env var names.
 ```bash
 openshell sandbox connect code        # or: openshell sandbox exec -n code --tty -- pi
 pi            # preconfigured: kimi-for-coding via $KIMI_API_KEY (subscription, not platform API),
-              # routed through the sandbox's single headroom proxy (127.0.0.1:8787)
-kimi          # same subscription via baked config.toml (type = "anthropic", apiKeyEnv
-              # $KIMI_API_KEY, same :8787 proxy) — no /login; the OAuth hosts are
+              # routed through the sandbox's single headroom proxy (127.0.0.1:8787);
+              # + openrouter via $OPENROUTER_API_KEY (native catalog, DIRECT — no proxy)
+              # and claude models via $ANTHROPIC_AUTH_TOKEN (platform key only) when
+              # those providers are attached
+kimi          # same subscription via baked config.toml (type = "kimi" — Moonshot's
+              # native OpenAI-style wire, apiKeyEnv $KIMI_API_KEY, same :8787 proxy's
+              # OpenAI pipeline) — no /login; the OAuth hosts are
               # policy-unreachable on purpose
-claude        # via the same :8787 proxy (anthropic upstream in claude sandboxes);
+claude        # via the same :8787 proxy (Anthropic pipeline → api.anthropic.com);
               # credential from claude-subscription ($CLAUDE_CODE_OAUTH_TOKEN, default)
               # or claude-code ($ANTHROPIC_AUTH_TOKEN, platform key) — never both;
               # the platform.claude.com startup preflight is admitted by the policy
 ```
 
-One sandbox is dedicated to ONE coding agent: `code-sandbox --agent
-pi|kimi|claude` at create stamps `$CODE_AGENT` (selecting the proxy's
-upstream and the auto-attached credential provider), and a launcher for
-the wrong routing family refuses to run. All launchers lazy-start the
+ONE headroom proxy per sandbox serves EVERY coding agent — one process,
+two wire pipelines: Anthropic `/v1/messages` → api.anthropic.com
+(claude, pi's anthropic provider) and OpenAI `/v1/chat/completions` →
+api.kimi.com/coding/v1 (kimi-code). pi's kimi-coding provider is
+hardwired to the Anthropic wire, so it rides the Anthropic pipeline
+with a per-request `x-headroom-base-url: https://api.kimi.com/coding`
+override (SSRF-guarded proxy feature). `code-sandbox --inference
+<menu|all>` only selects which inference credential providers attach
+(default `all`: every menu provider present on the gateway —
+kimi-for-coding, claude-subscription, openrouter — except claude-code,
+which would shadow claude-subscription); the OCI image never changes
+per provider set. All launchers lazy-start the
 headroom proxy on first run (`headroom-proxy-ensure`; log
 `/tmp/headroom-proxy-8787.log`, `headroom doctor` health-checks,
-`curl -s 127.0.0.1:8787/stats` shows token savings). All agent user
+`curl -s 127.0.0.1:8787/stats` shows token savings) and refuse to run
+against a STALE proxy from an older image generation (whose Anthropic
+pipeline was bound to the kimi upstream — `pkill -f 'headroom proxy'`
+and retry). All agent user
 configs — MCP trio (headroom/nixos/github), provider wiring, proxy
 routing, the environment briefing — are
 home-manager-generated into the agents' config files by the image's
@@ -212,7 +229,9 @@ window IS the sandbox, with live file sync and SCM diffs.
 Agent egress is deny-by-default: the `kimi_for_coding` (api.kimi.com) and
 `claude_code` (api.anthropic.com + platform.claude.com preflight/login)
 rules in `openshell/policies/code-agent.yaml`
-pin the resolved process images (`libexec/pi/pi`, node, `.claude-wrapped`);
+pin the resolved process images (`libexec/pi/pi`, node, `.claude-wrapped`,
+plus the headroom proxy's python interpreter — with all agents routed
+through :8787, the proxy process is what actually egresses);
 watch `openshell logs code --tail --source sandbox` for `DENIED` lines when
 adding more agents.
 
@@ -236,8 +255,11 @@ credentials resolve only for hosts/ports/paths the profile declares;
 Existing profiles: `github-agent.yaml` (fine-grained bot PAT for agent
 push work — see the token recipe below), `kimi-for-coding.yaml`
 (Moonshot Kimi for Coding subscription endpoint, api.kimi.com — NOT the
-pay-per-token platform API), and `claude-code.yaml` (Anthropic endpoint
-with a Claude Teams subscription bearer token).
+pay-per-token platform API), `claude-subscription.yaml` (Claude
+Pro/Max/Team subscription OAuth token) and `claude-code.yaml`
+(Anthropic Console platform key) — attach ONE claude provider, never
+both — and `openrouter.yaml` (OpenRouter inference for pi's native
+catalog, direct — not via the headroom proxy).
 
 ```bash
 # kimi-for-coding (key from your kimi.com subscription; pi reads it via
@@ -263,6 +285,14 @@ export ANTHROPIC_AUTH_TOKEN=<Console platform API key, sk-ant-api...>
 openshell profile import --file openshell/profiles/claude-code.yaml       # once
 openshell provider create --name claude-code --type claude-code \
   --credential ANTHROPIC_AUTH_TOKEN
+
+# openrouter (optional — pi's native catalog, direct egress; not proxied).
+# Once this provider exists on the gateway, the default `--inference all`
+# auto-attaches it; until then `all` skips it with a warning.
+export OPENROUTER_API_KEY=<key from openrouter.ai/keys>
+openshell profile import --file openshell/profiles/openrouter.yaml        # once
+openshell provider create --name openrouter --type openrouter \
+  --credential OPENROUTER_API_KEY
 ```
 
 ### GitHub bot token (for github-agent)
@@ -417,13 +447,15 @@ Narrow additive grants: `openshell policy update code
 - kimi-code provider config schema (verified from the bundled binary):
   `providers.<name>.{type,apiKey,apiKeyEnv,baseUrl}`, top-level
   `defaultProvider`/`defaultModel`, `[models.<alias>]` with required
-  `provider`/`model`/`maxContextSize`. `type = "kimi"` speaks the
-  OpenAI-style wire with Bearer auth (`https://api.kimi.com/coding/v1`);
+  `provider`/`model`/`maxContextSize`. `type = "kimi"` speaks
+  Moonshot's native kimi-code wire — OpenAI-style
+  `https://api.kimi.com/coding/v1` chat completions with Bearer auth;
   `type = "anthropic"` speaks the Anthropic `/messages` wire at
-  `https://api.kimi.com/coding` — the code-agent image uses the
-  ANTHROPIC variant (verified live in-sandbox 2026-10) so kimi-code can
-  share pi's headroom proxy instance (the proxy's anthropic pipeline
-  cannot serve the OpenAI-style kimi wire).
+  `https://api.kimi.com/coding`. The code-agent image uses the KIMI
+  variant pointed at the headroom proxy's OpenAI pipeline
+  (`base_url = http://127.0.0.1:8787/v1`) — one proxy serves it
+  alongside the Anthropic pipeline (claude), which the Anthropic-wire
+  variant could not do (one upstream per pipeline per process).
 
 ## Shell completions
 

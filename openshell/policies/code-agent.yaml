@@ -40,6 +40,11 @@ filesystem_policy:
     - /proc
     - /dev
     - /dev/urandom
+    # The VM driver injects /var/log into every sandbox's stored policy
+    # at create time — listing it here keeps the rendered policy equal
+    # to the gateway's copy, so doctor/sync don't report perpetual
+    # drift on a rule we never wrote.
+    - /var/log
   read_write:
     - /sandbox
     - /tmp
@@ -244,13 +249,15 @@ network_policies:
       - { path: @bin_git@ }
       - { path: @bin_curl@ }
 
-  # Kimi for Coding subscription endpoint (api.kimi.com/coding,
-  # Anthropic-compatible): pi's built-in kimi-coding provider (key via
-  # the attached kimi-for-coding provider, $KIMI_API_KEY injected) and
-  # the kimi-code CLI — BOTH routed through the sandbox's single
-  # headroom proxy (127.0.0.1:8787, kimi upstream in pi/kimi sandboxes)
-  # by the baked config files, so the live
-  # connections arrive from the proxy's python interpreter. The
+  # Kimi for Coding subscription endpoint (api.kimi.com; the coding
+  # surface answers BOTH wires: Anthropic /coding/v1/messages for pi's
+  # built-in kimi-coding provider and OpenAI /coding/v1/chat/completions
+  # for kimi-code's native type="kimi" mode): both consumers route
+  # through the sandbox's single dual-pipeline headroom proxy
+  # (127.0.0.1:8787) via the baked config files — kimi-code hits the
+  # OpenAI pipeline, pi the Anthropic pipeline with a per-request
+  # x-headroom-base-url override — so the live connections arrive from
+  # the proxy's python interpreter. The
   # supervisor matches resolved exes: pi is a standalone ELF
   # (libexec/pi/pi — kept for direct fallback + the MCP-free path),
   # kimi-code runs on node, headroom-slim on pkgs.unstable python3.13.
@@ -266,17 +273,19 @@ network_policies:
       # could silently deny kimi egress after an input bump, so this
       # pin stays a wildcard on purpose.
       - { path: /nix/store/*-nodejs*/bin/node }
-      # headroom proxy (the single :8787 instance pi + kimi route
-      # through, kimi upstream in pi/kimi sandboxes): headroom-slim's
-      # bin entry is a bash wrapper, so
+      # headroom proxy (the single dual-pipeline :8787 instance pi,
+      # kimi and claude route through): headroom-slim's bin entry is a
+      # bash wrapper, so
       # pin its PYTHON INTERPRETER — same pattern as the claude_code
       # rule's @bin_headroom_py@ (gateway credential substitution for
       # proxy-routed traffic verified in-sandbox 2026-10).
       - { path: @bin_headroom_py@ }
 
-  # Claude Code against api.anthropic.com with a Claude Teams
-  # subscription bearer token (injected as $ANTHROPIC_AUTH_TOKEN by
-  # the attached claude-code provider). Claude's startup preflight
+  # Claude Code against api.anthropic.com with a Claude Pro/Max/Team
+  # SUBSCRIPTION OAuth token (injected as $CLAUDE_CODE_OAUTH_TOKEN by
+  # the attached claude-subscription provider — the default) or a
+  # Console platform key ($ANTHROPIC_AUTH_TOKEN via claude-code —
+  # attach ONE, never both). Claude's startup preflight
   # ("Checking connectivity..." → /v1/oauth/hello) and `claude auth
   # login` OAuth token polling both go to platform.claude.com — without
   # it claude exits with "Unable to connect to Anthropic services"

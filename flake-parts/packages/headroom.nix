@@ -21,6 +21,8 @@
       ast-grep-cli
       pyyaml
       tomlkit
+      # truststore joined core in headroom 0.38.
+      truststore
       # --- proxy ---
       fastapi
       uvicorn
@@ -76,16 +78,16 @@
     # under its real PyPI filename via runCommand.
     headroom-wheel = pkgs.runCommand "headroom-ai-wheel" {} ''
       mkdir -p $out
-      cp ${inputs.headroom} $out/headroom_ai-0.37.0-cp310-abi3-manylinux_2_28_x86_64.whl
+      cp ${inputs.headroom} $out/headroom_ai-0.40.0-cp310-abi3-manylinux_2_28_x86_64.whl
     '';
 
     # Base wheel packaging shared by full and slim variants
     mkHeadroom = propagatedBuildInputs:
       py.buildPythonApplication {
         pname = "headroom-ai";
-        version = "0.37.0";
+        version = "0.40.0";
         format = "wheel";
-        src = "${headroom-wheel}/headroom_ai-0.37.0-cp310-abi3-manylinux_2_28_x86_64.whl";
+        src = "${headroom-wheel}/headroom_ai-0.40.0-cp310-abi3-manylinux_2_28_x86_64.whl";
         nativeBuildInputs = [pkgs.autoPatchelfHook];
         buildInputs = [pkgs.stdenv.cc.cc.lib];
         inherit propagatedBuildInputs;
@@ -117,6 +119,8 @@
       ast-grep-cli
       pyyaml
       tomlkit
+      # truststore joined core in headroom 0.38.
+      truststore
       # --- proxy ---
       fastapi
       uvicorn

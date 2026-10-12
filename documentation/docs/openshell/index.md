@@ -122,9 +122,12 @@ What the image bakes in (all nixpkgs/`llm-agents`-pinned, no secrets):
   pre-wired so no interactive login is ever needed: `pi` (baked
   `models.json` reads `$KIMI_API_KEY`, plus an `anthropic` provider
   entry that rides `$ANTHROPIC_AUTH_TOKEN` when the claude-code
-  platform provider is attached), `kimi-code` (baked
-  `~/.kimi-code/config.toml`: `type = "anthropic"` against the
-  headroom proxy — the same Kimi for Coding subscription pi speaks,
+  platform provider is attached, plus an `openrouter` entry on pi's
+  native catalog (direct, no proxy) when the openrouter provider is
+  attached), `kimi-code` (baked
+  `~/.kimi-code/config.toml`: `type = "kimi"` — Moonshot's native
+  OpenAI-style wire — against the headroom proxy's OpenAI pipeline,
+  the same Kimi for Coding subscription pi speaks,
   `api_key_env = "KIMI_API_KEY"`, default model k3 at high effort,
   Never Ask permission mode), and `claude`
   (baked onboarding skip, default model claude-opus-5-5,
@@ -136,9 +139,12 @@ What the image bakes in (all nixpkgs/`llm-agents`-pinned, no secrets):
   home-manager-generated (the image's standalone HM evaluation renders
   `homeSpec.agents.*` into the agents' config files), and ALL
   inference routes through ONE baked, lazy-started headroom proxy per
-  sandbox (`127.0.0.1:8787`; upstream follows the sandbox's stamped
-  `$CODE_AGENT` — `code-sandbox --agent`: pi/kimi → api.kimi.com/coding,
-  claude → api.anthropic.com) for context compression — see the
+  sandbox (`127.0.0.1:8787`) serving EVERY agent at once — one process,
+  two wire pipelines: Anthropic `/v1/messages` → api.anthropic.com
+  (claude, pi's anthropic provider) and OpenAI `/v1/chat/completions` →
+  api.kimi.com/coding/v1 (kimi-code); pi's Anthropic-wired kimi-coding
+  provider overrides per-request via `x-headroom-base-url` —
+  for context compression — see the
   [image guide](code-agent-image.md).
 - **Repo skills baked at `/opt/skills`** — the same merged skill tree
   `inputs.agents.lib.mkSkills` builds for the NixOS hosts (the home
@@ -180,7 +186,9 @@ Day-to-day, don't type the create command — the dev shell ships
 `code-sandbox`, which builds the image, loads it as
 `code-agent:<imghash>` (content-hash tag, never mutable `latest`), and
 creates a sandbox named `<name>-<imghash>` (default `code`) with this
-policy and the kimi/github providers, prompting to delete-and-replace
+policy and the `--inference` provider set (default `all`: every
+inference menu provider present on the gateway, plus the always-on
+github-agent), prompting to delete-and-replace
 when the name already exists (an existing name always means an older
 image, thanks to the hash suffix; `-y` skips the prompt). Manual
 equivalent:
@@ -378,14 +386,16 @@ Image/driver interplay:
   (`providers.<name>.{type,apiKey,apiKeyEnv,baseUrl}`,
   `defaultProvider`/`defaultModel`, `[models.<alias>]` with required
   `maxContextSize`) supports env-referenced keys. The baked config.toml
-  uses `type = "anthropic"` (the Anthropic `/messages` wire at
-  api.kimi.com/coding — verified live in-sandbox 2026-10) pointed at
-  the sandbox's single headroom proxy (`127.0.0.1:8787`, kimi upstream
-  in pi/kimi sandboxes), replacing both
+  uses `type = "kimi"` (Moonshot's NATIVE kimi-code wire: OpenAI-style
+  chat completions at api.kimi.com/coding/v1 — verified live in-sandbox
+  2026-10) pointed at the headroom proxy's OpenAI pipeline
+  (`base_url = http://127.0.0.1:8787/v1`), replacing both
   the OAuth device flow (whose `auth.kimi.com` hosts stay
-  policy-closed) and the OpenAI-style `type = "kimi"` wire (not
-  proxyable through headroom's anthropic pipeline — the OpenAI-style
-  variant remains the fallback if Moonshot ever moves the wire).
+  policy-closed) and the Anthropic-wire `type = "anthropic"` variant
+  (the pre-0.40 workaround from when one proxy could only serve one
+  upstream — with one Anthropic pipeline per process, kimi-code could
+  not share a proxy with claude; the dual-pipeline proxy made the
+  Anthropic variant unnecessary).
   `KIMI_CODE_MODEL_CATALOG_REFRESH_ON_START=false` stops the models.dev
   fetch failure from littering startup.
 - **No docker/podman inside sandboxes — and starship shouldn't pretend
