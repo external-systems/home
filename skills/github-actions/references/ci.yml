@@ -1,11 +1,14 @@
 name: CI
 # Generic nix flake CI for an external-systems repo on the org's
-# self-hosted NixOS runners. Copy and adjust the matrix attrs.
+# self-hosted NixOS runners, via the org's reusable workflows
+# (external-systems/actions — pin @v1, never @main). The fork guard
+# (public repos: fork PR code never runs on self-hosted runners) is
+# baked into the reusable workflow itself.
 #
 # TRIGGER POLICY (org rule): nix flake check is the ONLY automatic job
 # (push + PR). Builds are manual (workflow_dispatch). VM tests never run
 # automatically — see vm-tests.yml. Pushes to main get auto-tagged by
-# release.yml.
+# release.yml (gated on the same check).
 permissions:
   contents: read
 
@@ -24,20 +27,15 @@ jobs:
   flake-check:
     # Lint, checks and devShell builds — the repo's gate. -L streams full
     # build logs into the job log (`gh run view --log-failed`).
-    runs-on: [self-hosted, external-systems]
-    steps:
-      - uses: actions/checkout@v6.0.2
-      - run: nix flake check --show-trace -L
+    uses: external-systems/actions/.github/workflows/nix-flake-check.yml@v1
 
-  build:
-    # Package/artifact builds — MANUAL ONLY (org rule). Replace the
-    # matrix with the repo's attrs.
+  # Package/artifact builds — MANUAL ONLY (org rule). `uses:` jobs can't
+  # have a matrix: for a fixed attr set write one calling job per attr;
+  # for a dynamic matrix keep repo-local steps (see the home repo's
+  # vm-tests.yml).
+  build-myPackage:
     if: github.event_name == 'workflow_dispatch'
-    strategy:
-      fail-fast: false
-      matrix:
-        attr: [myPackage]
-    runs-on: [self-hosted, external-systems]
-    steps:
-      - uses: actions/checkout@v6.0.2
-      - run: nix build .#${{ matrix.attr }} --show-trace -L
+    uses: external-systems/actions/.github/workflows/nix-build.yml@v1
+    with:
+      installable: .#packages.x86_64-linux.myPackage
+      build-flags: --show-trace -L

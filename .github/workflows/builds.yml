@@ -3,6 +3,11 @@ name: Builds
 # (org rule): the only automatic push workflow is ci.yml's flake check.
 # Dispatch from Actions → Builds → Run workflow, or:
 #   gh workflow run builds.yml --repo external-systems/home
+#
+# Each machine is its own job calling the org's reusable
+# nixos-machine-build workflow — `uses:` jobs cannot have a matrix, so
+# one job per machine. With count=1 runner these serialize anyway; when
+# the fleet gains capacity they build in parallel.
 permissions:
   contents: read
 
@@ -14,25 +19,33 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  build-machines:
-    # Machine toplevels: proves every NixOS configuration still builds.
-    strategy:
-      fail-fast: false
-      matrix:
-        machine: [nixos, kamrui-h1, ghost, hp-notebook, nixos-installer]
-    runs-on: [self-hosted, external-systems]
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v6.0.2
+  build-nixos:
+    uses: external-systems/actions/.github/workflows/nixos-machine-build.yml@v1
+    with:
+      host: nixos
 
-      - name: Build Machine ${{ matrix.machine }}
-        run: nix build .#nixosConfigurations.${{ matrix.machine }}.config.system.build.toplevel --show-trace -L
+  build-kamrui-h1:
+    uses: external-systems/actions/.github/workflows/nixos-machine-build.yml@v1
+    with:
+      host: kamrui-h1
+
+  build-ghost:
+    uses: external-systems/actions/.github/workflows/nixos-machine-build.yml@v1
+    with:
+      host: ghost
+
+  build-hp-notebook:
+    uses: external-systems/actions/.github/workflows/nixos-machine-build.yml@v1
+    with:
+      host: hp-notebook
+
+  build-nixos-installer:
+    uses: external-systems/actions/.github/workflows/nixos-machine-build.yml@v1
+    with:
+      host: nixos-installer
 
   build-docs:
-    runs-on: [self-hosted, external-systems]
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v6.0.2
-
-      - name: Build MkDocs
-        run: nix build .#documentation --show-trace -L
+    uses: external-systems/actions/.github/workflows/nix-build.yml@v1
+    with:
+      installable: .#documentation
+      build-flags: --show-trace -L

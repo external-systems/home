@@ -4,6 +4,16 @@ name: VM Tests
 # run automatically. Dispatch from Actions → VM Tests → Run workflow, or:
 #   gh workflow run vm-tests.yml --repo external-systems/home [-f size=md]
 #
+# Why this file stays local instead of calling the org's reusable
+# nixos-vm-test.yml: `uses:` jobs cannot have a matrix, and this
+# workflow dynamically discovers every vm-tests/*.nix into one.
+# The reusable workflow covers single-test dispatch for other repos
+# (and one-off runs here):
+#   jobs:
+#     vm-test:
+#       uses: external-systems/actions/.github/workflows/nixos-vm-test.yml@v1
+#       with: { test: <name>, size: sm }
+#
 # RESOURCE RULE: tests run on a desktop that is in use. The
 # checks.vm-test-resources gate (part of nix flake check) rejects any
 # vm-tests/*.nix declaring memorySize > 16384 MiB or cores > 8 PER VM;

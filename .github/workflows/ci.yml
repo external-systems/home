@@ -1,14 +1,22 @@
 name: CI
 # Runs on the external-systems org's self-hosted NixOS runners
-# (kamrui-h1): nix, git, gh, jq, yq, curl and KVM are already on the
-# host — no setup actions, no Determinate Nix. The runner user is a nix
-# trusted user with accept-flake-config, so this repo's nixConfig
-# substituters (cachix caches in flake.nix) are used automatically.
+# (kamrui-h1) via the org's reusable workflows
+# (external-systems/actions): nix, git, gh, jq, yq, curl and KVM are
+# already on the host — no setup actions, no Determinate Nix. The
+# runner user is a nix trusted user with accept-flake-config, so this
+# repo's nixConfig substituters (cachix caches in flake.nix) are used
+# automatically.
 #
 # TRIGGER POLICY (org rule): this is the ONLY workflow that runs
 # automatically on push — and only the flake check. Builds are manual
 # (builds.yml), VM tests are manual (vm-tests.yml). Pushes to main are
-# auto-tagged by release.yml.
+# auto-tagged by release.yml (gated on this same check).
+#
+# SECURITY (public repo + self-hosted runner): the fork guard — never
+# run fork PR code on kamrui-h1 — is baked into the reusable workflow
+# itself; do not add PR-time jobs here that bypass it. Fork PRs are
+# welcome; they just get no automatic CI (review the diff, then merge
+# via an in-repo branch if wanted).
 permissions:
   contents: read
 
@@ -24,23 +32,8 @@ concurrency:
 
 jobs:
   flake-check:
-    # SECURITY (public repo + self-hosted runner): never run fork PR code
-    # on kamrui-h1. A PR from a fork could put arbitrary commands in the
-    # flake and execute them as the github-runner user (which can read the
-    # org's runner-registration PAT and mint rogue runners). Only PRs
-    # from branches inside this repo — i.e. the owner's — may use the
-    # self-hosted runner. Fork PRs are still welcome; they just get no
-    # automatic CI here (review the diff, then merge via an in-repo
-    # branch if wanted).
-    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     # Lint gate (alejandra/statix/deadnix via checks.lint), the VM test
     # resource gate (checks.vm-test-resources), all other checks and
     # devShell builds. -L streams full build logs into the job log, so a
     # red job's errors are readable via `gh run view --log-failed`.
-    runs-on: [self-hosted, external-systems]
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v6.0.2
-
-      - name: Nix Flake Check
-        run: nix flake check --show-trace -L
+    uses: external-systems/actions/.github/workflows/nix-flake-check.yml@v1

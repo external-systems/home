@@ -1,6 +1,6 @@
 ---
 name: github-actions
-description: "Creating GitHub Actions workflows for repos in the external-systems org that run on its self-hosted NixOS runners (currently kamrui-h1): runner labels and targeting, what is preinstalled on the runner, nix flake check / nix build / NixOS VM test job patterns with readable logs, the 0.<rolling-minor>.<commit-count> release tagging convention, and reading failed run logs with gh. Load when writing, editing, or debugging GitHub Actions CI for any external-systems repo."
+description: "Creating GitHub Actions workflows for repos in the external-systems org that run on its self-hosted NixOS runners (currently kamrui-h1): runner labels and targeting, what is preinstalled on the runner, the org-wide reusable workflows in external-systems/actions (nix flake check, check-gated rolling-semver tag, nix build, NixOS machine build, NixOS VM test — call with `uses: ...@v1`), local nix flake check / nix build / VM test patterns with readable logs, the 0.<rolling-minor>.<commit-count> release tagging convention, and reading failed run logs with gh. Load when writing, editing, or debugging GitHub Actions CI for any external-systems repo."
 ---
 
 # github-actions — external-systems self-hosted runners
@@ -14,6 +14,58 @@ host already has.
 
 Ready-to-copy workflow templates live in `references/` next to this
 file — copy the one closest to the task and adjust.
+
+## Org-wide reusable workflows — external-systems/actions (start here)
+
+The four standard org jobs live as **reusable workflows** (`on:
+workflow_call`) in the [actions](https://github.com/external-systems/actions)
+repo — a library repo that never runs itself (no push/PR/dispatch
+triggers, no secrets). Call one from any org repo with `uses:`; the
+called workflow runs in the CALLER's context (caller's checkout,
+`GITHUB_TOKEN` and secrets — the actions repo is just the recipe):
+
+| File | What it does | Key inputs |
+| --- | --- | --- |
+| `nix-flake-check.yml@v1` | `nix flake check --show-trace -L` | `runs-on`, `flake-check-flags` |
+| `nix-flake-check-and-tag.yml@v1` | flake check **gates** a `0.<minor>.<commit-count>` tag push (idempotent, serialized) | `rolling-minor` (required), `runs-on` |
+| `nix-build.yml@v1` | `nix build <installable> -L` | `installable` (required), `build-flags`, `runs-on` |
+| `nixos-machine-build.yml@v1` | builds `.#nixosConfigurations.<host>...toplevel` — nests a call to `nix-build.yml` | `host` (required), `runs-on` |
+| `nixos-vm-test.yml@v1` | `nix run .#vm-test -- <test>-<size>` | `test` (required), `size` (sm/md/lg), `extra-args`, `runs-on` |
+
+```yaml
+jobs:
+  check-and-tag:                      # home/release.yml's push path, verbatim
+    uses: external-systems/actions/.github/workflows/nix-flake-check-and-tag.yml@v1
+    with:
+      rolling-minor: "3"
+```
+
+Rules for consuming them:
+
+- **Pin `@v1` (or a full SHA), never `@main`.** The actions repo is the
+  org's CI root of trust; the tag is the reviewed artifact.
+- The repo's Actions policy must allow references from
+  `external-systems/*` (relevant once allowed-actions is tightened from
+  "all").
+- **The fork guard is baked into every reusable job**
+  (`github.event.pull_request.head.repo.full_name == github.repository`)
+  — fork PR code can never reach a self-hosted runner. Do not re-add a
+  guard, and do not remove it in the actions repo.
+- **Jobs using `uses:` cannot have a `strategy.matrix`.** For a
+  fixed set, write one small calling job per item (home's builds.yml:
+  five `nixos-machine-build` calls). For a DYNAMIC matrix (home's
+  vm-tests.yml discovers tests from the tree at runtime), the workflow
+  stays local — copy the step patterns below, the reusable workflows
+  can't help there.
+- `nixos-machine-build.yml` nests a call to `nix-build.yml` — two
+  levels of `uses:`; GitHub allows three.
+- Caller `permissions:` must cover what the reusable job declares
+  (`contents: write` for the tag job) — permissions never elevate
+  beyond the caller.
+
+Everything below about runner targeting, preinstalled tooling and log
+reading applies inside the reusable workflows too — they run on the
+same runners with the same toolset.
 
 ## The runners
 
@@ -77,7 +129,8 @@ is the artifact — a red job must be debuggable from the log alone.
   human/agent from the Actions tab or `gh workflow run <file>`.
 - **VM tests NEVER run automatically**, under any trigger.
 - **Every push to main is auto-tagged** `0.<rolling-minor>.<commit-count>`
-  (see Releases). Creating the GitHub *release* for a tag is manual.
+  after the flake check passes (see Releases). Creating the GitHub
+  *release* for a tag is manual.
 
 ### 1. nix flake check
 
@@ -146,17 +199,23 @@ watchdog fires first on a hang.
 Convention: **`0.<rolling-minor>.<commit-count-since-init>`** (home is
 on `0.3.x`). Split behavior:
 
-- **Tagging is automatic**: every push to `main` gets tagged
-  `0.<minor>.$(git rev-list --count HEAD)` by the release workflow's
-  `tag` job (idempotent — an existing tag is a no-op, e.g. after a
-  force-push). The tag push does not retrigger workflows (they filter
+- **Tagging is automatic and gated**: every push to `main` runs
+  `nix flake check` first; only a green push gets tagged
+  `0.<minor>.$(git rev-list --count HEAD)`. In repos that use the org's
+  reusable set this is one call to `nix-flake-check-and-tag.yml@v1`
+  (the gate ships with the template — callers can't forget it). The
+  tag push does not retrigger workflows (they filter
   `branches: [main]`, and `GITHUB_TOKEN` pushes don't trigger events
   anyway).
 - **The GitHub release is manual**: `workflow_dispatch` with an optional
   `tag` input (default: latest `0.<minor>.*`), gated behind a pre-flight
-  `nix flake check` so a red tree is never released.
+  `nix flake check` so a red tree is never released. The release job
+  stays repo-local (gh release, --latest semantics) — it is NOT part of
+  the reusable set.
 
-Tag job essentials (see `references/release.yml` for the full file):
+Tag job essentials (as implemented in the actions repo's
+`nix-flake-check-and-tag.yml@v1` — call it, don't copy it; this is for
+understanding and for repos that hand-roll tagging):
 
 ```yaml
 - uses: actions/checkout@v6.0.2
@@ -199,7 +258,13 @@ resumable VM state) is a *local* driver-mode run
   `nix flake check` is the ONLY automatic job (push + PR). Builds and
   VM tests are `workflow_dispatch` only. VM tests never run
   automatically, ever. Pushes to `main` are auto-tagged with the rolling
-  semver; publishing the GitHub release is manual.
+  semver AFTER the flake check passes; publishing the GitHub release is
+  manual.
+- **Prefer the org's reusable workflows**
+  (`external-systems/actions`, `@v1`) for the four standard jobs — flake
+  check, check-gated tag, nix build/machine build, single VM test.
+  Write repo-local steps only for repo-specific jobs (dynamic matrix,
+  release publishing, anything with custom logic).
 - Self-hosted only: `runs-on` must resolve to org runners (see
   Targeting). Never `ubuntu-latest`.
 - Never install nix or use `DeterminateSystems/*` actions — nix is the

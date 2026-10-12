@@ -94,15 +94,49 @@ clan vars list kamrui-h1
 
 ## Authoring workflows
 
+The org's standard CI jobs are **reusable workflows** in the
+[external-systems/actions](https://github.com/external-systems/actions)
+repo — a library repo with only `on: workflow_call` triggers, tagged
+`v1`. Call them from any org repo:
+
+| Reusable workflow (`@v1`) | Job |
+| --- | --- |
+| `nix-flake-check.yml` | `nix flake check --show-trace -L` |
+| `nix-flake-check-and-tag.yml` | flake check **gates** a `0.<minor>.<commit-count>` tag push |
+| `nix-build.yml` | `nix build <installable> -L` |
+| `nixos-machine-build.yml` | builds `.#nixosConfigurations.<host>.config.system.build.toplevel` |
+| `nixos-vm-test.yml` | `nix run .#vm-test -- <test>-<size>` |
+
+```yaml
+jobs:
+  check-and-tag:
+    uses: external-systems/actions/.github/workflows/nix-flake-check-and-tag.yml@v1
+    with:
+      rolling-minor: "3"          # this repo's rolling minor
+```
+
+The called workflow runs in the caller's context (caller's checkout,
+token and secrets) — the actions repo is the recipe, not the executor.
+Pin `@v1` (or a SHA), never `@main`: the actions repo is the org's CI
+root of trust and is branch-protected. Each reusable job carries a
+baked-in fork guard (`github.event.pull_request.head.repo.full_name ==
+github.repository`) because the org's repos are public — fork PR code
+can never reach a self-hosted runner. `uses:` jobs cannot have a
+matrix: fixed sets become one calling job per item (this repo's
+`builds.yml`), dynamic matrices stay repo-local (this repo's
+`vm-tests.yml`).
+
 Runners carry the default labels (`self-hosted`, `linux`, `x86_64`) plus
-`<hostName>`, `<org>`, and any per-org `extraLabels`:
+`<hostName>`, `<org>`, and any per-org `extraLabels` — the reusable
+workflows default to `["self-hosted", "external-systems"]` via their
+`runs-on` input. Hand-written jobs target the same labels:
 
 ```yaml
 jobs:
   check:
-    runs-on: [self-hosted, linux, x86_64]
+    runs-on: [self-hosted, external-systems]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6.0.2
       - run: nix flake check
 ```
 
@@ -128,6 +162,13 @@ nix store.
 
 ## Operations
 
+- **Public repos need an org-level opt-in**: the org's runner group
+  (Settings → Actions → Runner groups → Default) must have **Allow
+  public repositories** checked, or jobs queue forever with an idle,
+  correctly-labeled runner ("Waiting for a runner to pick up this
+  job…") — GitHub simply never dispatches, with no error anywhere.
+  Pair it with the fork guard (reusable workflows carry it) so fork
+  PRs still can't reach the hardware.
 - **Logs:** `journalctl -u github-runner-external-systems -f`
 - **Parallelism:** bump `hostSpec.services.github-runner.org.<org>.count`
   (each instance is its own service and registration).
