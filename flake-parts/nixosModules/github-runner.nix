@@ -1,4 +1,8 @@
-{lib, ...}: {
+{
+  lib,
+  pkgs,
+  ...
+}: {
   # ------ NixOS Modules ------ #
   # Self-hosted GitHub Actions runners for nix CI, org runners only.
   #
@@ -92,10 +96,24 @@
 
       extraPackages = lib.mkOption {
         type = lib.types.listOf lib.types.package;
-        default = [];
+        default = with pkgs; [
+          # CI-ready toolset on every runner's PATH (on top of what the
+          # nixpkgs service ships: nix, git, coreutils, gnutar, gzip,
+          # bash). Keep this lean — jobs should get project tooling from
+          # the repo's flake (nix develop / packages), not the host.
+          gh # gh run view --log-failed / gh release — no API tokens in workflows
+          jq # JSON munging (dynamic matrices, nix eval --json output)
+          yq-go # YAML in workflows/scripts
+          curl
+          wget
+          openssh # ssh-ng:// remote builders
+          git-lfs # repos with LFS assets check out cleanly
+        ];
+        defaultText = lib.literalExpression "with pkgs; [ gh jq yq-go curl wget openssh git-lfs ]";
         description = ''
           Extra packages on all runners' PATH (nix, git, coreutils, gnutar,
-          gzip and bash ship with the nixpkgs service already).
+          gzip and bash ship with the nixpkgs service already). The default
+          is the CI-ready set every flake repo workflow assumes is present.
         '';
       };
     };
@@ -160,6 +178,12 @@
       nix.settings = {
         # CI jobs run nix builds through the system daemon.
         trusted-users = [runnerUser];
+        # Honor each repo flake's own nixConfig (extra-substituters +
+        # trusted-public-keys) so jobs use the binary caches the flake
+        # declares instead of rebuilding from source. Safe here: the
+        # flake-config substituters are only honored for trusted users,
+        # and the runner user is trusted (above).
+        accept-flake-config = true;
         # NixOS VM tests (nix build .#checks.*) need the host's KVM device
         # visible inside the build sandbox.
         extra-sandbox-paths = ["/dev/kvm"];

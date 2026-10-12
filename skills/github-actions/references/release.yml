@@ -1,0 +1,72 @@
+name: Release
+# FlakeHub-style rolling semver: 0.<rolling-minor>.<commit-count>.
+# ORG RULE: every push to main is auto-tagged (tag job); publishing the
+# GitHub release is manual (workflow_dispatch → release job, pre-flight
+# flake check included). Adjust ROLLING_MINOR when the repo rolls minor.
+permissions:
+  contents: write
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag to publish as a GitHub release (default: latest)"
+        required: false
+
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
+
+env:
+  ROLLING_MINOR: "1"
+
+jobs:
+  tag:
+    if: github.event_name == 'push'
+    runs-on: [self-hosted, external-systems]
+    steps:
+      - uses: actions/checkout@v6.0.2
+        with:
+          fetch-depth: 0 # REQUIRED: patch number = full commit count
+
+      - name: Tag 0.${{ env.ROLLING_MINOR }}.<commit-count>
+        run: |
+          TAG="0.${ROLLING_MINOR}.$(git rev-list --count HEAD)"
+          if git rev-parse -q --verify "refs/tags/$TAG" >/dev/null; then
+            echo "Tag $TAG already exists — nothing to do."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag -a "$TAG" -m "Release $TAG" "${{ github.sha }}"
+          git push origin "$TAG"
+          echo "Tagged ${{ github.sha }} as $TAG"
+
+  release:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: [self-hosted, external-systems]
+    steps:
+      - uses: actions/checkout@v6.0.2
+        with:
+          fetch-depth: 0
+
+      - name: Pre-flight Flake Check
+        run: nix flake check --show-trace -L
+
+      - name: Resolve tag
+        id: semver
+        run: |
+          TAG="${{ inputs.tag }}"
+          if [ -z "$TAG" ]; then
+            TAG=$(git tag -l "0.${ROLLING_MINOR}.*" --sort=-version:refname | head -1)
+          fi
+          [ -n "$TAG" ] || { echo "No 0.${ROLLING_MINOR}.* tag found." >&2; exit 1; }
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+
+      - name: Create GitHub release
+        run: gh release create "${{ steps.semver.outputs.tag }}" --title "${{ steps.semver.outputs.tag }}" --generate-notes --latest
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

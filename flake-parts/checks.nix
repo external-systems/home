@@ -133,6 +133,41 @@
           touch $out
         '';
 
+      # VM test resource gate: CI runs VM tests on ONE self-hosted host
+      # (kamrui-h1: 30 GiB RAM, Ryzen 7 6800H 8c/16t) alongside the
+      # desktop's own workload. Any vm-tests/*.nix that declares
+      # virtualisation.memorySize (MiB) or virtualisation.cores must stay
+      # within the per-VM caps below — a test that asks for more than the
+      # runner has would hang or OOM the host mid-job. Tests that declare
+      # nothing get the nixosTest defaults (1024 MiB, 1 core), always
+      # safe. Multi-node tests: the cap is PER VM; keep the node count ×
+      # memorySize product well under host RAM.
+      vm-test-resources =
+        pkgs.runCommand "vm-test-resources"
+        {
+          nativeBuildInputs = [pkgs.gnugrep];
+        }
+        ''
+          status=0
+          for f in ${../vm-tests}/*.nix; do
+            case "$(basename "$f")" in _*) continue ;; esac
+            while read -r mib; do
+              if [ "$mib" -gt 16384 ]; then
+                echo "FAIL: $f declares memorySize $mib MiB > 16384 MiB cap (runner: kamrui-h1, 30 GiB total)" >&2
+                status=1
+              fi
+            done < <(grep -oE 'memorySize = [0-9]+' "$f" | grep -oE '[0-9]+' || true)
+            while read -r cores; do
+              if [ "$cores" -gt 8 ]; then
+                echo "FAIL: $f declares cores $cores > 8 cap (runner: kamrui-h1, 8c/16t)" >&2
+                status=1
+              fi
+            done < <(grep -oE 'virtualisation\.cores = [0-9]+' "$f" | grep -oE '[0-9]+' || true)
+          done
+          if [ "$status" -ne 0 ]; then exit 1; fi
+          touch $out
+        '';
+
       # devenv lock drift: devenv.yaml/devenv.lock pin nixpkgs, nixpkgs-unstable
       # and clan-core to the exact revisions flake.lock holds, so both
       # lockfiles reference identical sources (same builds, shared

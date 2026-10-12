@@ -1,0 +1,43 @@
+name: CI
+# Generic nix flake CI for an external-systems repo on the org's
+# self-hosted NixOS runners. Copy and adjust the matrix attrs.
+#
+# TRIGGER POLICY (org rule): nix flake check is the ONLY automatic job
+# (push + PR). Builds are manual (workflow_dispatch). VM tests never run
+# automatically — see vm-tests.yml. Pushes to main get auto-tagged by
+# release.yml.
+permissions:
+  contents: read
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name != 'workflow_dispatch' }}
+
+jobs:
+  flake-check:
+    # Lint, checks and devShell builds — the repo's gate. -L streams full
+    # build logs into the job log (`gh run view --log-failed`).
+    runs-on: [self-hosted, external-systems]
+    steps:
+      - uses: actions/checkout@v6.0.2
+      - run: nix flake check --show-trace -L
+
+  build:
+    # Package/artifact builds — MANUAL ONLY (org rule). Replace the
+    # matrix with the repo's attrs.
+    if: github.event_name == 'workflow_dispatch'
+    strategy:
+      fail-fast: false
+      matrix:
+        attr: [myPackage]
+    runs-on: [self-hosted, external-systems]
+    steps:
+      - uses: actions/checkout@v6.0.2
+      - run: nix build .#${{ matrix.attr }} --show-trace -L

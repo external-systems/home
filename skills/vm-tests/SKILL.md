@@ -85,6 +85,18 @@ Generate one sm/md/lg variant per test by varying only resource limits
 resource-hungry config. The variant is injected with `name = mkForce`
 so the driver's internal name matches the attribute.
 
+## CI resource caps
+
+CI runs these on a self-hosted desktop runner that is in use
+(kamrui-h1: 30 GiB RAM, Ryzen 7 6800H 8c/16t). Hard per-VM caps —
+`virtualisation.memorySize` ≤ 16384 MiB, `virtualisation.cores` ≤ 8 —
+enforced by `checks.vm-test-resources` (grep gate inside
+`nix flake check`, so a violation fails the push gate). Undeclared
+means the nixosTest defaults (1024 MiB, 1 core), always safe. The sm
+variant's 2 cores / 4096 MiB sits far under the caps; md/lg (up to 6
+cores / 12288 MiB) also fit. Keep node-count × memorySize well under
+30 GiB. VM tests are manual-dispatch only in CI — never automatic.
+
 ## Running
 
 `nix run .#vm-test` (or a repo equivalent) drives everything:
