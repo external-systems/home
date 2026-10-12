@@ -13,7 +13,9 @@ _: {
   # pin a host (`runs-on: kamrui-h1`). Ephemeral means one registration per
   # job: the runner deregisters when the job finishes, the service restarts
   # with a wiped workdir, and registers anew — jobs never share state and
-  # no stale "offline" registrations accumulate. Each start exchanges the
+  # no stale "offline" registrations accumulate. (Transient-failure
+  # hardening — boot-time DNS probe, Restart=always — lives in the
+  # systemd.services block in config.) Each start exchanges the
   # PAT for a fresh short-lived registration token (the PAT itself is never
   # consumed), so this costs a few seconds of per-job startup, never a
   # `clan vars generate` (see "Auth" below).
@@ -64,6 +66,25 @@ _: {
     # Orgs actually enabled on this host; everything keys off this set so
     # untouched orgs declare no generators, no runners and no users.
     enabledOrgs = lib.filterAttrs (_: org: org.enable) cfg.org;
+
+    # Transient-failure hardening for the ephemeral runners (see the
+    # systemd.services block in config): probe DNS before configure, and
+    # retry failed configure attempts instead of wedging the unit.
+    waitForDns = pkgs.writeShellScript "github-runner-wait-for-dns" ''
+      # Post-boot, the uplink (wifi on kamrui-h1) can lag
+      # network-online.target by seconds — configure.sh then fails
+      # instantly with "Name or service not known (api.github.com:443)"
+      # and, with the nixpkgs module's Restart=on-success, nothing ever
+      # retries. Probe until api.github.com resolves (max ~90s).
+      for _ in $(seq 1 45); do
+        if ${lib.getExe' pkgs.glibc.bin "getent"} hosts api.github.com >/dev/null 2>&1; then
+          exit 0
+        fi
+        sleep 2
+      done
+      echo "github-runner: api.github.com still unresolvable after 90s" >&2
+      exit 1
+    '';
   in {
     options.hostSpec.services.github-runner = {
       org = lib.mkOption {
@@ -163,6 +184,33 @@ _: {
             replace = true;
             extraLabels = [hostName system name] ++ org.extraLabels;
           }
+        )
+        enabledOrgs;
+
+      # The nixpkgs service's ExecStartPre chain (unconfigure → configure →
+      # workdirs) exchanges the PAT for a registration token on every start.
+      # Two transient failures used to wedge the runner until a manual
+      # restart:
+      #   - boot-time DNS: network-online.target is satisfied on link state
+      #     while the wifi uplink is still associating, so configure.sh dies
+      #     with "Name or service not known (api.github.com:443)";
+      #   - GitHub 5xx/429 on the registration-token exchange.
+      # Harden each unit: probe DNS before the chain (mkBefore keeps the
+      # probe ahead of the nixpkgs-defined ExecStartPre entries), and
+      # Restart=always + RestartSec so a failed configure retries — the
+      # on-success semantics for the job loop are preserved (always restarts
+      # on exit 0 too). RestartSec=30 spaces attempts outside systemd's
+      # default 10s start-limit window, so retries never hit the burst cap.
+      systemd.services =
+        lib.mapAttrs' (
+          name: _:
+            lib.nameValuePair "github-runner-${name}" {
+              serviceConfig = {
+                ExecStartPre = lib.mkBefore [waitForDns];
+                Restart = lib.mkForce "always";
+                RestartSec = 30;
+              };
+            }
         )
         enabledOrgs;
 
