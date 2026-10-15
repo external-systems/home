@@ -1,0 +1,6 @@
+# nix build output links
+result
+result-*
+
+# `mkdocs build` output, if you ever run mkdocs outside Nix
+documentation/site/

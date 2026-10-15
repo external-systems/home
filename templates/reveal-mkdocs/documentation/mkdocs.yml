@@ -1,0 +1,48 @@
+# MkDocs configuration — the one file that turns docs/*.md into a website.
+# Reference: https://www.mkdocs.org/user-guide/configuration/
+site_name: My Site
+
+# The sidebar, in order. Each entry is "Title: file under docs/".
+# Pages left out of nav still build but nobody can click to them.
+nav:
+  - Home: index.md
+  - Getting started: getting-started.md
+  - MkDocs basics: mkdocs.md
+  - reveal.js basics: reveal-js.md
+  - How the Nix flake works: nix.md
+
+# Material for MkDocs — the theme. Options:
+# https://squidfunk.github.io/mkdocs-material/setup/
+theme:
+  name: material
+  features:
+    - content.code.copy
+    - navigation.footer
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+
+plugins:
+  - search
+
+# Markdown add-ons used in these pages: callout boxes, highlighted code
+# blocks, and tabs. https://squidfunk.github.io/mkdocs-material/reference/
+markdown_extensions:
+  - admonition
+  - attr_list
+  - pymdownx.details
+  - pymdownx.highlight
+  - pymdownx.keys
+  - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
+  - toc:
+      permalink: true

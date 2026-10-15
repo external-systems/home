@@ -138,6 +138,24 @@ in {
       path = relativeToRoot ".";
       description = "This Flake";
     };
+    # Standalone MkDocs site + reveal.js deck (own flake.lock, zero npm):
+    # `nix flake init -t github:external-systems/home#reveal-mkdocs`
+    templates.reveal-mkdocs = {
+      path = relativeToRoot "templates/reveal-mkdocs";
+      description = "MkDocs docs site + reveal.js slides (flake-parts, mkdocs-flake, zero npm)";
+      welcomeText = ''
+        # MkDocs + reveal.js
+
+        Run `git add .` first (Nix only sees files git tracks), then:
+
+            nix run .#watch-documentation   # docs preview
+            nix run .#serve-slides          # slides preview
+            nix build .#documentation       # docs website  -> ./result
+            nix build .#slides              # slide deck    -> ./result
+
+        Start reading at documentation/docs/getting-started.md.
+      '';
+    };
 
     # --- Clan Configuration ------ #
     clan = {
