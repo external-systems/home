@@ -80,51 +80,59 @@
     # (flake-parts/ociImages/code-agent.nix, baked at /opt/skills).
     externalSkillSources = [
       # Anthropic official skills, cherry-picked.
-      {
-        src = inputs.skills-anthropic;
-        selectSkills = ["doc-coauthoring" "docx" "internal-comms" "mcp-builder" "skill-creator" "xlsx"];
-      }
+      # {
+      #   src = inputs.skills-anthropic;
+      #   selectSkills = ["doc-coauthoring" "docx" "internal-comms" "mcp-builder" "skill-creator" "xlsx"];
+      # }
       # Cloudflare official skills — all.
-      {src = inputs.skills-cloudflare;}
+      # {src = inputs.skills-cloudflare;}
       # Payload CMS official skills — all.
-      {src = inputs.skills-payloadcms;}
+      # {src = inputs.skills-payloadcms;}
       # Supabase official skills — all.
-      {src = inputs.skills-supabase;}
+      # {src = inputs.skills-supabase;}
       # FluxCD gitops skills — all.
       {src = inputs.skills-fluxcd;}
       # Terraform/OpenTofu skill — all (single skill).
-      {src = inputs.skills-terraform;}
+      # {src = inputs.skills-terraform;}
       # Google official skills — all categories. google/skills nests
       # skills/<category>/<name>, so one entry per category with
       # skillsDir pointed at the category dir (leaf names unique across
       # categories).
-      {
-        src = inputs.skills-google;
-        skillsDir = "skills/ads";
-      }
-      {
-        src = inputs.skills-google;
-        skillsDir = "skills/analytics";
-      }
-      {
-        src = inputs.skills-google;
-        skillsDir = "skills/cloud";
-      }
-      {
-        src = inputs.skills-google;
-        skillsDir = "skills/developers";
-      }
-      {
-        src = inputs.skills-google;
-        skillsDir = "skills/identity";
-      }
+      # {
+      #   src = inputs.skills-google;
+      #   skillsDir = "skills/ads";
+      # }
+      # {
+      #   src = inputs.skills-google;
+      #   skillsDir = "skills/analytics";
+      # }
+      # {
+      #   src = inputs.skills-google;
+      #   skillsDir = "skills/cloud";
+      # }
+      # {
+      #   src = inputs.skills-google;
+      #   skillsDir = "skills/developers";
+      # }
+      # {
+      #   src = inputs.skills-google;
+      #   skillsDir = "skills/identity";
+      # }
       # OpenShell (the existing openshell flake input's source tree):
       # two skill dirs — the in-repo skills/ and the contributor-facing
       # .agents/skills/.
-      {src = inputs.openshell;}
+      # {src = inputs.openshell;}
+      # {
+      #   src = inputs.openshell;
+      #   skillsDir = ".agents/skills";
+      # }
       {
-        src = inputs.openshell;
-        skillsDir = ".agents/skills";
+        src = inputs.mattpocock;
+        skillsDir = "skills/engineering";
+      }
+      {
+        src = inputs.mattpocock;
+        skillsDir = "skills/productivity";
       }
     ];
 

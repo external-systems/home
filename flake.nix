@@ -170,6 +170,10 @@
       url = "github:google/skills";
       flake = false;
     };
+    mattpocock = {
+      url = "github:mattpocock/skills";
+      flake = false;
+    };
   };
 
   outputs = inputs:
