@@ -140,5 +140,7 @@ their description):
   vars keys, redundancy recipes.
 - `cilium` — Cilium 1.20.x: BGP control plane CRDs, LB IPAM, network
   policy, troubleshooting playbook.
+- `rancher-kubernetes` — k3s/RKE2 operations: bootstrap, security,
+  datastores, air gap, Cilium/Multus, NixOS/VM tests, k3d labs, and k3k.
 - `openebs` — OpenEBS 4.6.x Kubernetes CSI storage: engines, per-node
   prerequisites, StorageClasses, upgrades, troubleshooting.
