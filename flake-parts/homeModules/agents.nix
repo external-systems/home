@@ -80,20 +80,20 @@
     # (flake-parts/ociImages/code-agent.nix, baked at /opt/skills).
     externalSkillSources = [
       # Anthropic official skills, cherry-picked.
-      # {
-      #   src = inputs.skills-anthropic;
-      #   selectSkills = ["doc-coauthoring" "docx" "internal-comms" "mcp-builder" "skill-creator" "xlsx"];
-      # }
+      {
+        src = inputs.skills-anthropic;
+        selectSkills = ["doc-coauthoring" "docx" "internal-comms" "mcp-builder" "skill-creator" "xlsx"];
+      }
       # Cloudflare official skills — all.
       # {src = inputs.skills-cloudflare;}
       # Payload CMS official skills — all.
-      # {src = inputs.skills-payloadcms;}
+      {src = inputs.skills-payloadcms;}
       # Supabase official skills — all.
       # {src = inputs.skills-supabase;}
       # FluxCD gitops skills — all.
       {src = inputs.skills-fluxcd;}
       # Terraform/OpenTofu skill — all (single skill).
-      # {src = inputs.skills-terraform;}
+      {src = inputs.skills-terraform;}
       # Google official skills — all categories. google/skills nests
       # skills/<category>/<name>, so one entry per category with
       # skillsDir pointed at the category dir (leaf names unique across
