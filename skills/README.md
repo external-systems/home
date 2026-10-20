@@ -140,6 +140,10 @@ their description):
   vars keys, redundancy recipes.
 - `cilium` — Cilium 1.20.x: BGP control plane CRDs, LB IPAM, network
   policy, troubleshooting playbook.
+- `envoy-gateway` — Envoy Gateway v1.9.x: install/upgrade, Gateway API
+  v1.6 routing, gateway.envoyproxy.io CRDs and policy model, security,
+  observability/egctl debugging, and running on Cilium (KPR, nftables,
+  BGP v2 + LB IPAM).
 - `rancher-kubernetes` — k3s/RKE2 operations: bootstrap, security,
   datastores, air gap, Cilium/Multus, NixOS/VM tests, k3d labs, and k3k.
 - `openebs` — OpenEBS 4.6.x Kubernetes CSI storage: engines, per-node
