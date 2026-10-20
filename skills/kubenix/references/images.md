@@ -41,6 +41,23 @@ Third-party images you want to mirror or pin: pull them as fixed-output
 derivations with `pkgs.dockerTools.pullImage { imageName; imageDigest;
 sha256; }` and register them the same way.
 
+### OCI images as flake inputs?
+
+Technically `image` accepts any store path, but flake inputs are the wrong
+shape for images, for two reasons:
+
+- Nix **unpacks tarball inputs** — an image `.tar.gz` input arrives as a
+  directory, but the push script feeds the path to `skopeo copy
+  docker-archive:`, which wants the packed tarball.
+- The push script reads `image.imageName` / `image.imageTag` (and the
+  `name`/`tag` defaults do too) — plain paths don't carry those passthru
+  attrs, so `docker.copyScript` evaluation fails.
+
+`dockerTools.pullImage` is the idiomatic pin: hash-locked like a flake
+input, keeps the docker-archive form, and supplies `imageName`/`imageTag`.
+Use flake inputs for *charts* (see [helm.md](helm.md#charts-as-flake-inputs));
+use `pullImage` (or your own dockerTools builds) for images.
+
 ## Pushing: `docker.copyScript`
 
 `config.docker.copyScript` is a ready-to-run package (binary

@@ -37,6 +37,33 @@ chart = ./charts/mychart;                    # vendored local chart directory
 chart = "${pkgs.fetchgit { … }}/istio";      # chart inside a fetched repo
 ```
 
+### Charts as flake inputs
+
+Yes — `chart` is just `types.package` passed to `helm template`, so any store
+path works, and flake.lock then does the version pinning instead of a
+hand-managed `sha256`:
+
+```nix
+# flake inputs — Nix unpacks tarball inputs, and helm template accepts the
+# resulting chart directory directly:
+inputs.cilium-chart = {
+  url = "https://helm.cilium.io/cilium-1.18.4.tgz";
+  flake = false;
+};
+inputs.istio-charts = { url = "github:istio/istio/1.24.2"; flake = false; };
+
+# in the kubenix module:
+kubernetes.helm.releases.cilium.chart = inputs.cilium-chart;
+kubernetes.helm.releases.istiod.chart = inputs.istio-charts + "/manifests/charts/istio-control/istio-discovery";
+```
+
+Bump with `nix flake update cilium-chart` (or `nix flake lock
+--update-input …`). Trade-offs versus `helm.fetch`: inputs are pinned in
+flake.lock (visible, updatable with standard tooling, shared across
+machines), but every chart input is fetched on every flake evaluation —
+keep the count small, and prefer `helm.fetch` for charts you reference from
+a single module.
+
 ## Release options (`kubernetes.helm.releases.<name>`)
 
 | Option | Default | Notes |

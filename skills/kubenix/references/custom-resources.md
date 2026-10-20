@@ -92,7 +92,31 @@ else.
 
 Ordering: `kubernetes.resourceOrder` defaults to putting
 `CustomResourceDefinition` first (then `Namespace`), so CRDs land before
-their CRs in the emitted list.
+their CRs in the emitted list. A single `kubectl apply` of the whole
+manifest handles that fine; GitOps controllers also retry CRs whose CRD
+isn't established yet.
+
+### CRD lifecycle rules
+
+CRDs are the resource class where sloppy apply destroys data — deleting or
+incompatibly rewriting a CRD cascades to every CR of that kind. Working
+rules:
+
+- **Treat CRDs as cluster infrastructure, not app config.** Keep them in
+  their own kubenix module (or even their own rendered manifest /
+  Flux Kustomization) from the apps that consume them, so a redeploy of an
+  app never touches the CRD. With Flux, a separate Kustomization with
+  `spec.crds: CreateReplace` gets you CRD upgrades without deletion.
+- **Upgrade by adding versions**, exactly like upstream does: register the
+  new version as another customType (same `attrName`), add the version to
+  the CRD's `spec.versions`, migrate CRs, then drop the old version.
+- **Third-party CRDs** (cert-manager, Cilium, Flux's own): fetch them as
+  store paths (`pkgs.fetchurl`/`fetchFromGitHub`, or a flake input) and
+  `kubernetes.imports` them — you get patching, ordering, and store
+  pinning; the upstream file stays authoritative.
+- When a helm chart bundles the same CRDs under `crds/`, keep
+  `includeCRDs = false` and import the CRDs yourself — one owner per
+  resource, or kubenix and the chart fight over the object.
 
 ## Interplay with helm
 

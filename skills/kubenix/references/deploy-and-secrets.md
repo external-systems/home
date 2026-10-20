@@ -65,8 +65,32 @@ Compositions that work well:
 - **sops / sops-nix**: let sops-nix decrypt to a runtime path on the deploy
   host (`sops.secrets.<name>.path`, e.g. under `/run/secrets/`), and put
   `ref+file://<that path>` in the manifest. The manifest in the store holds
-  only the reference. (This composes with clan vars the same way — reference
-  the generator's runtime path.)
+  only the reference.
+- **clan vars generators** (this fleet's secret backend): a generator's
+  output file has a stable runtime path —
+  `config.clan.core.vars.generators.<gen>.files.<file>.path` (under
+  `/run/secrets/vars/...`). Wire the two in the same NixOS module: the
+  generator produces the secret on the host, the kubenix manifest carries
+  only a vals reference to it, and the CLI's `vals eval` resolves it at
+  apply time:
+
+  ```nix
+  { config, ... }: {
+    clan.core.vars.generators.db-password = {
+      files.password.secret = true;
+      script = "cp $prompts/password $out/password";  # human runs `clan vars generate`
+    };
+
+    # in the kubenix module (same evaluation has access to config.clan…):
+    # kubernetes.resources.secrets.db.stringData.password =
+    #   "ref+file://${config.clan.core.vars.generators.db-password.files.password.path}";
+  }
+  ```
+
+  Same discipline as sops: the manifest holds the reference, never the
+  value. Remember agents must never run `clan vars generate` — generation
+  is a human step; the manifest only needs the *path*, which is known at
+  eval time.
 - **sealed-secrets / external-secrets**: no kubenix integration exists, but
   they're just resources — declare the `SealedSecret` (with the *sealed*,
   already-encrypted payload, which is safe to store) or `ExternalSecret`
@@ -113,9 +137,58 @@ resources instead (letting the cluster's controller do the rendering),
 register them via `kubernetes.customTypes` — group `helm.cattle.io`, version
 `v1`. Prefer one rendering pipeline per cluster.
 
-For anything beyond a single server, skip the manifests dir and point
-Flux/ArgoCD at the rendered YAML in git (commit `resultYAML` or generate it
-in CI).
+## GitOps with FluxCD
+
+Kubenix and Flux fit cleanly because kubenix's output is plain static YAML —
+Flux needs no helm controller involvement at all. The two patterns that
+work:
+
+1. **Rendered-manifest repo** (recommended): kubenix renders `resultYAML` in
+   CI (or locally on deploy), the YAML is committed to the cluster repo, and
+   a Flux `Kustomization` with `sourceRef` on the repo applies the directory.
+   No kustomize needed — a Flux Kustomization applies plain YAML as-is.
+   Split into multiple Kustomizations with `dependsOn` for layering:
+   CRDs/infrastructure first, apps after (see the CRD lifecycle rules in
+   [custom-resources.md](custom-resources.md) — CRDs get their own
+   Kustomization, optionally with `spec.crds: CreateReplace`).
+2. **OCI artifact**: build the manifest as a Flux `OCIArtifact` source
+   (push `resultYAML` with `flux push artifact` in CI) — versioned,
+   checksummed, and natural for air-gapped transfer.
+
+Practical notes:
+
+- Flux prunes by default (`prune: true`), which fixes the k3s manifests-dir
+  deletion gap.
+- Kubenix's `kubenix/hash` label only changes when content changes, so it
+  doesn't fight Flux's drift detection. Leave `addHashLabel` on.
+- Don't commit vals `ref+…` manifests to a repo Flux applies — Flux doesn't
+  resolve vals. Either resolve during the render step in CI (so committed
+  YAML is complete — meaning that repo is now secret-bearing, usually wrong)
+  or prefer the in-cluster patterns (sealed-secrets / external-secrets)
+  for Flux-managed clusters.
+
+## Bootstrap: kubenix for the CNI, Flux for everything after
+
+A working bootstrap split: kubenix renders the bootstrap layer (CNI, Flux
+itself, CRDs), Flux takes over continuous reconciliation once it's running.
+
+1. Configure k3s for a BYO CNI: `services.k3s.extraFlags = [
+   "--flannel-backend=none" "--disable-network-policy" ]` (add
+   `--disable-kube-proxy` if running Cilium with kube-proxy replacement).
+2. Inflate the Cilium chart in kubenix (`kubernetes.helm.releases.cilium`,
+   chart via flake input or `helm.fetch`, `kubeVersion` matching the
+   cluster) and render it together with the Flux install manifests
+   (`flux install --export` output, imported via `kubernetes.imports`).
+3. Apply that bootstrap manifest once — k3s manifests dir or the kubenix
+   CLI — wait for Cilium and Flux to come up.
+4. From then on, Flux owns everything, *including Cilium upgrades*: commit
+   the Cilium YAML to the Flux repo and **remove it from the k3s manifests
+   dir / stop applying it with the CLI**. Two owners of the same objects is
+   the failure mode here — k3s's deployer and Flux will both "fix" drift in
+   opposite directions. One resource, one owner.
+
+The same pattern works for RKE2 (`--disable rke2-canal` etc.) and for
+seed-crds-then-apps layering generally.
 
 ## Air-gapped installs
 

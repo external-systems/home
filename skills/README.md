@@ -154,5 +154,6 @@ their description):
   boilerplate), or scaffold greenfield from its template.
 - `kubenix` — render Kubernetes manifests with the Nix module system
   (hall/kubenix): typed resources, helm chart inflation, Nix-built OCI
-  images + skopeo push, CRDs/typed custom resources, secrets via vals/sops,
-  air-gapped and k3s/RKE2 deployment.
+  images + skopeo push, CRDs/typed custom resources, secrets via
+  vals/sops/clan vars, GitOps (FluxCD) handoff, air-gapped and k3s/RKE2
+  deployment.

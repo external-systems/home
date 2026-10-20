@@ -13,9 +13,12 @@ generated from the Kubernetes OpenAPI spec, and emits a manifest you feed to
 [kubenix.org](https://kubenix.org/).
 
 **Project status:** pre-1.0 and explicitly unstable ("expect breaking
-changes" — the unreleased 0.4.0 tree has several). Pin a kubenix rev in the
-flake and read its CHANGELOG when bumping. Generated bindings exist for k8s
-**1.19–1.36**; `kubernetes.version` selects them (default: latest).
+changes"). Latest tag is 0.3.0; `main` carries unreleased pre-0.4.0 breaking
+changes (CHANGELOG `[Unreleased]` — registry option restructure, deferredModule
+customTypes, copyScript binary rename). There is no 0.4.0 branch or tag — pin
+a kubenix rev in the flake and read the CHANGELOG when bumping. Generated
+bindings exist for k8s **1.19–1.36**; `kubernetes.version` selects them
+(default: latest).
 
 ## The one rule: the nix store is world-readable
 
@@ -105,16 +108,18 @@ most kubenix mistakes happen:
 Load the reference for the branch you're on:
 
 - **Helm charts** — inflating charts at build time, fetching/version-pinning
-  them, patching rendered output, `includeCRDs`/`noHooks` semantics:
+  them (including charts as flake inputs), patching rendered output,
+  `includeCRDs`/`noHooks` semantics:
   [references/helm.md](references/helm.md)
 - **Nix-built OCI images** — dockerTools images into manifests, registries,
-  the skopeo push script: [references/images.md](references/images.md)
+  the skopeo push script, why flake inputs are the wrong shape for images:
+  [references/images.md](references/images.md)
 - **CRDs & typed Custom Resources** — `kubernetes.customTypes`,
   multi-version kinds, importing CRD YAML:
   [references/custom-resources.md](references/custom-resources.md)
-- **Building & deploying manifests, secrets, air-gap, k3s/RKE2** —
-  `result`/`resultYAML`, the kubenix CLI, vals/sops/sealed-secrets, offline
-  recipes, k3s manifests-dir:
+- **Building & deploying manifests, secrets, air-gap, k3s/RKE2, GitOps** —
+  `result`/`resultYAML`, the kubenix CLI, vals/sops/clan-vars/sealed-secrets,
+  offline recipes, k3s manifests-dir, FluxCD handoff and CNI bootstrap:
   [references/deploy-and-secrets.md](references/deploy-and-secrets.md)
 - **Reusable module bundles** — the submodule/submodules registry for
   packaging groups of resources with typed args:
