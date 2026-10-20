@@ -552,6 +552,21 @@
         "type": "github"
       }
     },
+    "import-tree_2": {
+      "locked": {
+        "lastModified": 1788467110,
+        "narHash": "sha256-ljEMTXP/rH0tOvDzc9gzwww6KcHRPRnEHzd9lK48V7s=",
+        "owner": "denful",
+        "repo": "import-tree",
+        "rev": "eb1b52eaecc57f7c136d07ae8a93e724dfecac46",
+        "type": "github"
+      },
+      "original": {
+        "owner": "denful",
+        "repo": "import-tree",
+        "type": "github"
+      }
+    },
     "jovian": {
       "inputs": {
         "nix-github-actions": "nix-github-actions",
@@ -1089,6 +1104,34 @@
         "type": "github"
       }
     },
+    "presenting": {
+      "inputs": {
+        "flake-parts": [
+          "flake-parts"
+        ],
+        "import-tree": "import-tree_2",
+        "mkdocs-flake": [
+          "mkdocs-flake"
+        ],
+        "nixpkgs": [
+          "nixpkgs"
+        ],
+        "reveal-js": "reveal-js"
+      },
+      "locked": {
+        "lastModified": 1792467877,
+        "narHash": "sha256-xCiDHTepwhF4pcyB/sm1vPqXnXU4/Ydzw6Tu/h/nS6I=",
+        "owner": "external-systems",
+        "repo": "presenting",
+        "rev": "38c4535cb9080fdab2900da88442440181062d92",
+        "type": "github"
+      },
+      "original": {
+        "owner": "external-systems",
+        "repo": "presenting",
+        "type": "github"
+      }
+    },
     "pyproject-build-systems": {
       "inputs": {
         "nixpkgs": [
@@ -1189,6 +1232,23 @@
         "type": "github"
       }
     },
+    "reveal-js": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1789052901,
+        "narHash": "sha256-yh9Fwp8PT6fFrbSsih7cD9EzH2wbfd3idjyemOQTqF8=",
+        "owner": "hakimel",
+        "repo": "reveal.js",
+        "rev": "75dff6f515d2d08df0c32cf2b7328b89425c6f25",
+        "type": "github"
+      },
+      "original": {
+        "owner": "hakimel",
+        "ref": "6.0.2",
+        "repo": "reveal.js",
+        "type": "github"
+      }
+    },
     "root": {
       "inputs": {
         "agents": "agents",
@@ -1218,6 +1278,7 @@
         "nixpkgs-unstable": "nixpkgs-unstable",
         "openshell": "openshell",
         "plasma-manager": "plasma-manager",
+        "presenting": "presenting",
         "skills-anthropic": "skills-anthropic",
         "skills-cloudflare": "skills-cloudflare",
         "skills-fluxcd": "skills-fluxcd",
