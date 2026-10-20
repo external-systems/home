@@ -152,3 +152,7 @@ their description):
   flake repo as build artifacts by consuming the
   `external-systems/presenting` flake (flakeModules + lib.mkSlides, zero
   boilerplate), or scaffold greenfield from its template.
+- `kubenix` — render Kubernetes manifests with the Nix module system
+  (hall/kubenix): typed resources, helm chart inflation, Nix-built OCI
+  images + skopeo push, CRDs/typed custom resources, secrets via vals/sops,
+  air-gapped and k3s/RKE2 deployment.
