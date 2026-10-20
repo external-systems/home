@@ -6,12 +6,6 @@ _: {
 
     services = {
       openshell.gateway.enable = true;
-      # Self-hosted GitHub Actions runners for the external-systems org
-      # (nix CI: nix flake check, NixOS VM tests). Token is a clan var:
-      #   clan vars generate kamrui-h1
-      # (prompts for a fine-grained PAT with org "Self-hosted runners"
-      # R/W, or a classic PAT with admin:org).
-      github-runner.org.external-systems.enable = true;
       # Push-to-talk speech-to-text (whisper.cpp, Vulkan on the AMD iGPU).
       # Hotkey: hold Ctrl+Period. C270 webcam mic is the recording source.
       # The push-to-talk keyboard is pinned in ~/.config/whisper-dictation/

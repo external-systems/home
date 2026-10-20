@@ -55,7 +55,7 @@
           # layout.
           whisper-dictation = {
             enable = true;
-            inputDevice = "Samsers KT06";
+            # inputDevice = "Samsers KT06";
             hotkey = {
               modifiers = ["super"];
               key = "semicolon";
@@ -70,6 +70,10 @@
         kalker
         freelens-bin
         gh
+        nixd
+        alejandra
+        nixfmt-rs
+        python3Minimal
       ];
     };
   };
