@@ -148,3 +148,7 @@ their description):
   datastores, air gap, Cilium/Multus, NixOS/VM tests, k3d labs, and k3k.
 - `openebs` — OpenEBS 4.6.x Kubernetes CSI storage: engines, per-node
   prerequisites, StorageClasses, upgrades, troubleshooting.
+- `mkdocs-reveal` — add a MkDocs docs site + reveal.js slide deck to any
+  flake repo as build artifacts by consuming the
+  `external-systems/presenting` flake (flakeModules + lib.mkSlides, zero
+  boilerplate), or scaffold greenfield from its template.

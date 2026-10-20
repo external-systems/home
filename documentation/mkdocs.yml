@@ -6,6 +6,7 @@ repo_name: andrewthomaslee/home
 
 nav:
   - Home: index.md
+  - Presentation: presentation.md
   - Architecture:
       - Overview: architecture/index.md
       - ADR 0001 - Multi-Host Deployment: architecture/adr/0001-multi-host-deployment-strategy.md

@@ -40,6 +40,15 @@ in {
     formatter = pkgs.unstable.alejandra;
     # Mkdocs
     documentation.mkdocs-root = relativeToRoot "documentation";
+    # reveal.js slide deck (inputs.presenting.flakeModules.slides):
+    # packages.slides, apps.serve-slides, and the deck embedded into the
+    # docs site at /slides/ (embedInDocs is on because mkdocs-flake is
+    # imported). serveDirName is the deck's path from the repo root, so
+    # `nix run .#serve-slides` finds the live files.
+    presenting.slides = {
+      dir = relativeToRoot "documentation/slides";
+      serveDirName = "documentation/slides";
+    };
   };
 
   flake = {

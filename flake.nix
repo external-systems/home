@@ -42,6 +42,18 @@
       inputs.nixpkgs.follows = "nixpkgs-unstable";
     };
 
+    # MkDocs + reveal.js slides: exports flakeModules.slides
+    # (packages.slides, apps.serve-slides, /slides/ embed into the docs
+    # site) and lib.mkSlides. The reveal.js pin travels inside it.
+    presenting = {
+      url = "github:external-systems/presenting";
+      inputs = {
+        nixpkgs.follows = "nixpkgs";
+        flake-parts.follows = "flake-parts";
+        mkdocs-flake.follows = "mkdocs-flake";
+      };
+    };
+
     # Home-manager
     home-manager = {
       url = "github:nix-community/home-manager";
@@ -190,6 +202,10 @@
       imports = [
         (inputs.import-tree ./flake-parts)
         inputs.mkdocs-flake.flakeModules.default
+        # Slide deck (packages.slides, apps.serve-slides, /slides/ embed).
+        # flakeModules.slides, NOT .default: mkdocs-flake is already
+        # imported above, and .default would declare its options twice.
+        inputs.presenting.flakeModules.slides
         inputs.clan-core.flakeModules.default
         inputs.home-manager.flakeModules.home-manager
         # devenv flake-parts module: evaluates devenv/default.nix through
