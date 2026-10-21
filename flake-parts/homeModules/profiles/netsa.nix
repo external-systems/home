@@ -14,12 +14,11 @@
           kimi.enabled = true;
           pi.enabled = true;
           claude.enabled = true;
-          # GitHub MCP via the local stdio server + the shared clan-var PAT
-          # (/run/secrets/vars/shared/github-mcp/pat, generator declared by
-          # nixosModules/github-mcp when auth = "pat"). The default "oauth"
-          # only works for opencode's browser flow and — worse — the PAT
-          # generator is gated on "pat", so pi/kimi/claude's PAT wrapper had
-          # no token at all under "oauth".
+          # GitHub MCP via the local stdio server + the per-user clan-var
+          # PAT ("github-netsa", generator declared by nixosModules/git.nix
+          # for any user with a token consumer). The default "oauth" only
+          # works for opencode's browser flow and — worse — pi/kimi/claude's
+          # PAT wrapper has no token at all under "oauth".
           mcp.github.auth = "pat";
         };
         programs = {
@@ -38,7 +37,15 @@
           devenv.enabled = true;
           firefox.enable = true;
           ghostty.enable = true;
-          git.enable = true;
+          git = {
+            enable = true;
+            # Declarative github.com auth (HTTPS credential helper +
+            # GH_TOKEN) via the per-user "github-netsa" clan var — the same
+            # token feeds the github MCP wrapper. The deployed path is
+            # supplied by nixosModules/git.nix; githubAuth is off by
+            # default for every other user.
+            githubAuth.enabled = true;
+          };
           k9s.enable = true;
           ksshaskpass.enable = true;
           media.enable = true;

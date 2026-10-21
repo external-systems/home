@@ -103,6 +103,6 @@ If the sandbox image should ship the same skills, add the source to
   `nix eval --raw .#nixosConfigurations.<name>.config.home-manager.users.netsa.home.file.\".agents/skills\".source`
   — prints the `mkSkills` store path; `ls` it to see the merged skill set
   (opencode's copy is `xdg.configFile.\"opencode/skills\".source`).
-- `nix flake check --show-trace` evaluates all machines (CI parity).
+- `nix flake check --show-trace` evaluates all machines.
 - Build a machine toplevel to exercise the module end-to-end:
   `nix build .#nixosConfigurations.ghost.config.system.build.toplevel`

@@ -5,6 +5,13 @@
 - **Deciders:** Andrew Thomas Lee (@andrewthomaslee)
 - **Technical Story:** Declarative multi-host configuration management for heterogeneous machines using FlakeHub, Clan.lol, and a pull-based deployment paradigm in an open-source monorepo.
 
+> **2026-10-21 update — partially superseded:** the FlakeHub and CI
+> pillars are historical. FlakeHub publishing (the `apply-*` packages)
+> and all GitHub Actions workflows/self-hosted runners have been removed;
+> deployments are local (`nixos-rebuild --flake <repo>#<host>`) and CI is
+> pending re-implementation as ARC (Actions Runner Controller). The clan
+> inventory/vars and tiered-networking pillars still stand.
+
 ---
 
 ## Context and Problem Statement

@@ -497,11 +497,10 @@ inventories**:
   spreading `nixpkgs.overlays` injects the service's packages — keeping
   the service itself free of any building/fetching (packages must come from
   the consuming flake's overlay).
-- **CI caveat:** `clan.nixosTests` land in `checks`, and this repo's CI is
-  GitHub `ubuntu-latest` — **no KVM**. VM tests must stay in
-  `legacyPackages.vmTests` (via `flake-parts/tests.nix`) and be run with
-  `nix run .#vm-test`, never through `clan.nixosTests`, until CI has KVM
-  runners.
+- **Checks caveat:** `clan.nixosTests` land in `checks`, where
+  `nix flake check` would run them — **no KVM in the nix sandbox**. VM
+  tests must stay in `legacyPackages.vmTests` (via `flake-parts/tests.nix`)
+  and be run with `nix run .#vm-test`, never through `clan.nixosTests`.
 
 ### Lessons learned (implementation gotchas)
 

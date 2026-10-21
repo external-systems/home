@@ -142,7 +142,7 @@ $ nix flake show
 │   ├───default: NixOS module
 │   ├───docker: NixOS module
 │   ├───flatpak: NixOS module
-│   ├───github-mcp: NixOS module
+│   ├───git: NixOS module
 │   ├───intel: NixOS module
 │   ├───jovian: NixOS module
 │   ├───kde: NixOS module

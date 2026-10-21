@@ -15,7 +15,7 @@ in {
     };
     kamrui-h1 = {
       deploy.targetHost = "root@kamrui-h1";
-      tags = ["pc" "amd" "virt" "wan" "dev" "netsa" "wife"];
+      tags = ["pc" "amd" "virt" "wan" "dev" "netsa" "wife" "matt"];
     };
     ghost = {
       deploy.targetHost = "root@ghost";
@@ -96,6 +96,19 @@ in {
         };
         tags = ["wife"];
         extraModules = [(relativeToRoot "users/wife")];
+      };
+    };
+
+    # Matt
+    matt = {
+      module.name = "users";
+      roles.default = {
+        settings = {
+          user = "matt";
+          share = true;
+        };
+        tags = ["matt"];
+        extraModules = [(relativeToRoot "users/matt")];
       };
     };
 

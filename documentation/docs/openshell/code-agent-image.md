@@ -441,7 +441,7 @@ image, loads it under the new content hash, and (after the replace
 prompt) recreates the sandbox. To do it manually:
 
 ```bash
-# 1. lint gate (CI runs this on push — fail fast locally)
+# 1. lint gate (the repo's checks.lint — fail fast locally)
 nix fmt . && statix check . && deadnix --fail .
 nix flake check --show-trace
 

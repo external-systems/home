@@ -106,10 +106,10 @@ Here is the real profile, from
             mcp = {
               # Dev-profile opt-ins (off by module default)
               typeui.enable = true;
-              # GitHub MCP via the clan-var PAT method; the "github-mcp"
-              # generator + sops deployment is derived automatically by
-              # nixosModules/github-mcp. Provision with:
-              #   clan vars set github-mcp pat <machine>
+              # GitHub MCP via the clan-var PAT method; the per-user
+              # "github-<user>" generator + sops deployment is derived
+              # automatically by nixosModules/git. Provision with:
+              #   clan vars generate <machine>   (prompts for the pat)
               github.auth = "pat";
               cloudflare.enable = true;
               cloudflare-docs.enable = true;

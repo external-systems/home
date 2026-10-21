@@ -143,12 +143,13 @@
     };
 
     # ---- Shared MCP bindings (homeSpec.agents.mcp.*) ---- #
-    # PAT file used by the wrapper: explicit githubPatFile override or the
-    # canonical sops-nix deployment path of the shared "github-mcp" clan var
-    # (declared by nixosModules/github-mcp for pat-mode users).
+    # PAT file used by the wrapper: explicit patFile override or the
+    # canonical sops-nix deployment path of the per-user "github-<user>"
+    # clan var (one token for MCP + git + gh; generator declared by
+    # nixosModules/git).
     githubMcpPatFile =
       if cfg.mcp.github.patFile == null
-      then "/run/secrets/vars/shared/github-mcp/pat"
+      then "/run/secrets/vars/shared/github-${config.home.username}/pat"
       else cfg.mcp.github.patFile;
     # Wrapper for the PAT auth method: exports GITHUB_PERSONAL_ACCESS_TOKEN
     # from the PAT file before exec'ing the server. The github-mcp-server
@@ -610,8 +611,8 @@
           description = "Enable the mcp-nixos MCP server in every enabled agent.";
         };
         # GitHub: auth method selected by `auth`; the two methods are
-        # mutually exclusive (enum + assertion below). pat-mode derives
-        # the clan vars generator via nixosModules/github-mcp.
+        # mutually exclusive (enum + assertion below). pat-mode rides the
+        # per-user clan vars generator declared by nixosModules/git.
         github = {
           enable = lib.mkOption {
             type = lib.types.bool;
@@ -628,7 +629,8 @@
                 pi/kimi/claude always use the local PAT wrapper regardless —
                 they cannot run the browser flow from a file config.
               - "pat": local stdio server reading the PAT from `patFile`
-                (usually the clan var at /run/secrets/vars/shared/github-mcp/pat).
+                (usually the per-user clan var at
+                /run/secrets/vars/shared/github-<user>/pat).
             '';
           };
           patFile = lib.mkOption {

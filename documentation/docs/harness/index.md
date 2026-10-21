@@ -122,13 +122,18 @@ they are installed via the home module, not as standalone packages.
   clan service in `inventory.nix`. Enables the shared skills plus all
   four agents (`homeSpec.agents.skills/opencode/pi/kimi/claude`), enables
   the headroom proxy (`homeSpec.programs.headroom`) with provider reroute
-  for all four agents, and uses the github MCP in PAT mode
-  (`mcp.github.auth = "pat"` — clan vars generator provisions the shared
-  PAT to `/run/secrets/vars/shared/github-mcp/pat`).
+  for all four agents, uses the github MCP in PAT mode
+  (`mcp.github.auth = "pat"` — the per-user clan var `github-netsa`
+  provisions the PAT to `/run/secrets/vars/shared/github-netsa/pat`), and
+  turns on declarative github.com git/gh auth
+  (`homeSpec.programs.git.githubAuth.enabled`) on the same token.
 - **root profile** (`profiles/root.nix`) — shell/ssh/starship/k9s only,
   no agents.
 - **wife profile** (`profiles/wife.nix`) — plasma-manager/firefox/media
   only, no agents.
+- **matt profile** (`profiles/matt.nix`) — netsa-lite: desktop basics,
+  claude only (github MCP off), whisper-dictation, docker; git auth off
+  until Matt has a GitHub PAT to provision.
 - The netsa tag itself (`clanServices/tags/`) carries only machine-level
   `hostSpec` options; all agent opt-ins live in the home profiles.
 
@@ -140,7 +145,7 @@ they are installed via the home module, not as standalone packages.
 | `flake-parts/homeModules/headroom.nix` | headroom options + `headroom-proxy.service` user unit — see [Headroom](headroom.md) |
 | `flake-parts/homeModules/profiles/netsa.nix` | dev profile: enables skills + all four agents |
 | `flake-parts/homeModules/profiles/root.nix`, `profiles/wife.nix` | minimal profiles without agents |
-| `flake-parts/nixosModules/github-mcp.nix` | clan vars PAT generator (see [MCP Servers](mcp-servers.md#github-mcp-server)) |
+| `flake-parts/nixosModules/git.nix` | per-user `github-<user>` clan vars PAT generator — one token for git/gh + the MCP wrapper (see [MCP Servers](mcp-servers.md#github-mcp-server)) |
 | `flake-parts/packages/artifacthub-mcp.nix` | artifacthub-mcp package |
 | `flake-parts/packages/kubernetes-mcp-server.nix` | kubernetes-mcp-server package |
 | `overlays/default.nix` | repo overlay: `pkgs.unstable` + the `llm-agents` agent CLIs (`kimi-code`, `pi-coding-agent`, `claude-code`) and service packages |

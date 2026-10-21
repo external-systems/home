@@ -53,23 +53,25 @@ time) plus an eval-time home-manager assertion: `"oauth"` requires
 `mcp.github.patFile` to be `null`.
 
 The wrapper reads the PAT file (explicit `mcp.github.patFile` override,
-else the canonical `/run/secrets/vars/shared/github-mcp/pat`) and
+else the canonical `/run/secrets/vars/shared/github-<user>/pat`) and
 exports `GITHUB_PERSONAL_ACCESS_TOKEN` before exec'ing the server. The
 upstream server exits immediately when that env var is unset, so a
 readable PAT file is a hard requirement.
 
-### Clan vars provisioning (`flake-parts/nixosModules/github-mcp.nix`)
+### Clan vars provisioning (`flake-parts/nixosModules/git.nix`)
 
 All github options live under `homeSpec.agents.mcp.github` — there is no
 separate NixOS option tree. The option-less NixOS module
-`nixosModules.github-mcp` scans every home-manager user's agents config
-and, for each user with `mcp.github.enable` **and any PAT consumer**
-(pi/kimi/claude enabled, or opencode with `auth = "pat"`), declares the
-shared clan vars generator:
+`nixosModules.git` owns the **one GitHub token per user**: it scans every
+home-manager user's config and declares the per-user clan vars generator
+when the user has **any** token consumer — `mcp.github.enable` plus a PAT
+consumer (pi/kimi/claude enabled, or opencode with `auth = "pat"`), or
+`homeSpec.programs.git.githubAuth.enabled`. One token serves the MCP
+wrapper, git's HTTPS credential helper and `GH_TOKEN` for the gh CLI:
 
 ```nix
-clan.core.vars.generators."github-mcp" = {
-  share = true;              # one PAT for the whole fleet
+clan.core.vars.generators."github-<user>" = {
+  share = true;              # one PAT per user, across machines
   prompts.pat.persist = true;
   prompts.pat.type = "hidden";
   files.pat = {
@@ -83,16 +85,19 @@ clan.core.vars.generators."github-mcp" = {
 Provisioning (interactive, **no fake values in the repo**):
 
 ```bash
-clan vars set github-mcp pat <machine>   # or: clan vars generate
+clan vars generate <machine>   # prompts for github-<user> pat
 ```
 
 sops-nix then deploys the secret to
-`/run/secrets/vars/shared/github-mcp/pat` (owner = user, mode `0400`)
-and the wrapper picks it up on every MCP server start.
+`/run/secrets/vars/shared/github-<user>/pat` (owner = user, mode `0400`)
+and the wrapper picks it up on every MCP server start. The token needs
+repo read/write on the org's private repos — MCP-only scopes 403 on git
+operations.
 
 !!! warning "The scan mirrors option paths by hand"
-    `nixosModules/github-mcp` re-reads the `homeSpec.agents.*` paths from
-    the NixOS side (defensive `or` access, no fixpoint recursion). If the
-    options are renamed or restructured, update BOTH places — a stale scan
-    silently stops declaring the generator and pi/kimi/claude's github MCP
-    fails at startup with "authentication required".
+    `nixosModules/git` re-reads the `homeSpec.agents.*` and
+    `homeSpec.programs.git.*` paths from the NixOS side (defensive `or`
+    access, no fixpoint recursion). If the options are renamed or
+    restructured, update BOTH places — a stale scan silently stops
+    declaring the generator and pi/kimi/claude's github MCP fails at
+    startup with "authentication required".
