@@ -154,4 +154,10 @@ then set `whisper.model: base` in config.yaml.
 - **No text appears**: `systemctl status ydotoold` must be active
 - **No audio recorded**: confirm `Webcam C270 Mono` is the default source
   (`wpctl status`)
+- **Every transcription is "You"** (or "Thank you"): whisper.cpp's signature
+  output for *digital silence* — the mic source is muted, not misheard.
+  Check `wpctl get-volume @DEFAULT_SOURCE@` for `[MUTED]`, unmute with
+  `wpctl set-mute @DEFAULT_SOURCE@ 0`. The daemon records
+  `ffmpeg -f pulse -i default` and keeps the last clip at
+  `/tmp/whisper-dictation/recording.wav` — all-zero samples confirm it
 - **Slow transcription**: lower `whisper.model` (small → base → tiny)
