@@ -31,12 +31,14 @@
 
       signingKey = lib.mkOption {
         type = lib.types.nullOr lib.types.str;
-        # Default: the clan-generated keypair's pub half (ssh.clanKey),
+        # Default: the clan-generated keypair's private half (ssh.clanKey),
         # which nixosModules/ssh.nix nulls until the var exists — signing
-        # stays off rather than broken pre-generation. Profiles only set
-        # this to override with a static key.
-        default = config.homeSpec.programs.ssh.clanKey.publicKeyFile;
-        description = "SSH public key used to sign commits; null disables commit signing.";
+        # stays off rather than broken pre-generation. Must be the PRIVATE
+        # key: git's ssh signer (ssh-keygen -Y sign) needs the private half,
+        # and a store-path .pub has none beside it. Profiles only set this
+        # to override with a static key.
+        default = config.homeSpec.programs.ssh.clanKey.privateKeyFile;
+        description = "SSH private key used to sign commits; null disables commit signing.";
       };
 
       # One GitHub PAT per user (clan vars generator "github-<user>",

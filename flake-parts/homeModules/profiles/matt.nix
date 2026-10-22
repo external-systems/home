@@ -33,7 +33,7 @@
             userName = "matt";
             userEmail = "matt@netsam.com";
             # No signingKey here: ssh.clanKey makes the clan-generated
-            # "user-ssh-matt" pubkey the default signing key once
+            # "user-ssh-matt" keypair the default signing key once
             # `clan vars generate` runs.
           };
           shell.enable = true;

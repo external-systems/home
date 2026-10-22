@@ -41,8 +41,8 @@
             userName = "andrewthomaslee";
             userEmail = "andrew@external.systems";
             # No signingKey here: ssh.clanKey makes the clan-generated
-            # "user-ssh-netsa" pubkey the default signing key once
-            # generated. Upload that pub to GitHub as a signing key to
+            # "user-ssh-netsa" keypair the default signing key once
+            # generated. Upload the pub half to GitHub as a signing key to
             # keep the verified badge.
             # Declarative github.com auth (HTTPS credential helper +
             # GH_TOKEN) via the per-user "github-netsa" clan var — the same

@@ -10,9 +10,9 @@ _: {
   #   /run/secrets/vars/shared/user-ssh-<user>/id_ed25519{,.pub}
   # (private: owner = user, mode 0400; public: non-secret value file).
   #
-  # Non-destructive: ~/.ssh/id_ed25519 is never touched. git picks the pub
-  # half up as its default signing key (homeModules/git.nix) once the var
-  # exists; per-host ssh IdentityFile stanzas were removed for now.
+  # Non-destructive: ~/.ssh/id_ed25519 is never touched. git picks the
+  # private half up as its default signing key (homeModules/git.nix) once
+  # the var exists; per-host ssh IdentityFile stanzas were removed for now.
   #
   # The pub half is also appended to the user's own authorizedKeys on every
   # machine declaring the keypair — that's what authenticates
@@ -76,7 +76,7 @@ _: {
           userName: _: let
             pubFile = config.clan.core.vars.generators."user-ssh-${userName}".files."id_ed25519.pub";
           in {
-            openssh.authorizedKeys.keys = lib.optional pubFile.exists pubFile.value;
+            ${userName}.openssh.authorizedKeys.keys = lib.optional pubFile.exists pubFile.value;
           }
         )
         keyUsers
@@ -100,12 +100,11 @@ _: {
             pubFile = generators.${generator}.files."id_ed25519.pub";
           in {
             homeSpec.programs.ssh.clanKey = lib.mkIf (osConfig != null) {
-              # Secret path is eval-safe pre-generation (clan's sops
-              # fileModule reports "/no-such-path").
-              privateKeyFile = lib.mkIf hasGenerator generators.${generator}.files.id_ed25519.path;
-              # Doubles as git's default signing key — nulled until the pub
-              # var actually exists so commits stay unsigned rather than
-              # pointing at a missing file.
+              # Doubles as git's default signing key (ssh-keygen signs with
+              # the private half directly). Nulled until the pub var exists
+              # so pre-generation commits stay unsigned rather than pointing
+              # at clan's "/no-such-path" placeholder.
+              privateKeyFile = lib.mkIf (hasGenerator && pubFile.exists) generators.${generator}.files.id_ed25519.path;
               publicKeyFile = lib.mkIf (hasGenerator && pubFile.exists) pubFile.path;
             };
           }
