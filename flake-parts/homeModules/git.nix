@@ -21,20 +21,22 @@
 
       userName = lib.mkOption {
         type = lib.types.str;
-        default = "andrewthomaslee";
         description = "git user.name for this profile.";
       };
 
       userEmail = lib.mkOption {
         type = lib.types.str;
-        default = "andrewthomaslee.business@gmail.com";
         description = "git user.email for this profile.";
       };
 
       signingKey = lib.mkOption {
         type = lib.types.nullOr lib.types.str;
-        default = "/home/netsa/.ssh/id_ed25519.pub";
-        description = "SSH public key used to sign commits; null disables commit signing (users without a key yet).";
+        # Default: the clan-generated keypair's pub half (ssh.clanKey),
+        # which nixosModules/ssh.nix nulls until the var exists — signing
+        # stays off rather than broken pre-generation. Profiles only set
+        # this to override with a static key.
+        default = config.homeSpec.programs.ssh.clanKey.publicKeyFile;
+        description = "SSH public key used to sign commits; null disables commit signing.";
       };
 
       # One GitHub PAT per user (clan vars generator "github-<user>",
@@ -42,7 +44,6 @@
       # operations, GH_TOKEN for the gh CLI, and the github MCP wrapper.
       githubAuth = {
         enabled = lib.mkEnableOption "declarative github.com auth via the per-user clan-var PAT";
-
         patFile = lib.mkOption {
           type = lib.types.nullOr lib.types.str;
           default = null;
@@ -52,6 +53,10 @@
     };
 
     config = lib.mkIf cfg.enable {
+      home.packages = with pkgs; [
+        gh
+      ];
+
       programs = {
         lazygit.enable = true;
 

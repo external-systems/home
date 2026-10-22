@@ -30,9 +30,7 @@
           ruby.disabled = true;
           hostname.ssh_only = false;
           hostname.style = "bold green";
-          nix_shell = {
-            symbol = "❄";
-          };
+          nix_shell.symbol = "❄";
           git_status = {
             ahead = "↑";
             behind = "↓";

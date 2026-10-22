@@ -7,7 +7,6 @@
   # ------ Home-manager Modules ------ #
   flake.homeModules.shell = {
     config,
-    osConfig,
     pkgs,
     ...
   }: let
@@ -45,22 +44,6 @@
             nr = "nix run";
             nfs = "nix flake show --all-systems";
             nixos-facter = "sudo nix run nixpkgs#nixos-facter -- -o facter.json";
-            # local nixos rebuild commands
-            nixos-rebuild-boot = "sudo nixos-rebuild boot --flake /home/netsa/home#${
-              if osConfig != null
-              then osConfig.networking.hostName
-              else "default"
-            }";
-            nixos-rebuild-switch = "sudo nixos-rebuild switch --flake /home/netsa/home#${
-              if osConfig != null
-              then osConfig.networking.hostName
-              else "default"
-            }";
-            nixos-rebuild-test = "sudo nixos-rebuild test --flake /home/netsa/home#${
-              if osConfig != null
-              then osConfig.networking.hostName
-              else "default"
-            }";
             # nixos-rebuild tests
             nixos-current-system = "readlink -f /nix/var/nix/profiles/system && readlink -f /run/current-system";
             # misc
@@ -76,25 +59,6 @@
             k3s-wipe = "systemctl stop k3s.service && k3s-killall.sh && rm -fr /var/lib/rancher/ && rm -fr /etc/rancher/ &&  ip link delete cilium_host && ip link delete cilium_vxlan && iptables-save | grep -iv cilium | iptables-restore && ip6tables-save | grep -iv cilium | ip6tables-restore";
             kubefetch-latest = ''nix run "https://flakehub.com/f/andrewthomaslee/kubefetch/*"'';
           };
-          # bashrcExtra = ''
-          #   # nixos remote rebuild
-          #   nixos-remote() {
-          #     if [ "$#" -lt 2 ]; then
-          #       echo "Usage: nixos-remote <switch|boot|test> <host>"
-          #       return 1
-          #     fi
-
-          #     local method="$1"
-          #     local host="$2"
-
-          #     if [[ ! "$method" =~ ^(switch|boot|test)$ ]]; then
-          #       echo "Error: method must be switch, boot, or test"
-          #       return 1
-          #     fi
-
-          #     nixos-rebuild "$method" --flake /home/netsa/nixos#"$host" --target-host root@"$host" --build-host root@localhost
-          #   }
-          # '';
         };
       };
     };

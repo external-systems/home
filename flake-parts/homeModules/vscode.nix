@@ -14,7 +14,9 @@
   in {
     options.homeSpec.programs.vscode.enable = lib.mkEnableOption "default vscode configuration";
     config = lib.mkIf (cfg.enable && config.home.username != "root") {
-      # vscodium
+      home.packages = with pkgs; [
+        gh
+      ];
       programs.vscodium = {
         enable = true;
         package = pkgs.unstable.vscodium;
@@ -25,7 +27,6 @@
               kamadorueda.alejandra
               jnoortheen.nix-ide
               redhat.vscode-yaml
-              catppuccin.catppuccin-vsc-icons
               gruntfuggly.todo-tree
             ];
             userSettings = {
@@ -151,7 +152,6 @@
       programs.bash.shellAliases = {
         c = "codium .";
         cknownhosts = "codium ~/.ssh/known_hosts";
-        fortune-kind = "nix run github:cafkafk/fortune-kind";
       };
     };
   };

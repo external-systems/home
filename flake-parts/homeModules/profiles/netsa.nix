@@ -10,7 +10,6 @@
         # inputs.agents.lib.mkSkills) is wired into every enabled agent.
         agents = {
           skills.enabled = true;
-          opencode.enabled = true;
           kimi.enabled = true;
           pi.enabled = true;
           claude.enabled = true;
@@ -39,6 +38,12 @@
           ghostty.enable = true;
           git = {
             enable = true;
+            userName = "andrewthomaslee";
+            userEmail = "andrew@external.systems";
+            # No signingKey here: ssh.clanKey makes the clan-generated
+            # "user-ssh-netsa" pubkey the default signing key once
+            # generated. Upload that pub to GitHub as a signing key to
+            # keep the verified badge.
             # Declarative github.com auth (HTTPS credential helper +
             # GH_TOKEN) via the per-user "github-netsa" clan var — the same
             # token feeds the github MCP wrapper. The deployed path is
@@ -51,7 +56,13 @@
           media.enable = true;
           password-store.enable = true;
           shell.enable = true;
-          ssh.enable = true;
+          ssh = {
+            enable = true;
+            # Clan-generated per-user keypair (user-ssh-netsa): git's
+            # default signing key once generated. The default
+            # ~/.ssh/id_ed25519 stays untouched.
+            clanKey.enabled = true;
+          };
           starship.enable = true;
           vscode.enable = true;
           openshell.enable = true;
@@ -75,12 +86,18 @@
         moscripts
         asciinema
         kalker
+        python3Minimal
         freelens-bin
-        gh
         nixd
         alejandra
+        statix
+        deadnix
         nixfmt-rs
-        python3Minimal
+        argocd
+        flux9s
+        fluxcd
+        mongodb-compass
+        pgadmin4-desktopmode
       ];
     };
   };
