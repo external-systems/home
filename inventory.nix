@@ -26,6 +26,11 @@ in {
       deploy.targetHost = "root@192.168.1.246";
       tags = ["pc" "intel" "wan" "wife"];
     };
+    # Shared PCs
+    beelink = {
+      deploy.targetHost = "root@192.168.50.2";
+      tags = ["pc" "amd" "virt" "wan" "dev" "netsa" "matt"];
+    };
 
     nixos-installer.tags = ["iso"];
   };
@@ -53,11 +58,6 @@ in {
         wan.tags.wan = {};
       };
     };
-
-    # installer = {
-    #   module.name = "installer";
-    #   roles.iso.tags.iso = {};
-    # };
 
     # --- Create Users --- #
     # Admin
