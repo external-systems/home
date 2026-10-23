@@ -1,7 +1,2 @@
-{
-  imports = [
-
-  ];
-
-  # New machine!
+_: {
 }
