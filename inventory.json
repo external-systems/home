@@ -2,6 +2,9 @@
   "machines": {
     "kamrui-h1": {
       "installedAt": 1788303699
+    },
+    "beelink": {
+      "installedAt": 1792782364
     }
   }
 }
