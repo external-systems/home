@@ -23,12 +23,12 @@ in {
     };
     # Wife's PCs
     hp-notebook = {
-      deploy.targetHost = "root@192.168.1.246";
+      deploy.targetHost = "root@hp-notebook";
       tags = ["pc" "intel" "wan" "wife"];
     };
     # Shared PCs
     beelink = {
-      deploy.targetHost = "root@192.168.50.2";
+      deploy.targetHost = "root@beelink";
       tags = ["pc" "amd" "virt" "wan" "dev" "netsa" "matt"];
     };
 
