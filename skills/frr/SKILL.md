@@ -99,6 +99,9 @@ vtysh -c 'show bgp summary'    # State/PfxRcd column = number ⇒ session up
 - **The `r` flag in `show ip route`** = zebra holds the route but the
   kernel rejected it (classic "BGP sees it, forwarding doesn't"). Cross
   check `ip route`; `systemctl restart frr` clears stale rejections.
+  Remember the split: bgpd decides which routes should exist, **zebra
+  owns the kernel install** — see
+  [references/operations.md](references/operations.md) §Zebra.
 
 ## Resilient site-to-site networking
 
@@ -122,6 +125,12 @@ The layer cake every resilient design needs, fastest detection innermost:
   member (`maximum-paths` + per-neighbor `bfd`); a member without BFD
   silently reverts to slow hold-time convergence. On listen ranges
   (Cilium auto-discovery), add `maximum-prefix` + inbound route-maps.
+- **ECMP over WireGuard = one wg interface per path** (one peer per
+  interface); two peers with overlapping AllowedIPs on one interface
+  silently shadow (`allowed ips: (none)`). Kernel hashes per-flow
+  across interfaces; getting ECMP to downstream clusters needs
+  per-border eBGP or iBGP add-path — BGP sends only the best path by
+  default. Details: [references/cilium.md](references/cilium.md).
 - **WireGuard transport is cryptokey routing, not IP routing**:
   overlapping `AllowedIPs` on one listener silently breaks (peer shows
   `allowed ips: (none)`) — one listener per full-table peer, and keep

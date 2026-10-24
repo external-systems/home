@@ -141,8 +141,8 @@ their description):
   graceful restart), EVPN-VXLAN overlays (L2 stretch, L3 EVPN/IRB,
   anycast gateways, VTEPs on Linux hosts), run/debug playbook
   (`show bgp summary`, `debug bgp`, frr-reload), resilience design
-  (BFD C-bit/GR interplay, timer coherence, WireGuard transport
-  pitfalls), and Cilium BGP control plane integration patterns
+  (BFD C-bit/GR interplay, timer coherence, ECMP incl. over WireGuard,
+  WireGuard transport pitfalls), and Cilium BGP control plane integration patterns
   (node-local FRR fronting, direct TOR peering, BGP auto-discovery,
   WireGuard site meshes).
 - `envoy-gateway` — Envoy Gateway v1.9.x: install/upgrade, Gateway API

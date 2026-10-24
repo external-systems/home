@@ -64,6 +64,41 @@ Per-neighbor detail:
 | `... neighbors PEER filtered-routes` | what inbound policy dropped |
 | `show bgp [afi] [safi] nexthop` | BGP nexthop cache — **first stop when routes are in the table but not forwarding** |
 
+## Zebra — the dataplane broker
+
+Every protocol daemon hands its best routes to `zebra`; zebra alone
+talks to the kernel (netlink) and owns the FIB:
+
+```
+bgpd / staticd / ...     ← decide WHICH routes should exist
+        │
+      zebra              ← decides what ACTUALLY gets installed
+        │
+   Linux kernel FIB
+```
+
+- **What zebra owns**: installing/withdrawing kernel routes;
+  arbitrating between protocols by admin distance (connected 0, static
+  1, **eBGP 20**, OSPF 110, **iBGP 200**); nexthop tracking — whether a
+  path's nexthop is reachable at all (`ip nht resolve-via-default` is
+  zebra's knob); ECMP nexthop groups; interface/VRF state.
+- bgpd never touches the kernel: sessions can be `Established` while
+  the FIB stays empty if zebra can't resolve or install the routes.
+  A route reflector (`bgp no-rib` / `-n`) is the only bgpd that runs
+  without zebra — never on a forwarding router.
+- On NixOS, zebra always runs (`services.frr` has no enable option for
+  it) alongside `mgmtd`/`staticd`.
+- **The debugging split**: "session/prefix/policy broken" is bgpd
+  territory — start at `show bgp summary`; "prefix in BGP but not
+  forwarding" is zebra/kernel territory — start here, comparing
+  `show ip route` against `ip route show` (below).
+- **Distance gotcha**: static (1) beats eBGP (20). A static default or
+  site route silently overrides BGP-learned ones; tune deliberately
+  with `distance bgp (ext) (int) (local)` per instance.
+- Kernel installs use metric 20 regardless of BGP metrics, and flow
+  hashing for ECMP is the kernel's `fib_multipath_hash_policy` — zebra
+  has no control after install.
+
 ## RIB vs kernel — the `r` flag
 
 `show ip route [json]` is zebra's RIB:

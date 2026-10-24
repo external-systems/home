@@ -173,7 +173,10 @@ Measured traps (all from the lab README — each cost someone a day):
 
 - `allow-reserved-ranges` and `nht resolve-via-default` are **global**
   commands; `% Unknown command` under `router bgp` means you're looking
-  in the wrong mode, not at an old FRR.
+  in the wrong mode, not at an old FRR. The `nht` knob matters because
+  **zebra resolves learned routes' next-hops before installing them**
+  — without it, routes reachable only via the default gateway sit in
+  bgpd but never reach the FIB, even though `show bgp` looks perfect.
 - No `next-hop-self`/`next-hop-unchanged` — the inbound route-map does
   the rewrite; eBGP to the TORs then advertises the node naturally.
 - Don't mark the Cilium neighbor `passive`: Cilium doesn't listen by
@@ -265,6 +268,50 @@ it caps what an FRR route-all can attract through the tunnel. With that
 in place, FRR BGP + BFD over the tunnel IPs demonstrably delivers
 ~2-ping failover across WAN loss and firewall-pair events (measured in
 the thread: 3 sites, dual WAN, HA pairs).
+
+**ECMP across WireGuard** — the shadowing rule and ECMP live at two
+different layers and do not collide: the no-overlap rule is *within one
+interface's* cryptokey table (a destination IP selects one peer key);
+ECMP is *cross-interface* in the kernel FIB (the flow hash picks an
+interface, then that interface looks up its single peer). Therefore:
+
+- **One peer per interface; ECMP members are different wg interfaces.**
+  A tunnel per peering/path (`wg-b1` via WAN1 endpoint, `wg-b2` via
+  WAN2, or one per remote node in a node mesh). Identical AllowedIPs
+  *across* interfaces is fine — independent tables; two peers with
+  overlapping AllowedIPs *on one* interface shadows the second (`(none)`).
+- Each interface's AllowedIPs must cover **all** subnets ECMP'd through
+  it (remote site/cluster supernets), or some flows fail key lookup.
+- FRR: one BGP session per tunnel, both tunnels to the same remote AS;
+  `maximum-paths 8` + `bgp bestpath as-path multipath-relax`; zebra
+  installs one nexthop per interface; kernel hashes **per flow**
+  (`fib_multipath_hash_policy=1` for L4 spread) — one connection pins
+  to one tunnel, many flows spread. Per-packet would break TCP.
+- One **BFD session per member**; a member's death withdraws one
+  nexthop and only flows hashed to it rehash.
+- Verify: `ip route show <P>` shows a `nexthop` line per member;
+  `wg show` shows no `(none)` peer; `show bgp <P>` flags members with
+  `=`; `ip -4 fib match <DST>` shows which member a flow takes;
+  tcpdump both tunnels to watch flows spread.
+
+### Getting ECMP to downstream clusters
+
+A border/router (NixOS FRR host or any BGP switch) with 2+ equal-cost
+upstreams only helps the cluster if the cluster *learns* all paths —
+BGP sends the best path by default:
+
+- **eBGP from each border to the node** (each border advertises its own
+  best) — the node runs `maximum-paths` and ECMP forms toward the
+  borders. The usual choice toward cluster nodes; pure L2/L3 switches
+  without add-path support work fine this way.
+- **iBGP add-path**: `neighbor NODE addpath-tx-all-paths` from the
+  transit/border so iBGP downstreams receive every path, plus
+  `neighbor NODE next-hop-self` so downstream nexthops are the borders
+  themselves (ECMP then resolves via the in-site IGP), plus
+  `maximum-paths ibgp` on the node.
+- The node FRR installs the multipath route via zebra; Cilium native
+  routing forwards pod traffic into that FIB — no Cilium involvement in
+  the ECMP itself.
 
 Site router distilled (bella.network Network A):
 

@@ -160,19 +160,67 @@ Applying changes to a live session:
 
 - `maximum-paths N` (eBGP) / `maximum-paths ibgp N` — per instance or
   per AF; effective cap = min(command, daemon `-e`, compiled
-  multipath). NixOS build compiles 64-way.
+  multipath). NixOS build compiles 64-way. Both directions need it set:
+  a transit router won't install 4 paths and then forward 4 downstream.
 - Multipath equality: default requires identical AS_PATH;
   `bgp bestpath as-path multipath-relax` (equal *length* suffices) is
   the standard fabric knob; `bgp bestpath peer-type multipath-relax`
-  mixes eBGP+iBGP paths.
-- Kernel hashing: `fib_multipath_hash_policy` sysctl controls flow
-  distribution once zebra installs the nexthop group.
+  mixes eBGP+iBGP paths. Paths must also tie on LP, weight, MED,
+  origin, eBGP-over-iBGP — a MED/LP difference silently degrades ECMP
+  to best-path-only + failover.
+- Kernel hashing: `fib_multipath_hash_policy` sysctl (=1 hashes on L4
+  ports) controls flow distribution once zebra installs the nexthop
+  group. **Per-flow, not per-packet** — one TCP connection pins to one
+  path; many flows spread. (Per-packet would break TCP.)
 - Weighted ECMP: originate `set extcommunity bandwidth ...`, receivers
   translate to kernel nexthop weights; keep the community inside your
   domain.
 - Fast detection without BFD: `bgp fast-external-failover` (default on,
   single-hop eBGP link-down) and `bgp fast-convergence` (also tears
   down iBGP/multihop when the peer address becomes unreachable).
+
+### Propagating ECMP to downstream routers
+
+BGP advertises only the **best** path per prefix by default — a
+downstream router learns one path and installs one, even when the
+upstream has N equal-cost paths. To hand ECMP downstream (border →
+site, site → cluster nodes):
+
+- **eBGP per border**: downstream peers with each border separately —
+  each session advertises its own best path, downstream gets N paths
+  naturally. Simplest and the usual choice toward cluster nodes.
+- **iBGP add-path**: when downstreams are iBGP clients of a transit,
+  send all paths: `neighbor PEER addpath-tx-all-paths` (capability
+  auto-negotiates; `addpath-tx-bestpath-per-AS` for a summary). Without
+  it, an iBGP transit collapses ECMP to one path.
+- **Next-hop-self at the borders** (`neighbor PEER next-hop-self`):
+  downstream nexthops become the border routers themselves, so
+  downstream ECMP = "resolve both borders via the IGP" — works with any
+  underlay that sees the borders as equal-cost. Keeping the original
+  remote next-hops instead forces every downstream to resolve remote
+  tunnel IPs, which couples ECMP to IGP metrics toward them.
+- Downstream checklist: `maximum-paths ibgp N` set, both sessions
+  established, multipath-relax if the borders use different AS_PATH
+  lengths.
+
+### Verifying and debugging ECMP
+
+- `show bgp ipv4 unicast <PREFIX>` — best path flagged `>`, multipath
+  candidates flagged `=`; if you expected `=` flags and don't see them,
+  the paths aren't equal (AS_PATH/MED/LP) or `maximum-paths` is 1.
+- `show ip route <PREFIX>` — zebra-installed multipath shows one
+  `via`/`nexthop` line per member; missing members = zebra/NHT issue,
+  not BGP.
+- `show ip route bgp nexthop-group summary ecmp-count eq 2` — zebra
+  nexthop-group inventory.
+- `debug bgp bestpath <PREFIX>` — why the paths tied or didn't.
+- Kernel side: `ip route show <PREFIX>` for the FIB view (per-flow
+  hashing lives here, `fib_multipath_hash_policy`), `ip -4 fib match
+  <DST>` to see which member a given flow hashes to; `tracepath`/
+  `mtr` from a host to confirm flows land on different members.
+- Member failure: one nexthop withdrawn ⇒ kernel rehashes only the
+  flows that were on it; verify with BFD down on that member + a
+  freshly-hashed flow (`ip -4 fib match` again).
 
 ## BFD
 
