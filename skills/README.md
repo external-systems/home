@@ -136,6 +136,15 @@ their description):
   vars keys, redundancy recipes.
 - `cilium` — Cilium 1.20.x: BGP control plane CRDs, LB IPAM, network
   policy, troubleshooting playbook.
+- `frr` — FRRouting (FRR) BGP on NixOS: `services.frr` module
+  mechanics, BGP config (unnumbered/RFC 8950, route-maps, ECMP, BFD,
+  graceful restart), EVPN-VXLAN overlays (L2 stretch, L3 EVPN/IRB,
+  anycast gateways, VTEPs on Linux hosts), run/debug playbook
+  (`show bgp summary`, `debug bgp`, frr-reload), resilience design
+  (BFD C-bit/GR interplay, timer coherence, WireGuard transport
+  pitfalls), and Cilium BGP control plane integration patterns
+  (node-local FRR fronting, direct TOR peering, BGP auto-discovery,
+  WireGuard site meshes).
 - `envoy-gateway` — Envoy Gateway v1.9.x: install/upgrade, Gateway API
   v1.6 routing, gateway.envoyproxy.io CRDs and policy model, security,
   observability/egctl debugging, and running on Cilium (KPR, nftables,
