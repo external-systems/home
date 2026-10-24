@@ -125,6 +125,13 @@ live preview 404s. The iframe embed page in
 
 ## What not to do
 
+Never commit build artifacts: no `result` links, no `_site/` or `site/`,
+no built deck or site copied into the tree, no `gh-pages` pushes. The
+site and deck are built in CI and deployed to GitHub Pages only
+(presenting's `pages.yml`). Gitignore `result`, `result-*`, `site/`,
+`_site/` and `documentation/site/` in every consumer, and say so in its
+CLAUDE.md.
+
 Copying presenting's `flake-parts/slides.nix`, `inline-markdown.py`, or
 the reveal-js input pin into a consumer is the old template-era pattern —
 it forks code that now has a maintained upstream. If you find yourself
