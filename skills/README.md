@@ -126,6 +126,9 @@ their description):
   generators, clan CLI, machine update flows, clanService VM tests.
 - `clanservices` — authoring clan.service modules in the official
   clan-core style.
+- `declarative-runtime` — NixOS service runtime state through paired
+  OpenTofu providers: using and authoring pairings, readiness, secret files,
+  clan vars integration, debugging, and scenario design.
 - `devenv` — devenv 2.x dev environments: CLI reference, borg hybrid
   pattern, devcontainer, containers/OCI/K8s.
 - `vm-tests` — hermetic NixOS VM tests: structure, sm/md/lg tiers,
