@@ -1,0 +1,43 @@
+{
+  "skill_name": "ifstate",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "On NixOS, replace the static networking for a router with IfState 2.5.1. It has two PCI NICs in an LACP bond, a VLAN 100 management interface, a dummy router ID, and a WireGuard tunnel whose private key comes from sops-nix. nixpkgs only has IfState 2.4.2. Show a safe configuration and update procedure that does not reboot for ordinary stage-2 changes, and explain how you would preview and debug it.",
+      "expected_output": "A source-grounded NixOS design with stable physical identity, correct bond/VLAN/dummy/WireGuard ownership, a viable 2.5.1 package override, runtime-secret !include handling, dry-run/apply/debug steps, and accurate live-versus-reboot guidance.",
+      "files": [],
+      "expectations": [
+        "Pins IfState 2.5.1 with a build recipe that accounts for uv_build and the changed Python source layout, rather than a version-only override",
+        "Uses stable PCI/permanent-MAC identity for the two physical NICs and configures LACP, VLAN 100, and a dummy router ID with clear ownership",
+        "References the WireGuard private key through a runtime sops-nix path and !include, with no private key in the Nix store",
+        "Uses validate and check before apply and correctly distinguishes live stage-2 switch/test changes from initrd/kernel changes that require reboot",
+        "Includes relevant journal, kernel-state, and WireGuard debugging commands"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "I want IfState to provide the underlay for FRR EVPN-VXLAN and Cilium native routing across two sites. Explain which network state belongs to IfState, FRR, and Cilium; give a traditional per-VNI VXLAN example; and flag route/FDB/interface cleanup traps. Also tell me why my FRR staticd route disappears after an IfState apply.",
+      "expected_output": "Clear one-writer ownership, per-VNI dataplane config with learning disabled, protocol 196 and protocol 4 exceptions, Cilium ignore rules, EVPN verification, and no claim that 2.5.1 supports SVD tunnel_info.",
+      "files": [],
+      "expectations": [
+        "Assigns one writer each to static interfaces, FRR dynamic routes/EVPN, and Cilium pod datapath",
+        "Provides a traditional per-VNI bridge plus VXLAN example with a reachable VTEP and learning disabled",
+        "Explains that FRR staticd protocol 196 and foreign static protocol 4 are not built-in ignored, without suggesting protocol 3 be ignored",
+        "Includes Cilium runtime interface ignores and warns about unexpected FDB deletions",
+        "Does not claim IfState 2.5.1 supports the SVD external/vnifilter/tunnel_info model and includes EVPN verification commands"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "Debug my NixOS IfState host: ifstate.service is inactive after boot, a libvirt vnet interface vanished after nixos-rebuild switch, and ifstatecli --version says 2.5.0 even though I pinned the 2.5.1 tag. What is normal, what is broken, and what commands should I run?",
+      "expected_output": "Distinguishes successful oneshot inactivity, orphan cleanup of unignored VM taps, and the upstream 2.5.1 version-string wart; provides safe Result/journal/check/identify/package-version diagnostics.",
+      "files": [],
+      "expectations": [
+        "Explains that inactive is normal for a successful oneshot and checks Result plus the journal",
+        "Attributes the missing vnet interface to orphan cleanup and recommends a narrow runtime-interface ignore or declaration",
+        "Identifies the 2.5.1 embedded 2.5.0 version-string wart and verifies package metadata instead",
+        "Provides safe validate/check/showall and kernel-state diagnostics without recommending blind repeated applies"
+      ]
+    }
+  ]
+}

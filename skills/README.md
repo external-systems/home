@@ -148,6 +148,10 @@ their description):
   WireGuard transport pitfalls), and Cilium BGP control plane integration patterns
   (node-local FRR fronting, direct TOR peering, BGP auto-discovery,
   WireGuard site meshes).
+- `ifstate` — IfState 2.5.1 on NixOS: declarative netlink configuration,
+  package pinning, live updates without reboot, physical/virtual links,
+  netns/WireGuard/VRF/VXLAN, FRR/Cilium/EVPN integration, clan-managed
+  fleet patterns, and operational debugging.
 - `envoy-gateway` — Envoy Gateway v1.9.x: install/upgrade, Gateway API
   v1.6 routing, gateway.envoyproxy.io CRDs and policy model, security,
   observability/egctl debugging, and running on Cilium (KPR, nftables,
