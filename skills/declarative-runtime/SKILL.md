@@ -1,6 +1,6 @@
 ---
 name: declarative-runtime
-description: "Declarative NixOS service runtime state with applicative-systems/declarative-runtime and OpenTofu: use existing pairings, author services.<svc>.runtime modules from provider schemas, generate .tf.json, wire systemd readiness and reconciliation, manage secret files with clan vars or sops-nix, debug applies and state, and assess Kubernetes, Helm, DNS, GitLab, or Technitium scenarios. Load whenever the user mentions declarative-runtime, Terraform/OpenTofu providers for NixOS services, API-managed runtime resources in Nix, or <attr>File secret options."
+description: "Declarative NixOS service runtime state with applicative-systems/declarative-runtime and OpenTofu: use existing pairings, author services.SERVICE.runtime modules from provider schemas, generate .tf.json, wire systemd readiness and reconciliation, manage secret files with clan vars or sops-nix, debug applies and state, and assess Kubernetes, Helm, DNS, GitLab, or Technitium scenarios. Load whenever the user mentions declarative-runtime, Terraform/OpenTofu providers for NixOS services, API-managed runtime resources in Nix, or File-suffixed secret options."
 ---
 
 # declarative-runtime

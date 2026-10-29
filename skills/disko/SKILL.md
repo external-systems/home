@@ -1,6 +1,6 @@
 ---
 name: disko
-description: "Disko declarative disk partitioning: the disko.devices tree, CLI modes (destroy/format/mount) vs the NixOS module's auto-injected fileSystems/boot/swapDevices, how clan-core auto-imports machines/<name>/disko.nix and carries the disko module, filesystem recipes (ext4, btrfs subvolumes, zfs pools/mirror), LUKS + clan vars neededFor=\\\"partitioning\\\" key patterns (incl. initrd SSH unlock), and 2-disk RAID1/ZFS-mirror redundancy for critical machines. Load when writing or editing machines/<host>/disko.nix or working on encrypted/redundant disk layouts."
+description: "Disko declarative disk partitioning: the disko.devices tree, CLI modes (destroy/format/mount) vs the NixOS module's auto-injected fileSystems/boot/swapDevices, how clan-core auto-imports machines/NAME/disko.nix and carries the disko module, filesystem recipes (ext4, btrfs subvolumes, zfs pools/mirror), LUKS + clan vars neededFor=\\\"partitioning\\\" key patterns (incl. initrd SSH unlock), and 2-disk RAID1/ZFS-mirror redundancy for critical machines. Load when writing or editing machines/HOST/disko.nix or working on encrypted/redundant disk layouts."
 ---
 
 # disko

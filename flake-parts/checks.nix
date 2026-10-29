@@ -204,7 +204,8 @@
       # unquoted plain scalar and then SILENTLY skip the skill (pi reports
       # a skill conflict, kimi logs "Skipping invalid skill"). PyYAML
       # enforces the same restriction, so this fails `nix flake check`
-      # before a broken skill reaches hosts or the code-agent image.
+      # before a broken skill reaches hosts or the code-agent image. The
+      # shared validator also rejects XML-like markup in skill metadata.
       skill-frontmatter =
         pkgs.runCommand "skill-frontmatter"
         {
@@ -213,41 +214,7 @@
           ];
         }
         ''
-          python3 ${pkgs.writeText "check-skill-frontmatter.py" ''
-            import pathlib
-            import re
-            import sys
-
-            import yaml
-
-            root = pathlib.Path(sys.argv[1])
-            failed = False
-            for skill_md in sorted(root.glob("*/SKILL.md")):
-              text = skill_md.read_text(encoding="utf-8")
-              match = re.match(r"^---\r?\n(.*?)\r?\n---\r?\n", text, re.DOTALL)
-              if not match:
-                print(f"FAIL {skill_md}: missing YAML frontmatter block", file=sys.stderr)
-                failed = True
-                continue
-              try:
-                meta = yaml.safe_load(match.group(1))
-              except yaml.YAMLError as error:
-                print(f"FAIL {skill_md}: frontmatter is not parseable YAML: {error}", file=sys.stderr)
-                failed = True
-                continue
-              if not isinstance(meta, dict) or not meta.get("name") or not meta.get("description"):
-                print(f"FAIL {skill_md}: frontmatter must set 'name' and 'description'", file=sys.stderr)
-                failed = True
-                continue
-              if meta["name"] != skill_md.parent.name:
-                print(
-                  f"FAIL {skill_md}: name '{meta['name']}' does not match "
-                  f"directory '{skill_md.parent.name}'",
-                  file=sys.stderr,
-                )
-                failed = True
-            sys.exit(1 if failed else 0)
-          ''} ${self}/skills
+          python3 ${self}/lib/check-skill-metadata.py ${self}/skills
           touch $out
         '';
     };

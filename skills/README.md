@@ -44,7 +44,9 @@ with "nested mappings are not allowed in compact mappings" (pi) /
 skipped** (kimi logs `Skipping invalid skill`; pi reports a skill conflict).
 `checks.skill-frontmatter` (`flake-parts/checks.nix`) fails `nix flake check`
 on unparseable frontmatter, so CI catches it before hosts or the sandbox
-image pick the skill up.
+image pick the skill up. Names, descriptions, and titles must also avoid
+XML-like angle-bracket markup; the shared validator rejects it, and the
+`package-skills` app refuses to package invalid skills.
 
 The `description` is the only trigger mechanism — write it as a
 when-to-use sentence naming the phrases a user would say. Deep

@@ -1,6 +1,6 @@
 ---
 name: determinate
-description: "Determinate Systems + FlakeHub: where the docs live (docs.determinate.systems), publishing, FlakeHub Cache/private flakes/resolved store paths, semver (tagged vs rolling 0.1.<commits-on-branch>), and the fh CLI incl. fh apply deployment. Load when touching flake input URLs, releases, or machine deploys."
+description: "Determinate Systems + FlakeHub: where the docs live (docs.determinate.systems), publishing, FlakeHub Cache/private flakes/resolved store paths, semver (tagged vs rolling 0.1.COMMITS_ON_BRANCH), and the fh CLI incl. fh apply deployment. Load when touching flake input URLs, releases, or machine deploys."
 ---
 
 # Determinate Systems and FlakeHub

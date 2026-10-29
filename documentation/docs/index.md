@@ -102,13 +102,18 @@ $ nix flake show
 │       ├───fetch-kubeconfig: app: no description
 │       ├───get-keys: app: no description
 │       ├───load-code-agent-image: app: no description
+│       ├───package-skills: app: Package each skill directory into its own ZIP archive
+│       ├───serve-slides: app: Serve slides/ with reveal.js on localhost for live editing.
 │       ├───update-flake-show: app: no description
 │       ├───vm-test: app: no description
 │       └───watch-documentation: app: Run mkdocs in watch mode over your documentation folder. Automatically rebuilds your docs on changes.
 ├───checks
 │   └───x86_64-linux
+│       ├───code-agent-policy: derivation 'check-code-agent-policy'
 │       ├───devenv-lock-drift: derivation 'devenv-lock-drift'
-│       └───lint: derivation 'lint'
+│       ├───lint: derivation 'lint'
+│       ├───skill-frontmatter: derivation 'skill-frontmatter'
+│       └───vm-test-resources: derivation 'vm-test-resources'
 ├───clan: unknown
 ├───clanInternals: unknown
 ├───darwinConfigurations: unknown
@@ -117,6 +122,7 @@ $ nix flake show
 ├───devShells
 │   └───x86_64-linux
 │       └───default: development environment 'devenv-shell'
+├───flakeModules: unknown
 ├───formatter
 │   └───x86_64-linux: package 'alejandra-4.0.0'
 ├───homeConfigurations: unknown
@@ -125,6 +131,7 @@ $ nix flake show
 │   └───x86_64-linux omitted (use '--legacy' to show)
 ├───lib: unknown
 ├───nixosConfigurations
+│   ├───beelink: NixOS configuration
 │   ├───ghost: NixOS configuration
 │   ├───hp-notebook: NixOS configuration
 │   ├───kamrui-h1: NixOS configuration
@@ -134,6 +141,7 @@ $ nix flake show
 │   ├───amd: NixOS module
 │   ├───bluetooth: NixOS module
 │   ├───clan: NixOS module
+│   ├───clan-machine-beelink: NixOS module
 │   ├───clan-machine-ghost: NixOS module
 │   ├───clan-machine-hp-notebook: NixOS module
 │   ├───clan-machine-kamrui-h1: NixOS module
@@ -155,6 +163,7 @@ $ nix flake show
 │   ├───openssh: NixOS module
 │   ├───rancher: NixOS module
 │   ├───sound: NixOS module
+│   ├───ssh: NixOS module
 │   ├───storagebox: NixOS module
 │   ├───tailscale: NixOS module
 │   ├───virtualization: NixOS module
@@ -167,19 +176,27 @@ $ nix flake show
 ├───packages
 │   └───x86_64-linux
 │       ├───artifacthub-mcp: package 'artifacthub-mcp-1.1.1'
-│       ├───code-agent-image: package 'docker-image-code-agent.tar.gz'
+│       ├───code-agent-env: package 'code-agent-env'
+│       ├───code-agent-image: package 'image-code-agent.json'
+│       ├───code-agent-policy: package 'code-agent-policy'
+│       ├───code-sandbox: package 'code-sandbox'
+│       ├───container-processes: package 'image-processes.json'
+│       ├───container-shell: package 'image-shell.json'
 │       ├───devShell: package 'devenv-shell'
 │       ├───devenv-test: package 'devenv-test'
 │       ├───devenv-up: package 'devenv-up'
 │       ├───documentation: package 'mkdocs-flake-documentation'
+│       ├───get-keys: package 'get-keys'
+│       ├───github-agent-profile: package 'github-agent-profile'
 │       ├───hcloud-ip: package 'hcloud-ip-v0.0.1'
-│       ├───headroom: package 'headroom-ai-0.37.0'
-│       ├───headroom-slim: package 'headroom-ai-0.37.0'
+│       ├───headroom: package 'headroom-ai-0.40.0'
+│       ├───headroom-slim: package 'headroom-ai-0.40.0'
 │       ├───kubernetes-mcp-server: package 'kubernetes-mcp-server-0.0.66'
 │       ├───longhornctl: package 'longhornctl-v1.12.0'
 │       ├───openshell: package 'openshell-0.1.2'
 │       ├───openshell-driver-vm: package 'openshell-driver-vm-0.1.2'
 │       ├───openshell-gateway: package 'openshell-gateway-0.1.2'
+│       ├───slides: package 'slides'
 │       └───tfctl: package 'tfctl-0.16.4'
 └───templates
     └───self: template: This Flake
