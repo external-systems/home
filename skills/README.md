@@ -129,6 +129,9 @@ their description):
 - `declarative-runtime` — NixOS service runtime state through paired
   OpenTofu providers: using and authoring pairings, readiness, secret files,
   clan vars integration, debugging, and scenario design.
+- `terranix` — Terraform JSON generation from Nix modules: flakes and
+  flake-parts, OpenTofu, external HCL modules, cloud providers, path-style S3
+  backends, lifecycle maintenance, and debugging.
 - `devenv` — devenv 2.x dev environments: CLI reference, borg hybrid
   pattern, devcontainer, containers/OCI/K8s.
 - `vm-tests` — hermetic NixOS VM tests: structure, sm/md/lg tiers,
