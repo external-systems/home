@@ -1,3 +1,4 @@
+# shellcheck shell=bash
 # --- Color Definitions ---
 RESET='\e[0m'
 BOLD='\e[1m'

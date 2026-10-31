@@ -1,33 +1,44 @@
 {
   _class = "clan.service";
   manifest = {
-    name = "machine-type";
-    readme = "Machine classification/profiles";
+    name = "@andrewthomaslee/machine-type";
+    description = "Machine profiles for the home fleet: the shared base every machine gets, plus a desktop (pc) or headless (server) role";
+    readme = ''
+      Every machine in any role gets the shared base (perMachine): the
+      external-systems/modules NixOS modules, the org nixpkgs + overlay,
+      the networking shim, clan defaults, openssh, motd, locale and the
+      base toolset.
+
+      - `pc`: KDE/Wayland desktop with sound, bluetooth and the desktop
+        apps.
+      - `server`: headless; nix daemon defaults, no desktop.
+    '';
+    categories = ["System"];
   };
 
   roles = {
     pc = {
+      description = "Personal computer: KDE/Wayland desktop";
       perInstance.nixosModule = ./pc.nix;
-      description = "Personal Computer";
     };
-    iso = {
-      perInstance.nixosModule = ./iso.nix;
-      description = "nixos-installer";
+    server = {
+      description = "Headless server";
+      perInstance.nixosModule = ./server.nix;
     };
   };
 
-  # Common configuration for all macine types
+  # Common configuration for all machine types.
   perMachine.nixosModule = {
     self,
     inputs,
     lib,
     pkgs,
     ...
-  }: let
-    system = pkgs.stdenv.hostPlatform.system;
-  in {
+  }: {
     imports = [
-      self.nixosModules.default
+      inputs.modules.nixosModules.default
+      self.nixosModules.nixpkgs
+      self.nixosModules.networking-shim
     ];
 
     config = {
@@ -42,11 +53,15 @@
 
       # --- nixos options --- #
 
-      # Home-manager
+      # Home-manager: users evaluate their own nixpkgs (no useGlobalPkgs),
+      # so the org overlay is applied there too.
       home-manager = {
         useUserPackages = true;
         backupFileExtension = "hm-backup";
-        sharedModules = [inputs.plasma-manager.homeModules.plasma-manager];
+        sharedModules = [
+          inputs.modules.inputs.plasma-manager.homeModules.plasma-manager
+          {nixpkgs.overlays = [inputs.org-pkgs.overlays.default];}
+        ];
       };
 
       # localization
@@ -59,7 +74,7 @@
       # Hardware
       hardware = {
         enableRedistributableFirmware = true;
-        graphics.enable = true;
+        graphics.enable = lib.mkDefault true;
       };
 
       # networking
@@ -72,8 +87,7 @@
       environment = {
         enableAllTerminfo = true;
         localBinInPath = true;
-        systemPackages = with pkgs;
-        with self.packages.${system}; [
+        systemPackages = with pkgs; [
           zstd
           gzip
           rsync

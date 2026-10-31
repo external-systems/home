@@ -1,0 +1,125 @@
+# TEMPORARY networking shim, until the IfState-based netif clan service
+# (external-systems/clanServices) is ready. Each machine's
+# configuration.nix sets hostSpec.networking.shim from the values flake
+# (`secrets`: not-secrets publicly, external-systems/secrets at deploy),
+# so no address literal lives in this repo. The option shapes mirror the
+# values schema (links.<name>.{interface,ipv4,ipv6}, CIDR strings), so
+# the switch to netif is a per-machine rewrite of one attrset.
+#
+# Two modes, matching what the fleet ran before the shim:
+# - static: fixed addresses + default routes on one wired interface
+#   (scripted networking).
+# - wifi: NetworkManager owns the link (DHCP + RA), with the TCP/WiFi
+#   tuning for lossy long-RTT links. No static route: the old `wan` tag
+#   pinned gateways to an interface name that does not exist on
+#   kamrui-h1/beelink (NM ignored it), so it is dropped, not ported.
+{lib, ...}: {
+  flake.nixosModules.networking-shim = {config, ...}: let
+    cfg = config.hostSpec.networking.shim;
+    inherit (lib) mkOption types;
+
+    # "192.0.2.10/24" -> {address = "192.0.2.10"; prefixLength = 24;}
+    toAddress = cidr: let
+      parts = lib.splitString "/" cidr;
+    in {
+      address = builtins.head parts;
+      prefixLength = lib.toIntBase10 (lib.last parts);
+    };
+  in {
+    options.hostSpec.networking.shim = {
+      enabled = lib.mkEnableOption "the temporary networking shim (replaced by netif)";
+
+      mode = mkOption {
+        type = types.enum ["static" "wifi"];
+        default = "static";
+        description = "static: fixed addresses on a wired link; wifi: NetworkManager with DHCP.";
+      };
+
+      interface = mkOption {
+        type = types.nullOr types.str;
+        default = null;
+        description = "Kernel interface name (values: hosts.<machine>.links.<link>.interface). Required in static mode.";
+      };
+
+      ipv4 = mkOption {
+        type = types.listOf types.str;
+        default = [];
+        description = "Static IPv4 addresses with prefix length, e.g. 192.0.2.10/24 (values: links.<link>.ipv4).";
+      };
+
+      ipv6 = mkOption {
+        type = types.listOf types.str;
+        default = [];
+        description = "Static IPv6 addresses with prefix length (values: links.<link>.ipv6).";
+      };
+
+      gateway4 = mkOption {
+        type = types.nullOr types.str;
+        default = null;
+        description = "IPv4 default gateway (values: networks.<network>.ipv4.gateway).";
+      };
+
+      gateway6 = mkOption {
+        type = types.nullOr types.str;
+        default = null;
+        description = "IPv6 default gateway; link-local gateways (fe80::1) work because the route is bound to the interface.";
+      };
+    };
+
+    config = lib.mkIf cfg.enabled (lib.mkMerge [
+      {
+        assertions = [
+          {
+            assertion = cfg.mode != "static" || cfg.interface != null;
+            message = "hostSpec.networking.shim: static mode needs `interface` (from secrets.hosts.<machine>.links.<link>.interface).";
+          }
+        ];
+      }
+
+      (lib.mkIf (cfg.mode == "static") {
+        networking = {
+          interfaces.${cfg.interface} = {
+            useDHCP = false;
+            ipv4.addresses = map toAddress cfg.ipv4;
+            ipv6.addresses = map toAddress cfg.ipv6;
+          };
+          defaultGateway = lib.mkIf (cfg.gateway4 != null) {
+            address = cfg.gateway4;
+            inherit (cfg) interface;
+          };
+          defaultGateway6 = lib.mkIf (cfg.gateway6 != null) {
+            address = cfg.gateway6;
+            inherit (cfg) interface;
+          };
+        };
+      })
+
+      (lib.mkIf (cfg.mode == "wifi") {
+        networking.networkmanager = {
+          enable = lib.mkDefault true;
+          wifi.powersave = lib.mkDefault false;
+        };
+
+        # TCP + WiFi tuning for lossy, long-RTT WAN links (e.g. Dallas ->
+        # Helsinki): CUBIC collapses to ~300 KB/s under ~2% loss at 160 ms
+        # RTT while BBR holds the uplink cap.
+        boot = {
+          kernel.sysctl = {
+            "net.ipv4.tcp_congestion_control" = "bbr";
+            "net.core.default_qdisc" = "fq";
+            "net.core.wmem_max" = 16777216;
+            "net.ipv4.tcp_wmem" = "4096 65536 16777216";
+          };
+          kernelModules = ["tcp_bbr"];
+          # rtw89_core.disable_ps_mode + rtw89_pci.{disable_clkreq,
+          # disable_aspm_l1}: no WiFi power-save / PCIe PM latency
+          # spikes; inert on machines without the rtw89 driver.
+          extraModprobeConfig = ''
+            options rtw89_core disable_ps_mode=Y
+            options rtw89_pci disable_clkreq=Y disable_aspm_l1=Y
+          '';
+        };
+      })
+    ]);
+  };
+}

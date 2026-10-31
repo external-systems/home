@@ -1,6 +1,6 @@
-{self, ...}: {
+{inputs, ...}: {
   flake.homeModules.profile-root = {
-    imports = [self.homeModules.default];
+    imports = [inputs.modules.homeModules.default];
     config.homeSpec = {
       xdg.enable = true;
       programs = {

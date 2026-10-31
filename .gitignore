@@ -1,22 +1,15 @@
-.secrets
-
-result*
+result
 result-*
+.devenv*
+devenv.local.nix
 .direnv
-.devenv
 
-.env.*
+# varlock-loaded secrets (schema: .env.schema)
 .env
+.env.*
 !*.env.schema
-
-.devcontainer.json
 
 tmp/
 
-.ruff_cache
-
-.baton-pass/
-
-# mkdocs build output — artifact-only, never committed (build with
-# `nix build .#documentation` or `mkdocs build` locally and discard)
+# mkdocs build output, never committed
 documentation/site/

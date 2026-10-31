@@ -1,15 +1,38 @@
-{pkgs, ...}: {
+{
+  pkgs,
+  secrets,
+  ...
+}: {
   hostSpec = {
     system.jovian.enable = true;
+
+    # Wired LAN with static addresses from the values flake until netif
+    # lands.
+    networking.shim = let
+      inherit (secrets.hosts.nixos.links) lan;
+      network = secrets.networks.${lan.network};
+    in {
+      enabled = true;
+      mode = "static";
+      inherit (lan) interface ipv4 ipv6;
+      gateway4 = network.ipv4.gateway;
+      gateway6 = network.ipv6.gateway;
+    };
+
     services = {
       motd.sshMotd = builtins.readFile ./sshMotd.sh;
       flatpak.enable = true;
     };
   };
 
-  nixpkgs.config = {
-    cudaSupport = true;
-    cudaCapabilities = ["6.1"];
+  nixpkgs = {
+    config = {
+      cudaSupport = true;
+      cudaCapabilities = ["6.1"];
+    };
+    # CUDA 13 dropped Pascal (compute 6.1); stay on the CUDA 12 set the
+    # card and the legacy_580 driver still support.
+    overlays = [(final: _: {cudaPackages = final.cudaPackages_12;})];
   };
 
   # Load nvidia driver for Xorg and Wayland
@@ -24,10 +47,7 @@
     };
   };
 
-  environment.systemPackages = with pkgs;
-  with pkgs.unstable; [
-    nvtopPackages.full
-  ];
+  environment.systemPackages = [pkgs.nvtopPackages.full];
 
   boot.kernelParams = [
     "video=DP-2:3440x1440@165.00" # for ASUS ultra wide

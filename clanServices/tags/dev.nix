@@ -1,11 +1,16 @@
 {lib, ...}: {
-  imports = [];
   config = {
-    # hostSpec options
     hostSpec = {
       services = {
         docker.enable = true;
-        storagebox.enable = true;
+        # The id is already public: it names the shared vars generator
+        # (vars/shared/storagebox-ssh-<id>), so it must match to keep the
+        # deployed key. Move it to external-systems/secrets with the
+        # generator rename.
+        storagebox = {
+          enable = true;
+          boxUser = "u488514";
+        };
         nix.enable = true;
         nix-ld.enable = true;
       };

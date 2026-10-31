@@ -1,24 +1,26 @@
 {
   "nix.enableLanguageServer": true,
   "nix.serverPath": "nixd",
-  "nix.formatterPath": "alejandra",
   "nix.serverSettings": {
     "nixd": {
-      "formatting": {
-        "command": ["alejandra"]
-      },
       "nixpkgs": {
-        "expr": "import (builtins.getFlake \"/home/netsa/home\").inputs.nixpkgs { }"
+        "expr": "import (builtins.getFlake (builtins.toString ./.)).inputs.nixpkgs { }"
+      },
+      "formatting": {
+        "command": ["alejandra", "--quiet"]
       },
       "options": {
+        "flake-parts": {
+          "expr": "(builtins.getFlake (builtins.toString ./.)).debug.options"
+        },
+        "flake-parts-perSystem": {
+          "expr": "(builtins.getFlake (builtins.toString ./.)).currentSystem.options"
+        },
         "nixos": {
-          "expr": "(builtins.getFlake \"/home/netsa/home\").nixosConfigurations.${builtins.replaceStrings [\"\\n\"] [\"\"] (builtins.readFile /etc/hostname)}.options"
+          "expr": "(builtins.getFlake (builtins.toString ./.)).nixosConfigurations.kamrui-h1.options"
         },
         "home-manager": {
-          "expr": "(builtins.getFlake \"/home/netsa/home\").nixosConfigurations.${builtins.replaceStrings [\"\\n\"] [\"\"] (builtins.readFile /etc/hostname)}.options.home-manager.users.type.getSubOptions []"
-        },
-        "flake-parts": {
-          "expr": "(builtins.getFlake \"/home/netsa/home\").debug.options"
+          "expr": "(builtins.getFlake (builtins.toString ./.)).nixosConfigurations.kamrui-h1.options.home-manager.users.type.getSubOptions [ ]"
         }
       }
     }

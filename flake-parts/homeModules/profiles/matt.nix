@@ -1,11 +1,11 @@
-{self, ...}: {
+{inputs, ...}: {
   # For Matt — netsa-lite: the desktop basics with claude+pi and the
   # headroom proxy, without the rest of the dev-tooling stack. githubAuth
   # stays off (the default) until Matt has a GitHub PAT to provision;
   # turning it on later is one line
   # (git.githubAuth.enabled = true) + `clan vars generate <machine>`.
   flake.homeModules.profile-matt = {...}: {
-    imports = [self.homeModules.default];
+    imports = [inputs.modules.homeModules.default];
     config = {
       # homeSpec options
       homeSpec = {

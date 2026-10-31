@@ -1,4 +1,8 @@
-{pkgs, ...}: {
+{
+  inputs,
+  pkgs,
+  ...
+}: {
   config = {
     # --- hostSpec options --- #
     hostSpec = {
@@ -24,7 +28,7 @@
       filelight # disk usage analyzer
       kalk # Calculator
       xclip # Tool to access the X clipboard from a console application
-      zen-browser
+      inputs.zen-browser.packages.${pkgs.stdenv.hostPlatform.system}.default
       discord
       spotify
       prismlauncher

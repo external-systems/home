@@ -1,13 +1,13 @@
-{self, ...}: {
+{inputs, ...}: {
   # For Andrew's PCs
   flake.homeModules.profile-netsa = {pkgs, ...}: {
-    imports = [self.homeModules.default];
+    imports = [inputs.modules.homeModules.default];
     config = {
       # homeSpec options
       homeSpec = {
         xdg.enable = true;
-        # AI coding agents: the shared repo skill set (skills/ merged via
-        # inputs.agents.lib.mkSkills) is wired into every enabled agent.
+        # AI coding agents: the shared skill set (external-systems/skills)
+        # is wired into every enabled agent.
         agents = {
           skills.enabled = true;
           kimi.enabled = true;
@@ -65,7 +65,6 @@
           };
           starship.enable = true;
           vscode.enable = true;
-          openshell.enable = true;
           # Pairs with the NixOS service (kamrui-h1); manages
           # ~/.config/whisper-dictation/config.yaml. The Samsers KT06
           # bluetooth keyboard is pinned for push-to-talk (upstream
@@ -83,7 +82,7 @@
       };
       # Home Options
       home.packages = with pkgs; [
-        moscripts
+        inputs.moscripts.packages.${pkgs.stdenv.hostPlatform.system}.default
         asciinema
         kalker
         python3Minimal
