@@ -855,6 +855,7 @@
       "inputs": {
         "flake-utils": "flake-utils",
         "nixpkgs": [
+          "modules",
           "nixpkgs"
         ]
       },
