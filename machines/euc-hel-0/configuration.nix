@@ -9,7 +9,7 @@
   hostSpec.networking.shim = let
     # Still keyed by the old machine name in the values flakes (see
     # inventory.nix).
-    inherit (secrets.hosts.helsinki-manager-1.links) public;
+    inherit (secrets.hosts.euc-hel-0.links) public;
     network = secrets.networks.${public.network};
   in {
     enabled = true;

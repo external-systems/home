@@ -6,13 +6,6 @@
   secrets,
 }: let
   inherit (secrets) hosts;
-
-  # euc-hel-0 is the former borg helsinki-manager-1 (same Hetzner Robot
-  # server, reinstalled into this fleet). Its values still live under
-  # the old name in external-systems/secrets and not-secrets; rename
-  # them there, then here.
-  eucHel0 = hosts.helsinki-manager-1;
-  eucHel0Address = lib.head (lib.splitString "/" (lib.head eucHel0.links.public.ipv4));
 in {
   meta = {
     name = "home";
@@ -48,7 +41,7 @@ in {
     # Servers
     # Hetzner Robot (Xeon W-2295): remote builder and CI build box.
     euc-hel-0 = {
-      deploy.targetHost = "root@${eucHel0Address}";
+      deploy.targetHost = hosts.euc-hel-0.targetHost;
       # Headless: the intel tag only adds GPU media drivers.
       tags = ["server"];
     };
@@ -88,7 +81,8 @@ in {
         name = "@andrewthomaslee/remote-builder";
       };
       roles = {
-        server.machines.euc-hel-0.settings.address = eucHel0Address;
+        # The builder's address is its deploy host, without the user.
+        server.machines.euc-hel-0.settings.address = lib.last (lib.splitString "@" hosts.euc-hel-0.targetHost);
         client.tags.pc = {};
       };
     };
