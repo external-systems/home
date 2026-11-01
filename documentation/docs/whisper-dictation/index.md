@@ -33,7 +33,9 @@ NixOS-specific glue (everything else is upstream stock):
   `Gtk-4.0.typelib` resolves all of those namespaces; with glib alone the
   daemon crash-loops on `Typelib namespace Graphene not found`
 
-Options: `enable`, `user` (default `netsa`).
+Options: `enable`, `user` (required when enabled). The NixOS service runs
+for one selected user; enabling the Home Manager configuration for another
+user only writes that user's `config.yaml`.
 
 ## Configuration (`homeSpec.programs.whisper-dictation`)
 
