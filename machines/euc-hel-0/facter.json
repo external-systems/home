@@ -933,7 +933,7 @@
         "unix_device_number": {
           "type": 98,
           "major": 259,
-          "minor": 1,
+          "minor": 0,
           "range": 0
         },
         "unix_device_names": [
@@ -1109,7 +1109,7 @@
         "unix_device_number": {
           "type": 98,
           "major": 259,
-          "minor": 0,
+          "minor": 1,
           "range": 0
         },
         "unix_device_names": [
@@ -1557,7 +1557,7 @@
           {
             "type": "mem",
             "base": 0,
-            "range": 134740336640,
+            "range": 134740320256,
             "enabled": true,
             "access": "read_write",
             "prefetch": "unknown"
@@ -1685,29 +1685,6 @@
     "network_interface": [
       {
         "index": 172,
-        "attached_to": 0,
-        "class_list": [
-          "network_interface"
-        ],
-        "base_class": {
-          "hex": "0107",
-          "name": "Network Interface",
-          "value": 263
-        },
-        "sub_class": {
-          "hex": "0000",
-          "name": "Loopback",
-          "value": 0
-        },
-        "model": "Loopback network interface",
-        "sysfs_id": "/class/net/lo",
-        "unix_device_name": "lo",
-        "unix_device_names": [
-          "lo"
-        ]
-      },
-      {
-        "index": 173,
         "attached_to": 125,
         "class_list": [
           "network_interface"
@@ -1746,6 +1723,29 @@
         ],
         "driver_modules": [
           "igb"
+        ]
+      },
+      {
+        "index": 173,
+        "attached_to": 0,
+        "class_list": [
+          "network_interface"
+        ],
+        "base_class": {
+          "hex": "0107",
+          "name": "Network Interface",
+          "value": 263
+        },
+        "sub_class": {
+          "hex": "0000",
+          "name": "Loopback",
+          "value": 0
+        },
+        "model": "Loopback network interface",
+        "sysfs_id": "/class/net/lo",
+        "unix_device_name": "lo",
+        "unix_device_names": [
+          "lo"
         ]
       }
     ],
@@ -4249,7 +4249,7 @@
         "resources": [
           {
             "type": "irq",
-            "base": 116,
+            "base": 110,
             "triggered": 0,
             "enabled": true
           },
@@ -4267,7 +4267,7 @@
           "command": 1030,
           "header_type": 0,
           "secondary_bus": 0,
-          "irq": 116,
+          "irq": 110,
           "prog_if": 0
         },
         "driver": "mei_me",
@@ -4892,7 +4892,7 @@
         "resources": [
           {
             "type": "irq",
-            "base": 110,
+            "base": 111,
             "triggered": 0,
             "enabled": true
           },
@@ -4910,7 +4910,7 @@
           "command": 1030,
           "header_type": 0,
           "secondary_bus": 0,
-          "irq": 110,
+          "irq": 111,
           "prog_if": 0
         },
         "driver": "ioatdma",
@@ -5649,7 +5649,7 @@
         "resources": [
           {
             "type": "irq",
-            "base": 110,
+            "base": 111,
             "triggered": 0,
             "enabled": true
           },
@@ -5667,7 +5667,7 @@
           "command": 1030,
           "header_type": 0,
           "secondary_bus": 0,
-          "irq": 110,
+          "irq": 111,
           "prog_if": 0
         },
         "driver": "ioatdma",
@@ -6292,7 +6292,7 @@
         "resources": [
           {
             "type": "irq",
-            "base": 110,
+            "base": 111,
             "triggered": 0,
             "enabled": true
           },
@@ -6310,7 +6310,7 @@
           "command": 1030,
           "header_type": 0,
           "secondary_bus": 0,
-          "irq": 110,
+          "irq": 111,
           "prog_if": 0
         },
         "driver": "ioatdma",
@@ -6683,7 +6683,7 @@
         "resources": [
           {
             "type": "irq",
-            "base": 110,
+            "base": 111,
             "triggered": 0,
             "enabled": true
           },
@@ -6701,7 +6701,7 @@
           "command": 1030,
           "header_type": 0,
           "secondary_bus": 0,
-          "irq": 110,
+          "irq": 111,
           "prog_if": 0
         },
         "driver": "ioatdma",
