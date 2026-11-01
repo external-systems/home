@@ -18,8 +18,8 @@
     };
 
     # Module arguments for every machine (configuration.nix, clan service
-    # nixosModules): `secrets` is the values tree (not-secrets publicly,
-    # external-systems/secrets at deploy time), read by
+    # nixosModules): `secrets` is the values tree (the private
+    # external-systems/secrets), read by
     # nixosModules.networking-shim and the per-machine networking.
     specialArgs = {
       inherit inputs self;

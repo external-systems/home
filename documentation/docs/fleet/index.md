@@ -5,15 +5,18 @@
 No address, interface name or deploy target is written in this repo. They come
 from the values flake, input `secrets`:
 
-- publicly it is [external-systems/not-secrets](https://github.com/external-systems/not-secrets)
-  (documentation-range placeholders), so `nix flake show` and
-  `nix flake check` always evaluate;
-- deploys swap in the private [external-systems/secrets](https://github.com/external-systems/secrets),
-  never committing the override:
+the private external-systems/secrets, pinned directly in `flake.nix`
+(clan can't pass `--override-input`). Evaluating the machines needs a
+GitHub token with read access to it; the devenv shell hands nix
+`GITHUB_TOKEN` from `.env` (or `gh auth token`) as `access-tokens`:
 
 ```sh
-clan machines update kamrui-h1 --flake . -- --override-input secrets github:external-systems/secrets
+clan machines update kamrui-h1
 ```
+
+The public [external-systems/not-secrets](https://github.com/external-systems/not-secrets)
+holds the same shape with placeholder values; secrets checks itself
+against it.
 
 Machine modules get the tree as the `secrets` module argument
 (`clan.specialArgs`, `flake-parts/clan.nix`); the inventory reads deploy

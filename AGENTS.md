@@ -6,8 +6,9 @@ services only. Packages, overlays, nixpkgs and dev tooling come from
 external-systems/pkgs (`org-pkgs`); NixOS/home-manager modules from
 external-systems/modules; agent skills from external-systems/skills
 (through modules); addresses and deploy targets from the values flake
-(`secrets`: external-systems/not-secrets publicly). Public repo: no
-secrets and no IP literals in git.
+(`secrets`: the private external-systems/secrets, pinned directly; nix
+needs a GitHub token to fetch it). Public repo: no secrets and no IP
+literals in git.
 
 ## Layout
 - `flake.nix`: inputs (all follow `org-pkgs` where they can) and the dev partition wiring.
@@ -22,8 +23,8 @@ secrets and no IP literals in git.
 
 ## Networking
 - `hostSpec.networking.shim` (temporary, until netif in external-systems/clanServices) is set per machine in `configuration.nix` from `secrets.hosts.<m>.links.<link>` and `secrets.networks.<network>`. Modes: `wifi` (NetworkManager) and `static`.
-- Never write an address, interface or deploy target as a literal. A new machine's values go into not-secrets first (placeholders), then secrets.
-- Deploy with the real values: `clan machines update <m> --flake . -- --override-input secrets github:external-systems/secrets`. Never commit that override.
+- Never write an address, interface or deploy target as a literal. A new machine's values go into not-secrets first (placeholders, which secrets' shape-parity check compares against), then secrets; then `nix flake update secrets` here.
+- Deploy: `clan machines update <m>` from the devenv shell (it provides the GitHub token nix needs for the private `secrets` input).
 
 ## Tool loop
 - The shell is devenv. If `DEVENV_ROOT` is unset, run commands with `devenv shell -- <cmd>`.

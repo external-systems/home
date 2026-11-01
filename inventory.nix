@@ -1,6 +1,6 @@
 # Clan inventory. Deploy targets and builder addresses come from the
-# values flake (`secrets`): not-secrets placeholders publicly, the real
-# external-systems/secrets at deploy time (see flake.nix).
+# values flake (`secrets`, the private external-systems/secrets; see
+# flake.nix).
 {
   lib,
   secrets,

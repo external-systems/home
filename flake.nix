@@ -29,13 +29,17 @@
       inputs.org-pkgs.follows = "org-pkgs";
     };
 
-    # Fleet values (addresses, interfaces, deploy targets). Public
-    # placeholders so `nix flake show` / `nix flake check` always work;
-    # deploys swap in the private repo, never committing the override:
-    #   clan machines update <m> --flake . -- --override-input secrets github:external-systems/secrets
+    # Fleet values (addresses, interfaces, deploy targets): the private
+    # external-systems/secrets, pinned directly because clan can't pass
+    # --override-input. Evaluating the machines needs a GitHub token with
+    # read access (the devenv shell sets NIX_CONFIG access-tokens from
+    # .env). The lock records only its name and revision, not the values.
     secrets = {
-      url = "github:external-systems/not-secrets";
-      inputs.org-pkgs.follows = "org-pkgs";
+      url = "github:external-systems/secrets";
+      inputs = {
+        org-pkgs.follows = "org-pkgs";
+        not-secrets.inputs.org-pkgs.follows = "org-pkgs";
+      };
     };
 
     # ------ Packages without a home in pkgs (third-party flakes) ------ #

@@ -6,7 +6,7 @@ The external-systems home fleet: clan machines on top of the org flakes.
 | ----- | -------- |
 | [external-systems/pkgs](https://github.com/external-systems/pkgs) | nixpkgs, flake-parts, import-tree, `overlays.default`, the dev tooling and the devenv shell |
 | [external-systems/modules](https://github.com/external-systems/modules) | NixOS (`hostSpec.*`) and home-manager (`homeSpec.*`) modules, home-manager, skills |
-| [external-systems/not-secrets](https://github.com/external-systems/not-secrets) | public placeholder values (addresses, interfaces, deploy targets); the private [secrets](https://github.com/external-systems/secrets) replaces it at deploy time |
+| [external-systems/secrets](https://github.com/external-systems/secrets) (private) | fleet values: addresses, interfaces, deploy targets |
 | [clan-core](https://git.clan.lol/clan/clan-core) | inventory, vars, deployment |
 
 ## Machines
@@ -24,13 +24,16 @@ The external-systems home fleet: clan machines on top of the org flakes.
 
 ```sh
 devenv shell                     # or the auto-activation hook (devenv allow)
-clan machines update kamrui-h1 --flake . -- \
-  --override-input secrets github:external-systems/secrets
+clan machines update kamrui-h1
+clan machines install euc-hel-0 --target-host root@<rescue-ip>   # first install
 ```
 
-The override swaps the public placeholders for the real values. Never commit
-it (`nix flake lock --override-input`): the private URL would land in this
-public `flake.lock`.
+The `secrets` input is the private external-systems/secrets, so evaluating the
+machines needs a GitHub token with read access to it. The devenv shell passes
+`GITHUB_TOKEN` from `.env` (or `gh auth token`) to nix as `access-tokens`.
+The public `flake.lock` records only that repo's name and revision; the values
+stay private in git (they still land in each machine's world-readable
+`/nix/store`, so no credentials go there).
 
 ## Development
 

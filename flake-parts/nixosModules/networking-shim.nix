@@ -1,7 +1,7 @@
 # TEMPORARY networking shim, until the IfState-based netif clan service
 # (external-systems/clanServices) is ready. Each machine's
 # configuration.nix sets hostSpec.networking.shim from the values flake
-# (`secrets`: not-secrets publicly, external-systems/secrets at deploy),
+# (`secrets`, the private external-systems/secrets),
 # so no address literal lives in this repo. The option shapes mirror the
 # values schema (links.<name>.{interface,ipv4,ipv6}, CIDR strings), so
 # the switch to netif is a per-machine rewrite of one attrset.

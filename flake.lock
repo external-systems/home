@@ -387,6 +387,38 @@
         "type": "github"
       }
     },
+    "not-secrets": {
+      "inputs": {
+        "flake-parts": [
+          "secrets",
+          "not-secrets",
+          "org-pkgs",
+          "flake-parts"
+        ],
+        "nixpkgs": [
+          "secrets",
+          "not-secrets",
+          "org-pkgs",
+          "nixpkgs"
+        ],
+        "org-pkgs": [
+          "org-pkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1793538226,
+        "narHash": "sha256-SChdXK3l/2KN69T/oWXbMYlPAxqP11uGSPyfUbcyufI=",
+        "owner": "external-systems",
+        "repo": "not-secrets",
+        "rev": "ba3608717d4da2fcf5129266ea2b4bbd298fe186",
+        "type": "github"
+      },
+      "original": {
+        "owner": "external-systems",
+        "repo": "not-secrets",
+        "type": "github"
+      }
+    },
     "org-pkgs": {
       "inputs": {
         "flake-parts": "flake-parts",
@@ -516,21 +548,22 @@
           "org-pkgs",
           "nixpkgs"
         ],
+        "not-secrets": "not-secrets",
         "org-pkgs": [
           "org-pkgs"
         ]
       },
       "locked": {
-        "lastModified": 1793538226,
-        "narHash": "sha256-SChdXK3l/2KN69T/oWXbMYlPAxqP11uGSPyfUbcyufI=",
+        "lastModified": 1793538292,
+        "narHash": "sha256-/maLRpFIVjQavh/dxLQd6tAgQdFzVjj70j1iK9aKCYg=",
         "owner": "external-systems",
-        "repo": "not-secrets",
-        "rev": "ba3608717d4da2fcf5129266ea2b4bbd298fe186",
+        "repo": "secrets",
+        "rev": "e546b6368972cafa4ce6b9b4e754ceaca1384895",
         "type": "github"
       },
       "original": {
         "owner": "external-systems",
-        "repo": "not-secrets",
+        "repo": "secrets",
         "type": "github"
       }
     },
