@@ -1,5 +1,5 @@
 # clan-cli at the same clan-core pin the machines use, for the devenv
-# shell's `clan` script (devenv.nix) and `nix run .#clan-cli`. A
+# shell's `clan` on PATH (devenv.nix enterShell) and `nix run .#clan-cli`. A
 # re-export, not a build: home builds no packages of its own.
 _: {
   perSystem = {
