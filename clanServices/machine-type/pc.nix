@@ -1,5 +1,7 @@
 {
+  config,
   inputs,
+  lib,
   pkgs,
   ...
 }: {
@@ -13,6 +15,12 @@
       };
       services = {
         kde.enable = true;
+        onepassword = {
+          enable = true;
+          # Include each machine's desktop users without granting access to
+          # accounts that only exist elsewhere in the fleet.
+          polkitPolicyOwners = lib.attrNames (lib.filterAttrs (_: user: user.isNormalUser) config.users.users);
+        };
         wayland.enable = true;
       };
     };

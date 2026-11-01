@@ -1,8 +1,4 @@
 {self, ...}: {
-  hostSpec.services.onepassword = {
-    enable = true;
-    polkitPolicyOwners = ["netsa"];
-  };
   nix.settings = {
     allowed-users = ["netsa"];
     # modules' hostSpec.services.nix trusts only root.
