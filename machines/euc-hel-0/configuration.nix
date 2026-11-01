@@ -4,7 +4,8 @@
 # and CI build box (clanServices/remote-builder, inventory.nix).
 #
 # facter.json is carried over from borg; disko.nix (install-time truth)
-# is borg's layout reworked for this reinstall (NVMe RAID1).
+# is borg's layout reworked for this reinstall (NVMe RAID1, SATA ZFS
+# mirror).
 {
   pkgs,
   secrets,
@@ -22,17 +23,31 @@
     gateway6 = network.ipv6.gateway;
   };
 
+  boot = {
+    # NVMe RAID1 (disko.nix). mdmonitor refuses to run without an alert
+    # target; log array events to the journal for the external monitoring.
+    swraid = {
+      enable = true;
+      mdadmConf = "PROGRAM ${pkgs.util-linux}/bin/logger";
+    };
+    # zbulk (disko.nix): the SATA ZFS mirror. No dataset mounts on the
+    # host, so import it explicitly; OpenEBS ZFS LocalPV creates volumes
+    # under zbulk/openebs.
+    supportedFilesystems.zfs = true;
+    zfs.extraPools = ["zbulk"];
+    # Cap the ARC so it doesn't compete with pods for RAM (16 GiB of 128).
+    kernelParams = ["zfs.zfs_arc_max=17179869184"];
+  };
+  # ZFS refuses to import a pool last used by another host id; any
+  # stable 8 hex digits work.
+  networking.hostId = builtins.substring 0 8 (builtins.hashString "sha256" "euc-hel-0");
+
   # Root is a thin LV (disko.nix): the initrd needs the thin-pool tools,
   # and discards keep the pools from filling up.
-  # NVMe RAID1 (disko.nix). mdmonitor refuses to run without an alert
-  # target; log array events to the journal for the external monitoring.
-  boot.swraid = {
-    enable = true;
-    mdadmConf = "PROGRAM ${pkgs.util-linux}/bin/logger";
-  };
-
   services = {
     lvm.boot.thin.enable = true;
     fstrim.enable = true;
+    # Monthly scrub: reads every block and repairs from the mirror.
+    zfs.autoScrub.enable = true;
   };
 }

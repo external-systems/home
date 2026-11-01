@@ -1,14 +1,15 @@
 # euc-hel-0 (ex borg helsinki-manager-1). borg's 2026-09-30 thin-pool
 # design, reworked for the home reinstall: the two NVMe drives are
 # mirrored so the machine boots and runs with either one dead; /nix has
-# its own thin LV; the host postgres LVs are gone (embedded etcd).
+# its own thin LV; the host postgres LVs are gone (embedded etcd); the
+# two SATA drives are a ZFS mirror.
 #
 # Hardware (machines/euc-hel-0/facter.json, by-id paths):
 #   2x Samsung PM983 960G NVMe  (~894 GiB each) — mdadm RAID1: OS + fast
 #     tier (~894 GiB usable)
-#   2x Samsung PM883 480G SATA  (~446 GiB each) — bulk tier (one VG per
-#     drive: a dead SATA kills only its own pool's data, and drives can
-#     be wiped/replaced independently).
+#   2x Samsung PM883 480G SATA  (~446 GiB each) — zpool "zbulk", a ZFS
+#     mirror (~446 GiB usable): checksummed, self-healing storage for
+#     data that must stay correct (OpenEBS ZFS LocalPV).
 #
 # NVMe layout, identical on both drives:
 #   EF02 1M     GRUB BIOS core (grub installs to both drives)
@@ -20,6 +21,10 @@
 # can never freeze the OS. Replacing a dead drive: partition it like
 # its twin (sgdisk -R), `mdadm --add` each array's partition, and
 # rebuild once to reinstall GRUB on it.
+#
+# OpenEBS storage classes:
+#   fast: LVM LocalPV, volGroup vg_fast, thinPool vg_fast_thinpool
+#   safe: ZFS LocalPV, poolname zbulk/openebs
 #
 # LVM thin pools are named <vgname>_thinpool — the OpenEBS lvm-localpv
 # convention: an SC carrying volGroup+thinPool adopts that pool; a pool
@@ -112,36 +117,31 @@
           };
         };
       };
-      # Bulk tier: one VG + thin pool PER DRIVE (blast radius of a dead
-      # drive = its own pool; per-drive replacement independence).
-      bulk0 = {
+      # ZFS mirror halves (zpool zbulk below).
+      sata0 = {
         type = "disk";
         device = "/dev/disk/by-id/ata-SAMSUNG_MZ7LM480HCHP-00003_S1YJNXAH300727";
         content = {
           type = "gpt";
-          partitions = {
-            primary = {
-              size = "100%";
-              content = {
-                type = "lvm_pv";
-                vg = "vg_bulk0";
-              };
+          partitions.zfs = {
+            size = "100%";
+            content = {
+              type = "zfs";
+              pool = "zbulk";
             };
           };
         };
       };
-      bulk1 = {
+      sata1 = {
         type = "disk";
         device = "/dev/disk/by-id/ata-SAMSUNG_MZ7LM480HCHP-00003_S1YJNXAH300744";
         content = {
           type = "gpt";
-          partitions = {
-            primary = {
-              size = "100%";
-              content = {
-                type = "lvm_pv";
-                vg = "vg_bulk1";
-              };
+          partitions.zfs = {
+            size = "100%";
+            content = {
+              type = "zfs";
+              pool = "zbulk";
             };
           };
         };
@@ -226,24 +226,36 @@
           };
         };
       };
-      # Bulk tier: one thin pool per drive, 100%FREE each.
-      vg_bulk0 = {
-        type = "lvm_vg";
-        lvs = {
-          vg_bulk0_thinpool = {
-            size = "100%FREE";
-            lvm_type = "thin-pool";
-            extraArgs = ["--poolmetadatasize" "1G"];
-          };
-        };
+    };
+    zpool.zbulk = {
+      type = "zpool";
+      mode = "mirror";
+      # 4K sectors on the PM883s.
+      options = {
+        ashift = "12";
+        autotrim = "on";
       };
-      vg_bulk1 = {
-        type = "lvm_vg";
-        lvs = {
-          vg_bulk1_thinpool = {
-            size = "100%FREE";
-            lvm_type = "thin-pool";
-            extraArgs = ["--poolmetadatasize" "1G"];
+      rootFsOptions = {
+        acltype = "posixacl";
+        atime = "off";
+        compression = "lz4";
+        xattr = "sa";
+        mountpoint = "none";
+        canmount = "off";
+      };
+      datasets = {
+        # Parent of every OpenEBS ZFS LocalPV volume.
+        openebs = {
+          type = "zfs_fs";
+          options.mountpoint = "none";
+        };
+        # Unused space held back so the pool never hits 100%: ZFS slows
+        # down sharply when nearly full. Shrink it to free space.
+        reserved = {
+          type = "zfs_fs";
+          options = {
+            mountpoint = "none";
+            refreservation = "40G";
           };
         };
       };
