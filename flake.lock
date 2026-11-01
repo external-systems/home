@@ -521,11 +521,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1793537721,
+        "lastModified": 1793538226,
         "narHash": "sha256-SChdXK3l/2KN69T/oWXbMYlPAxqP11uGSPyfUbcyufI=",
         "owner": "external-systems",
         "repo": "not-secrets",
-        "rev": "37f37507d1f6558e932fa48e90a799ec2bad3e1b",
+        "rev": "ba3608717d4da2fcf5129266ea2b4bbd298fe186",
         "type": "github"
       },
       "original": {
