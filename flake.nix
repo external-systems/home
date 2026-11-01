@@ -26,7 +26,10 @@
     # home-manager, plasma-manager, jovian and external-systems/skills.
     modules = {
       url = "github:external-systems/modules";
-      inputs.org-pkgs.follows = "org-pkgs";
+      inputs = {
+        org-pkgs.follows = "org-pkgs";
+        whisper-dictation.inputs.nixpkgs.follows = "nixpkgs";
+      };
     };
 
     # Fleet values (addresses, interfaces, deploy targets): the private
