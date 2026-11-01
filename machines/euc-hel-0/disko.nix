@@ -1,5 +1,7 @@
 # euc-hel-0 (ex borg helsinki-manager-1) — 4-disk thin-pool layout,
-# carried over unchanged from borg (2026-09-30 redesign).
+# from borg's 2026-09-30 design, reworked for the home reinstall: /nix
+# gets its own thin LV, the ESP is 1G, and the host postgres LVs are
+# gone (the cluster uses embedded etcd).
 #
 # Hardware (machines/euc-hel-0/facter.json, by-id paths):
 #   2x Samsung PM983 960G NVMe  (~894 GiB each) — OS + fast tier
@@ -12,17 +14,16 @@
 # NOT named this way (or a missing thinPool param) makes the driver
 # auto-create its own pool sized after the first PVC.
 #
-# Thin pools are deliberately thin-PROVISIONED (the ~377G of slack in
-# vg_nixos is OS headroom, not a PV): thin pools cannot shrink, thick
-# LVs grow via lvextend. No swap; fstrim + the thin-pool alert live in
-# the fleet lvm-thin module (flipped on by the rke2 clanService).
+# Thin pools are deliberately thin-PROVISIONED: thin pools cannot
+# shrink, so unclaimed space stays unclaimed. No swap (kubelet). fstrim
+# runs from configuration.nix; pool monitoring is external.
 #
 # Install-time truth: editing this file after install requires wiping
 # and reinstalling the machine (normal rebuilds only mount).
 {
   disko.devices = {
     disk = {
-      # OS drive: ESP + vg_nixos (root thinlv inside a thin pool).
+      # OS drive: ESP + vg_nixos (root and /nix thin LVs in one pool).
       nvme0 = {
         type = "disk";
         device = "/dev/disk/by-id/nvme-SAMSUNG_MZQLB960HAJR-00007_S437NC0R208421";
@@ -35,7 +36,8 @@
               priority = 1;
             };
             ESP = {
-              size = "16G";
+              # A handful of generations' kernels and initrds.
+              size = "1G";
               type = "EF00";
               priority = 2;
               content = {
@@ -55,11 +57,9 @@
           };
         };
       };
-      # Fast tier: the ONE host postgres (future kine datastore) gets
-      # THICK, predictable LVs (data + WAL separated); the rest is the
-      # OpenEBS fast thin pool. The 700G pool size (not 100%FREE)
-      # leaves ~145G spare for lvextend of the thick LVs — thin pools
-      # can't shrink, so capacity must stay unclaimed.
+      # Fast tier: the OpenEBS fast thin pool. The 700G pool size (not
+      # 100%FREE) leaves ~190G unclaimed for growing the pool or adding
+      # thick LVs later; thin pools can't shrink.
       nvme1 = {
         type = "disk";
         device = "/dev/disk/by-id/nvme-SAMSUNG_MZQLB960HAJR-00007_S437NC0R208313";
@@ -112,8 +112,9 @@
       };
     };
     lvm_vg = {
-      # OS: thin pool with most of the drive as slack (pure OS headroom
-      # — root is a thinlv, snapshots/extension cheap).
+      # OS: one thin pool, separate thin LVs so a full nix store (CI
+      # builds) can't fill / (and later /var/lib/rancher, kubelet's
+      # disk). Both are lvextend-able; ~290G of the pool stays free.
       vg_nixos = {
         type = "lvm_vg";
         lvs = {
@@ -123,7 +124,7 @@
             extraArgs = ["--poolmetadatasize" "1G"];
           };
           root = {
-            size = "500G";
+            size = "100G";
             lvm_type = "thinlv";
             pool = "vg_nixos_thinpool";
             content = {
@@ -134,30 +135,24 @@
               extraArgs = ["-L" "nixos"];
             };
           };
+          nix = {
+            size = "500G";
+            lvm_type = "thinlv";
+            pool = "vg_nixos_thinpool";
+            content = {
+              type = "filesystem";
+              format = "ext4";
+              mountpoint = "/nix";
+              mountOptions = ["noatime"];
+              extraArgs = ["-L" "nix"];
+            };
+          };
         };
       };
-      # Fast tier: thick host-DB LVs + the OpenEBS fast thin pool.
+      # Fast tier: the OpenEBS fast thin pool.
       vg_fast = {
         type = "lvm_vg";
         lvs = {
-          pg-data = {
-            size = "32G";
-            content = {
-              type = "filesystem";
-              format = "xfs";
-              mountpoint = "/var/lib/postgresql";
-              mountOptions = ["noatime"];
-            };
-          };
-          pg-wal = {
-            size = "16G";
-            content = {
-              type = "filesystem";
-              format = "xfs";
-              mountpoint = "/var/lib/postgresql-wal";
-              mountOptions = ["noatime"];
-            };
-          };
           vg_fast_thinpool = {
             size = "700G";
             lvm_type = "thin-pool";

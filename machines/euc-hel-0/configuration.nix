@@ -3,12 +3,10 @@
 # helsinki-manager-1, reinstalled into this fleet as the remote builder
 # and CI build box (clanServices/remote-builder, inventory.nix).
 #
-# disko.nix (install-time truth) and facter.json are carried over from
-# borg unchanged.
+# facter.json is carried over from borg; disko.nix (install-time truth)
+# is borg's layout reworked for this reinstall.
 {secrets, ...}: {
   hostSpec.networking.shim = let
-    # Still keyed by the old machine name in the values flakes (see
-    # inventory.nix).
     inherit (secrets.hosts.euc-hel-0.links) public;
     network = secrets.networks.${public.network};
   in {
