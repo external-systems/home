@@ -232,7 +232,14 @@
                   HostName ${server.address}
                   User nix-ssh
                   IdentityFile ${keyFile}
-                  ServerAliveInterval 60
+                  # Fail fast when the builder is down so nix falls back
+                  # to the next machine or a local build instead of
+                  # waiting on the kernel's ~2 min TCP SYN retries, and
+                  # drop a dead mid-build connection after ~45s.
+                  ConnectTimeout 5
+                  ConnectionAttempts 1
+                  ServerAliveInterval 15
+                  ServerAliveCountMax 3
               '')
               servers;
 
