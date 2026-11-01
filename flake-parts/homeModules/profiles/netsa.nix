@@ -1,6 +1,10 @@
 {inputs, ...}: {
   # For Andrew's PCs
-  flake.homeModules.profile-netsa = {pkgs, ...}: {
+  flake.homeModules.profile-netsa = {
+    config,
+    pkgs,
+    ...
+  }: {
     imports = [inputs.modules.homeModules.default];
     config = {
       # homeSpec options
@@ -11,6 +15,12 @@
         # external-systems/skills (own-all). Add external picks from
         # skills.lib.selections here, e.g. `++ selections.anthropic`.
         agents = {
+          # The machine context's Repo line (opencode).
+          opencode.machineContext = {
+            repoOwner = "external-systems";
+            repoName = "home";
+            repoPath = "external-systems/home";
+          };
           skills = {
             enabled = true;
             preset = "base";
@@ -70,7 +80,12 @@
             clanKey.enabled = true;
           };
           starship.enable = true;
-          vscode.enable = true;
+          vscode = {
+            enable = true;
+            # nixd's user-wide option source; the repo's own
+            # .vscode/settings.json still wins inside it.
+            nixdFlake = "${config.home.homeDirectory}/external-systems/home";
+          };
           # Pairs with the NixOS service (kamrui-h1); manages
           # ~/.config/whisper-dictation/config.yaml. The Samsers KT06
           # bluetooth keyboard is pinned for push-to-talk (upstream
@@ -85,6 +100,13 @@
             };
           };
         };
+      };
+      # Personal aliases (modules' shell module ships none of these).
+      programs.bash.shellAliases = {
+        fabric-backup = "rsync -av --progress --delete kamrui-h1:/srv/minecraft/fabric/world/ /mnt/storagebox/BACKUPS/minecraft/fabric/world/";
+        fabric-backup-local = "rsync -av --progress --delete /srv/minecraft/fabric/world/ /mnt/storagebox/Backups/fabric/world/";
+        obsidian-pull = "rsync -avz -e 'ssh -p 23' u488514@u488514.your-storagebox.de:/home/PRIVATE/OBSIDIAN/Main/ ~/Desktop/Main/";
+        kubefetch-latest = ''nix run "https://flakehub.com/f/andrewthomaslee/kubefetch/*"'';
       };
       # Home Options
       home.packages = with pkgs; [

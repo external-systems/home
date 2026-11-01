@@ -1,5 +1,9 @@
 {self, ...}: {
-  nix.settings.allowed-users = ["netsa"];
+  nix.settings = {
+    allowed-users = ["netsa"];
+    # modules' hostSpec.services.nix trusts only root.
+    trusted-users = ["netsa"];
+  };
   users.users.netsa = {
     isNormalUser = true;
     home = "/home/netsa";
