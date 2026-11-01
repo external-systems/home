@@ -6,10 +6,16 @@
       # homeSpec options
       homeSpec = {
         xdg.enable = true;
-        # AI coding agents: the shared skill set (external-systems/skills)
-        # is wired into every enabled agent.
+        # AI coding agents: the skills tree is wired into every enabled
+        # agent. The base preset (core) plus every custom skill in
+        # external-systems/skills (own-all). Add external picks from
+        # skills.lib.selections here, e.g. `++ selections.anthropic`.
         agents = {
-          skills.enabled = true;
+          skills = {
+            enabled = true;
+            preset = "base";
+            extraSources = inputs.modules.inputs.skills.lib.selections.own-all;
+          };
           kimi.enabled = true;
           pi.enabled = true;
           claude.enabled = true;
