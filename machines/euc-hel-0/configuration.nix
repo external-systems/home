@@ -4,8 +4,12 @@
 # and CI build box (clanServices/remote-builder, inventory.nix).
 #
 # facter.json is carried over from borg; disko.nix (install-time truth)
-# is borg's layout reworked for this reinstall.
-{secrets, ...}: {
+# is borg's layout reworked for this reinstall (NVMe RAID1).
+{
+  pkgs,
+  secrets,
+  ...
+}: {
   hostSpec.networking.shim = let
     inherit (secrets.hosts.euc-hel-0.links) public;
     network = secrets.networks.${public.network};
@@ -20,6 +24,13 @@
 
   # Root is a thin LV (disko.nix): the initrd needs the thin-pool tools,
   # and discards keep the pools from filling up.
+  # NVMe RAID1 (disko.nix). mdmonitor refuses to run without an alert
+  # target; log array events to the journal for the external monitoring.
+  boot.swraid = {
+    enable = true;
+    mdadmConf = "PROGRAM ${pkgs.util-linux}/bin/logger";
+  };
+
   services = {
     lvm.boot.thin.enable = true;
     fstrim.enable = true;
