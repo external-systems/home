@@ -14,7 +14,7 @@ literals in git.
 - `flake.nix`: inputs (all follow `org-pkgs` where they can) and the dev partition wiring.
 - `inventory.nix`: machines, tags, service instances. Deploy targets come from `secrets.hosts.<machine>.targetHost`.
 - `machines/<name>/`: `configuration.nix` (incl. networking, see below), `disko.nix` (install-time truth: editing it means a wipe), `facter.json` (hardware scan). `inventory.json` is clan-managed.
-- `clanServices/`: `machine-type` (shared base + `pc`/`server` roles), `tags` (amd, intel, dev, virt), `remote-builder` (nixbuild.net-style builds on euc-hel-0).
+- `clanServices/`: `machine-type` (shared base + `pc`/`server` roles), `tags` (amd, intel, dev, virt). `remote-builder` (nixbuild.net-style builds on euc-hel-0) comes from external-systems/clanServices (`clanServices` input).
 - `flake-parts/` (import-tree, no import list): `clan.nix` (inventory, specialArgs incl. `secrets`), `nixpkgs.nix` (`nixosModules.nixpkgs`: org overlay), `nixosModules/networking-shim.nix`, `homeModules/profiles/` (per-user profiles, wired in `users/<user>/`), `packages.nix` (`clan-cli` re-export).
 - `dev/flake.nix` + `dev/flake.lock`: dev-only inputs. `dev/flake-module.nix`: formatter, checks, docs.
 - `devenv.yaml` + `devenv.lock` + `devenv.nix`: the shell (org shell from `org-pkgs/devenv`, plus `clan` and varlock-loaded `.env`).

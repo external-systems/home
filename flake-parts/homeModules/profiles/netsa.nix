@@ -6,7 +6,7 @@
     ...
   }: let
     # The Storage Box mount below; the aliases write into it.
-    box = config.homeSpec.programs.storagebox.boxes.main;
+    box = config.homeSpec.programs.storagebox.boxes.helsinki-box;
   in {
     imports = [inputs.modules.homeModules.default];
     config = {
@@ -83,16 +83,16 @@
             clanKey.enabled = true;
           };
           starship.enable = true;
-          # Hetzner Storage Box: netsa's own sub-account of the main box
-          # (the id lives in external-systems/secrets), mounted at
-          # ~/storagebox/main on login and reachable as the ssh alias
-          # storagebox-main. Key: the clan var storagebox-ssh-netsa;
-          # install its public half on the sub-account once (command in
-          # modules' nixosModules/storagebox.nix).
+          # Hetzner Storage Box helsinki-box: the main account (the id
+          # lives in external-systems/secrets), its root mounted at
+          # ~/storagebox/helsinki-box on login and reachable as the ssh
+          # alias storagebox-helsinki-box. Key: the clan var
+          # storagebox-ssh-netsa; install its public half on the box once
+          # (command in modules' nixosModules/storagebox.nix).
           storagebox = {
             enabled = true;
-            boxes.main = {
-              inherit (inputs.secrets.values.storageboxes.main.subAccounts.netsa) user host port;
+            boxes.helsinki-box = {
+              inherit (inputs.secrets.values.storageboxes.helsinki-box) user host port;
             };
           };
           vscode = {
@@ -120,14 +120,14 @@
       programs.bash.shellAliases = {
         fabric-backup = "rsync -av --progress --delete kamrui-h1:/srv/minecraft/fabric/world/ ${box.mountPoint}/BACKUPS/minecraft/fabric/world/";
         fabric-backup-local = "rsync -av --progress --delete /srv/minecraft/fabric/world/ ${box.mountPoint}/Backups/fabric/world/";
-        # Straight over ssh (the storagebox-main alias), not the mount.
-        # The path is relative to the sub-account's base directory.
-        obsidian-pull = "rsync -avz storagebox-main:PRIVATE/OBSIDIAN/Main/ ~/Desktop/Main/";
+        # Straight over ssh (the storagebox-helsinki-box alias), not the
+        # mount.
+        obsidian-pull = "rsync -avz storagebox-helsinki-box:/home/PRIVATE/OBSIDIAN/Main/ ~/Desktop/Main/";
         kubefetch-latest = ''nix run "https://flakehub.com/f/andrewthomaslee/kubefetch/*"'';
       };
       # Home Options
       home.packages = with pkgs; [
-        inputs.moscripts.packages.${pkgs.stdenv.hostPlatform.system}.default
+        moscripts
         asciinema
         kalker
         python3Minimal

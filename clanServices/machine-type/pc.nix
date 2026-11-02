@@ -1,6 +1,5 @@
 {
   config,
-  inputs,
   lib,
   pkgs,
   ...
@@ -36,7 +35,7 @@
       filelight # disk usage analyzer
       kalk # Calculator
       xclip # Tool to access the X clipboard from a console application
-      inputs.zen-browser.packages.${pkgs.stdenv.hostPlatform.system}.default
+      zen-browser
       discord
       spotify
       prismlauncher

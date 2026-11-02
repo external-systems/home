@@ -1,5 +1,10 @@
 # Remote builder (euc-hel-0)
 
+The service lives in
+[external-systems/clanServices](https://github.com/external-systems/clanServices/tree/main/services/remote-builder)
+(`remote-builder`); home's inventory instance is also named
+`remote-builder`, so its vars keep the names below.
+
 Remote nix builds in the style of [nixbuild.net](https://docs.nixbuild.net/getting-started/),
 on machines of this clan.
 

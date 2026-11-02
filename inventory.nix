@@ -77,8 +77,8 @@ in {
     # Every PC sends builds to euc-hel-0; CI uses the instance's CI key.
     remote-builder = {
       module = {
-        input = "self";
-        name = "@andrewthomaslee/remote-builder";
+        input = "clanServices";
+        name = "remote-builder";
       };
       roles = {
         # The builder's address is its deploy host, without the user.
