@@ -1,6 +1,6 @@
-{self, ...}: {
+{inputs, ...}: {
   flake.homeModules.profile-wife = {...}: {
-    imports = [self.homeModules.default];
+    imports = [inputs.modules.homeModules.default];
     config = {
       # homeSpec options
       homeSpec = {

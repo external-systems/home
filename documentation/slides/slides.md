@@ -1,6 +1,6 @@
 # Home Monorepo
 
-One dendritic Nix flake for every machine.
+The clan fleet flake: machines on top of the org flakes.
 
 Note: Press `S` for the speaker view, `F` for fullscreen.
 
@@ -9,7 +9,8 @@ Note: Press `S` for the speaker view, `F` for fullscreen.
 ## What it is
 
 - **flake-parts + clan.lol** — dendritic layout, every `.nix` under `flake-parts/` auto-imported
-- Machines as inventory: `nixos`, `kamrui-h1`, `ghost`, `hp-notebook`, `nixos-installer`
+- Machines as inventory: `nixos`, `kamrui-h1`, `beelink`, `ghost`, `hp-notebook`, `euc-hel-0`
+- nixpkgs + overlay from external-systems/pkgs, modules from external-systems/modules
 - Secrets in sops / clan vars, never in git
 
 Note: dendritic = the flake is composed from a tree of small modules, not one big configuration.nix.
@@ -18,11 +19,11 @@ Note: dendritic = the flake is composed from a tree of small modules, not one bi
 
 ## This site, these slides
 
-- Docs: MkDocs + Material via `mkdocs-flake`
+- Docs: MkDocs + Material via `inputs.presenting` (dev partition)
 - Slides: reveal.js via `inputs.presenting` — zero npm, zero Python installs
 
 ```nix
-presenting.slides.dir = ./documentation/slides;
+presenting.slides.dir = ./slides;
 ```
 
 One line → `packages.slides`, `apps.serve-slides`, and this deck embedded at `/slides/`.
@@ -43,10 +44,10 @@ nix run .#serve-slides      # live preview while editing
 
 - NixOS options under `hostSpec.*`
 - home-manager options under `homeSpec.*`
-- Clan tags attach hardware/desktop/networking per machine
+- Clan tags attach hardware/desktop per machine; networking lives in each machine's configuration.nix
 
 ---
 
 # Questions?
 
-`github.com/andrewthomaslee/home`
+`github.com/external-systems/home`

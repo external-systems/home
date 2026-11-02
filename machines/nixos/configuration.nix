@@ -1,15 +1,49 @@
-{pkgs, ...}: {
+{
+  inputs,
+  lib,
+  pkgs,
+  secrets,
+  ...
+}: {
   hostSpec = {
     system.jovian.enable = true;
+
+    # Wired LAN with static addresses from the values flake until netif
+    # lands.
+    networking.shim = let
+      inherit (secrets.hosts.nixos.links) lan;
+      network = secrets.networks.${lan.network};
+    in {
+      enabled = true;
+      mode = "static";
+      inherit (lan) interface ipv4 ipv6;
+      gateway4 = network.ipv4.gateway;
+      gateway6 = network.ipv6.gateway;
+    };
+
     services = {
       motd.sshMotd = builtins.readFile ./sshMotd.sh;
       flatpak.enable = true;
     };
   };
 
-  nixpkgs.config = {
-    cudaSupport = true;
-    cudaCapabilities = ["6.1"];
+  nixpkgs = {
+    config = {
+      cudaSupport = true;
+      cudaCapabilities = ["6.1"];
+    };
+    # CUDA 13 dropped Pascal (compute 6.1); stay on the CUDA 12 set the
+    # card and the legacy_580 driver still support.
+    overlays = [(final: _: {cudaPackages = final.cudaPackages_12;})];
+  };
+
+  # The one machine without useGlobalPkgs: its pkgs set cudaSupport, which
+  # would turn every home-manager package with a CUDA variant (Firefox via
+  # onnxruntime, whose cuDNN dropped Pascal) into an uncached or broken
+  # build. Users here evaluate their own nixpkgs, without CUDA.
+  home-manager = {
+    useGlobalPkgs = lib.mkForce false;
+    sharedModules = [{nixpkgs.overlays = [inputs.org-pkgs.overlays.default];}];
   };
 
   # Load nvidia driver for Xorg and Wayland
@@ -24,10 +58,7 @@
     };
   };
 
-  environment.systemPackages = with pkgs;
-  with pkgs.unstable; [
-    nvtopPackages.full
-  ];
+  environment.systemPackages = [pkgs.nvtopPackages.full];
 
   boot.kernelParams = [
     "video=DP-2:3440x1440@165.00" # for ASUS ultra wide
@@ -35,8 +66,15 @@
     "nvidia_drm.fbdev=0"
   ];
 
-  # Shared group for both users (gid matches storagebox module)
-  users.groups.storage-users.gid = 982;
+  # Shared drives group for wife & netsa, on this machine only (gid kept
+  # from the old storagebox module so existing files keep their group).
+  users = {
+    groups.storage-users.gid = 982;
+    users = {
+      netsa.extraGroups = ["storage-users"];
+      wife.extraGroups = ["storage-users"];
+    };
+  };
 
   # NOTE: /mnt/sata and /mnt/hdd mounts are managed by the disko NixOS module
   # from disko.devices.disk.sata and .sdb in ./disko.nix (it auto-generates the

@@ -1,17 +1,15 @@
-# yaml-language-server: $schema=https://devenv.sh/devenv.schema.json
+# devenv CLI entry: devenv shell, auto-activation (devenv hook + devenv
+# allow), devenv up, devenv test, devenv mcp. nixpkgs comes from pkgs at
+# the rev flake.lock holds (checks.lock-sync; fix with `sync-locks`).
+# The input is NOT named `pkgs`: devenv passes every input to devenv.nix
+# as a module argument, so an input called `pkgs` would replace nixpkgs'
+# pkgs ("attribute 'bash' missing").
 inputs:
-  clan-core:
-    url: git+https://git.clan.lol/clan/clan-core?rev=be949cb06ce56e34939ebc55991475287de7f35a
-  mk-shell-bin:
-    url: github:rrbutani/nix-mk-shell-bin/ff5d8bd4d68a347be5042e2f16caee391cd75887
-  nix2container:
-    url: github:nlewo/nix2container/4e83e6724dcb9eb1b3e855426fa4c8cd19f5ce5a
-    inputs:
-      nixpkgs:
-        follows: nixpkgs
+  org-pkgs:
+    url: github:external-systems/pkgs/2233570fec6aa89fd6305d318f0107d363571b3f
   nixpkgs:
-    url: github:NixOS/nixpkgs/aff8a0b28396750446e5537a96461bc4facdb287
-  nixpkgs-unstable:
-    url: github:NixOS/nixpkgs/2c423e03bbafcff28bfadc6781a4a8257f205cb5
-nixpkgs:
-  allow_unfree: true
+    follows: org-pkgs/nixpkgs
+imports:
+  # The org shell: fmt, check, sync-locks, docs, slides; devenv up serves
+  # docs and slides.
+  - org-pkgs/devenv

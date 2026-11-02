@@ -1,8 +1,20 @@
 {
   _class = "clan.service";
   manifest = {
-    name = "tags";
-    readme = "Machine tags";
+    name = "@andrewthomaslee/tags";
+    description = "Hardware and purpose tags: each role switches on the matching hostSpec modules";
+    readme = ''
+      - `amd` / `intel`: GPU and CPU support.
+      - `dev`: developer workstation (docker, nix, nix-ld,
+        warp/tailscale specialisations). Storage Box mounts are per user
+        (homeSpec.programs.storagebox in the profiles).
+      - `virt`: nested virtualization.
+
+      Networking is no longer a tag: each machine's configuration.nix sets
+      `hostSpec.networking.shim` until netif (external-systems/clanServices)
+      replaces it.
+    '';
+    categories = ["System"];
   };
 
   roles = {
@@ -18,17 +30,9 @@
       perInstance.nixosModule = ./intel.nix;
       description = "intel";
     };
-    lan = {
-      perInstance.nixosModule = ./lan.nix;
-      description = "lan";
-    };
     virt = {
       perInstance.nixosModule = ./virt.nix;
       description = "Virtualization host";
-    };
-    wan = {
-      perInstance.nixosModule = ./wan.nix;
-      description = "wan";
     };
   };
 }

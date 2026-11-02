@@ -1,11 +1,8 @@
 {lib, ...}: {
-  imports = [];
   config = {
-    # hostSpec options
     hostSpec = {
       services = {
         docker.enable = true;
-        storagebox.enable = true;
         nix.enable = true;
         nix-ld.enable = true;
       };

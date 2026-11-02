@@ -1,11 +1,11 @@
-{self, ...}: {
+{inputs, ...}: {
   # For Matt — netsa-lite: the desktop basics with claude+pi and the
   # headroom proxy, without the rest of the dev-tooling stack. githubAuth
   # stays off (the default) until Matt has a GitHub PAT to provision;
   # turning it on later is one line
   # (git.githubAuth.enabled = true) + `clan vars generate <machine>`.
   flake.homeModules.profile-matt = {...}: {
-    imports = [self.homeModules.default];
+    imports = [inputs.modules.homeModules.default];
     config = {
       # homeSpec options
       homeSpec = {
@@ -14,14 +14,18 @@
         # would declare the "github-matt" PAT generator and prompt for a
         # token Matt doesn't have — enable mcp.github once he does.
         agents = {
-          skills.enabled = true;
+          # Only the base AI skills (the core preset), no extra sources.
+          skills = {
+            enabled = true;
+            preset = "base";
+          };
           claude.enabled = true;
           pi.enabled = true;
           mcp.github.enable = false;
         };
         programs = {
           headroom = {
-            enable = true;
+            enable = false;
             proxy.openaiApiUrl = "https://api.kimi.ai/coding/v1";
           };
           plasma-manager.enable = true;

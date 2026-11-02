@@ -1,8 +1,8 @@
 site_name: Andrew's Home Monorepo
 site_author: Andrew Thomas Lee
-site_url: https://home.andrewlee.fun
-repo_url: https://github.com/andrewthomaslee/home
-repo_name: andrewthomaslee/home
+site_url: https://home.external.systems
+repo_url: https://github.com/external-systems/home
+repo_name: external-systems/home
 
 nav:
   - Home: index.md
@@ -10,18 +10,12 @@ nav:
   - Architecture:
       - Overview: architecture/index.md
       - ADR 0001 - Multi-Host Deployment: architecture/adr/0001-multi-host-deployment-strategy.md
-  - Harness:
-      - Overview: harness/index.md
-      - MCP Servers: harness/mcp-servers.md
-      - Skills: harness/skills.md
-      - Headroom (Context Optimization): harness/headroom.md
-      - VM Tests: harness/vm-tests.md
+  - Fleet:
+      - Machines and networking: fleet/index.md
+      - Remote builder (euc-hel-0): fleet/remote-builder.md
+      - GitHub token rotation: fleet/github-token-rotation.md
   - Whisper Dictation:
       - Overview: whisper-dictation/index.md
-  - OpenShell:
-      - Overview: openshell/index.md
-      - Code-Sandbox (Lifecycle CLI): openshell/code-sandbox.md
-      - Code-Agent Image (User Guide): openshell/code-agent-image.md
   - Minecraft:
       - Overview: minecraft/index.md
       - mc.andrewlee.fun: minecraft/mc-andrewlee-fun.md

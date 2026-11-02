@@ -1,4 +1,9 @@
-{pkgs, ...}: {
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}: {
   config = {
     # --- hostSpec options --- #
     hostSpec = {
@@ -9,6 +14,12 @@
       };
       services = {
         kde.enable = true;
+        onepassword = {
+          enable = true;
+          # Include each machine's desktop users without granting access to
+          # accounts that only exist elsewhere in the fleet.
+          polkitPolicyOwners = lib.attrNames (lib.filterAttrs (_: user: user.isNormalUser) config.users.users);
+        };
         wayland.enable = true;
       };
     };
