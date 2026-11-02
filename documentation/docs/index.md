@@ -32,7 +32,7 @@ services. Everything else comes from the org flakes:
 | [external-systems/pkgs](https://github.com/external-systems/pkgs) | nixpkgs, flake-parts, import-tree, the overlay (headroom, kimi-code, ...) and the dev tooling |
 | [external-systems/modules](https://github.com/external-systems/modules) | NixOS (`hostSpec.*`) and home-manager (`homeSpec.*`) modules |
 | [external-systems/skills](https://github.com/external-systems/skills) | agent skills, through modules |
-| external-systems/secrets (private) | addresses, interfaces and deploy targets |
+| external-systems/secrets (private) | addresses, interfaces, deploy targets, the clan domain and Storage Box logins |
 
 ## Machines
 

@@ -1,5 +1,5 @@
-# Clan inventory. Deploy targets and builder addresses come from the
-# values flake (`secrets`, the private external-systems/secrets; see
+# Clan inventory. The clan domain, deploy targets and builder addresses
+# come from the values flake (`secrets`, the private external-systems/secrets; see
 # flake.nix).
 {
   lib,
@@ -10,7 +10,7 @@ in {
   meta = {
     name = "home";
     description = "monorepo";
-    domain = "andrewlee.fun";
+    domain = secrets.domains.primary;
   };
 
   machines = {

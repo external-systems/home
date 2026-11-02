@@ -6,7 +6,7 @@ The external-systems home fleet: clan machines on top of the org flakes.
 | ----- | -------- |
 | [external-systems/pkgs](https://github.com/external-systems/pkgs) | nixpkgs, flake-parts, import-tree, `overlays.default`, the dev tooling and the devenv shell |
 | [external-systems/modules](https://github.com/external-systems/modules) | NixOS (`hostSpec.*`) and home-manager (`homeSpec.*`) modules, home-manager, skills |
-| [external-systems/secrets](https://github.com/external-systems/secrets) (private) | fleet values: addresses, interfaces, deploy targets |
+| [external-systems/secrets](https://github.com/external-systems/secrets) (private) | fleet values: addresses, interfaces, deploy targets, the clan domain, Storage Box logins |
 | [clan-core](https://git.clan.lol/clan/clan-core) | inventory, vars, deployment |
 
 ## Machines
