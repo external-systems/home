@@ -6,8 +6,8 @@
     readme = ''
       Every machine in any role gets the shared base (perMachine): the
       external-systems/modules NixOS modules, the org nixpkgs + overlay,
-      the networking shim, clan defaults, openssh, motd, locale and the
-      base toolset.
+      the networking shim, generic network tuning, clan defaults, openssh,
+      motd, locale and the base toolset.
 
       - `pc`: KDE/Wayland desktop with sound, bluetooth and the desktop
         apps.
@@ -45,6 +45,9 @@
       # --- hostSpec options --- #
       hostSpec = {
         clan.enable = true;
+        # BBR/fq, socket buffers, irqbalance, Wi-Fi power save off; each
+        # value is mkDefault, so a machine can override any of them.
+        networking.optimization.enable = true;
         services = {
           nix.enable = true;
           motd.enable = true;
