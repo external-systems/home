@@ -15,8 +15,11 @@
         # external-systems/skills (own-all). Add external picks from
         # skills.lib.selections here, e.g. `++ selections.anthropic`.
         agents = {
-          # The machine context's Repo line (opencode).
-          opencode.machineContext = {
+          kimi.enabled = true;
+          pi.enabled = true;
+          claude.enabled = true;
+          opencode.enabled = true;
+          machineContext = {
             repoOwner = "external-systems";
             repoName = "home";
             repoPath = "external-systems/home";
@@ -26,9 +29,6 @@
             preset = "base";
             extraSources = inputs.modules.inputs.skills.lib.selections.own-all;
           };
-          kimi.enabled = true;
-          pi.enabled = true;
-          claude.enabled = true;
           # GitHub MCP via the local stdio server + the per-user clan-var
           # PAT ("github-netsa", generator declared by nixosModules/git.nix
           # for any user with a token consumer). The default "oauth" only
@@ -44,7 +44,7 @@
           # service so the kimi reroute (KIMI_CODE_BASE_URL) lands on the
           # right upstream; Anthropic keeps the default api.anthropic.com.
           headroom = {
-            enable = true;
+            enable = false;
             proxy.openaiApiUrl = "https://api.kimi.ai/coding/v1";
           };
           plasma-manager.enable = true;

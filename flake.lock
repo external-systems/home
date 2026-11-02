@@ -246,11 +246,11 @@
         "whisper-dictation": "whisper-dictation"
       },
       "locked": {
-        "lastModified": 1793569733,
-        "narHash": "sha256-gA8OeU8v8DuCZrmPoe7Lu5u5FXcV3Qpfx9h66S/ha7Q=",
+        "lastModified": 1793587096,
+        "narHash": "sha256-UCD111rMXaL/C48jo921AweAxmaxuvU5C1yqKKreZyw=",
         "owner": "external-systems",
         "repo": "modules",
-        "rev": "5ba67131651859fc7c065b079f22e69c0ae465a7",
+        "rev": "a9f76fd740572da4303f045b7db3bc2570439435",
         "type": "github"
       },
       "original": {
@@ -390,11 +390,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1793538226,
-        "narHash": "sha256-SChdXK3l/2KN69T/oWXbMYlPAxqP11uGSPyfUbcyufI=",
+        "lastModified": 1793566711,
+        "narHash": "sha256-ywFOMD3wYMqO5mENOSiH9Lac5t6ivUCFoevH7X0k/NU=",
         "owner": "external-systems",
         "repo": "not-secrets",
-        "rev": "ba3608717d4da2fcf5129266ea2b4bbd298fe186",
+        "rev": "60040860c44d2908cb8139d4f42173492788aa18",
         "type": "github"
       },
       "original": {
@@ -538,11 +538,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1793538292,
-        "narHash": "sha256-/maLRpFIVjQavh/dxLQd6tAgQdFzVjj70j1iK9aKCYg=",
+        "lastModified": 1793566766,
+        "narHash": "sha256-ZdI1hbNCbajzttApNLvecQlJB88S3FWY8lxhxvD4Ta4=",
         "owner": "external-systems",
         "repo": "secrets",
-        "rev": "e546b6368972cafa4ce6b9b4e754ceaca1384895",
+        "rev": "fe26566608ea7d2a2e3edc4a084286a411236b0a",
         "type": "github"
       },
       "original": {

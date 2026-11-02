@@ -25,7 +25,7 @@
         };
         programs = {
           headroom = {
-            enable = true;
+            enable = false;
             proxy.openaiApiUrl = "https://api.kimi.ai/coding/v1";
           };
           plasma-manager.enable = true;
