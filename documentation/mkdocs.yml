@@ -13,6 +13,7 @@ nav:
   - Fleet:
       - Machines and networking: fleet/index.md
       - Remote builder (euc-hel-0): fleet/remote-builder.md
+      - GitHub token rotation: fleet/github-token-rotation.md
   - Whisper Dictation:
       - Overview: whisper-dictation/index.md
   - Minecraft:
