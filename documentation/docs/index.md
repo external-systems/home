@@ -32,7 +32,7 @@ services. Everything else comes from the org flakes:
 | [external-systems/pkgs](https://github.com/external-systems/pkgs) | nixpkgs, flake-parts, import-tree, the overlay (headroom, kimi-code, ...) and the dev tooling |
 | [external-systems/modules](https://github.com/external-systems/modules) | NixOS (`hostSpec.*`) and home-manager (`homeSpec.*`) modules |
 | [external-systems/skills](https://github.com/external-systems/skills) | agent skills, through modules |
-| external-systems/secrets (private) | addresses, interfaces and deploy targets |
+| external-systems/secrets (private) | addresses, interfaces, deploy targets, the clan domain and Storage Box logins |
 
 ## Machines
 
@@ -53,7 +53,7 @@ See [Fleet](fleet/index.md) for networking and
     flake.nix        # inputs (org-pkgs, clan-core, modules, secrets) + the dev partition
     inventory.nix    # clan inventory: machines, tags, service instances
     machines/        # per-machine configuration.nix, disko.nix, facter.json
-    clanServices/    # home's clan services: machine-type, tags, remote-builder
+    clanServices/    # home's clan services: machine-type, tags (remote-builder: external-systems/clanServices)
     users/           # user accounts (home-manager profiles in flake-parts/)
     flake-parts/     # import-tree: clan wiring, nixpkgs, the networking shim, profiles
     dev/             # dev partition: formatter, checks, docs (own flake.lock)

@@ -1,5 +1,5 @@
-# Clan inventory. Deploy targets and builder addresses come from the
-# values flake (`secrets`, the private external-systems/secrets; see
+# Clan inventory. The clan domain, deploy targets and builder addresses
+# come from the values flake (`secrets`, the private external-systems/secrets; see
 # flake.nix).
 {
   lib,
@@ -10,7 +10,7 @@ in {
   meta = {
     name = "home";
     description = "monorepo";
-    domain = "andrewlee.fun";
+    domain = secrets.domains.primary;
   };
 
   machines = {
@@ -77,8 +77,8 @@ in {
     # Every PC sends builds to euc-hel-0; CI uses the instance's CI key.
     remote-builder = {
       module = {
-        input = "self";
-        name = "@andrewthomaslee/remote-builder";
+        input = "clanServices";
+        name = "remote-builder";
       };
       roles = {
         # The builder's address is its deploy host, without the user.

@@ -13,11 +13,13 @@
 
     # The `secrets` input is the private external-systems/secrets. nix
     # fetches github: inputs through the GitHub API, which ignores git's
-    # credential helper, so hand it the token as access-tokens: GH_TOKEN
-    # (exported by modules' git githubAuth from the github-<user> clan
-    # var), else GITHUB_TOKEN, else the gh CLI's login. Skipped when none
-    # is there (a token in ~/.config/nix/nix.conf works too).
-    gh_token="''${GH_TOKEN:-''${GITHUB_TOKEN:-}}"
+    # credential helper, so hand it the token as access-tokens:
+    # NIX_GITHUB_TOKEN (a dedicated read-only token, from .env via varlock),
+    # else GH_TOKEN (exported by modules' git githubAuth from the
+    # github-<user> clan var), else GITHUB_TOKEN, else the gh CLI's login.
+    # Skipped when none is there (a token in ~/.config/nix/nix.conf works
+    # too). See docs: fleet/github-token-rotation.md.
+    gh_token="''${NIX_GITHUB_TOKEN:-''${GH_TOKEN:-''${GITHUB_TOKEN:-}}}"
     if [ -z "$gh_token" ] && command -v gh >/dev/null; then
       gh_token="$(gh auth token 2>/dev/null || true)"
     fi

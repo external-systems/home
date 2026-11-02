@@ -13,7 +13,6 @@
       "tty"
       "dialout"
       "video"
-      "storage-users"
       "input"
     ];
     openssh.authorizedKeys.keys = [

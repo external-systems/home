@@ -5,8 +5,9 @@
     description = "Hardware and purpose tags: each role switches on the matching hostSpec modules";
     readme = ''
       - `amd` / `intel`: GPU and CPU support.
-      - `dev`: developer workstation (docker, storagebox, nix, nix-ld,
-        warp/tailscale specialisations).
+      - `dev`: developer workstation (docker, nix, nix-ld,
+        warp/tailscale specialisations). Storage Box mounts are per user
+        (homeSpec.programs.storagebox in the profiles).
       - `virt`: nested virtualization.
 
       Networking is no longer a tag: each machine's configuration.nix sets

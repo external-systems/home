@@ -42,16 +42,14 @@
       };
     };
 
-    # ------ Packages without a home in pkgs (third-party flakes) ------ #
-    # Zen Browser: clanServices/machine-type/pc.nix.
-    zen-browser = {
-      url = "github:youwen5/zen-browser-flake";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
-    # Scripts: the netsa home-manager profile.
-    moscripts = {
-      url = "https://flakehub.com/f/andrewthomaslee/moscripts/*";
-      inputs.nixpkgs.follows = "nixpkgs";
+    # Org clan services. Only remote-builder is consumed for now
+    # (inventory.nix); netif replaces the networking shim later.
+    clanServices = {
+      url = "github:external-systems/clanServices";
+      inputs = {
+        pkgs.follows = "org-pkgs";
+        clan-core.follows = "clan-core";
+      };
     };
   };
 

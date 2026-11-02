@@ -53,14 +53,15 @@
 
       # --- nixos options --- #
 
-      # Home-manager: users evaluate their own nixpkgs (no useGlobalPkgs),
-      # so the org overlay is applied there too.
+      # Home-manager uses the system's pkgs (one nixpkgs evaluation per
+      # machine instead of one per user), so the org overlay and
+      # allowUnfree from nixosModules.nixpkgs reach every user too.
       home-manager = {
+        useGlobalPkgs = true;
         useUserPackages = true;
         backupFileExtension = "hm-backup";
         sharedModules = [
           inputs.modules.inputs.plasma-manager.homeModules.plasma-manager
-          {nixpkgs.overlays = [inputs.org-pkgs.overlays.default];}
         ];
       };
 

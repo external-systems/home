@@ -1,4 +1,6 @@
 {
+  inputs,
+  lib,
   pkgs,
   secrets,
   ...
@@ -35,6 +37,15 @@
     overlays = [(final: _: {cudaPackages = final.cudaPackages_12;})];
   };
 
+  # The one machine without useGlobalPkgs: its pkgs set cudaSupport, which
+  # would turn every home-manager package with a CUDA variant (Firefox via
+  # onnxruntime, whose cuDNN dropped Pascal) into an uncached or broken
+  # build. Users here evaluate their own nixpkgs, without CUDA.
+  home-manager = {
+    useGlobalPkgs = lib.mkForce false;
+    sharedModules = [{nixpkgs.overlays = [inputs.org-pkgs.overlays.default];}];
+  };
+
   # Load nvidia driver for Xorg and Wayland
   services.xserver.videoDrivers = ["nvidia"];
   hardware = {
@@ -55,8 +66,15 @@
     "nvidia_drm.fbdev=0"
   ];
 
-  # Shared group for both users (gid matches storagebox module)
-  users.groups.storage-users.gid = 982;
+  # Shared drives group for wife & netsa, on this machine only (gid kept
+  # from the old storagebox module so existing files keep their group).
+  users = {
+    groups.storage-users.gid = 982;
+    users = {
+      netsa.extraGroups = ["storage-users"];
+      wife.extraGroups = ["storage-users"];
+    };
+  };
 
   # NOTE: /mnt/sata and /mnt/hdd mounts are managed by the disko NixOS module
   # from disko.devices.disk.sata and .sdb in ./disko.nix (it auto-generates the
