@@ -12,16 +12,22 @@
   secrets,
   ...
 }: {
-  hostSpec.networking.shim = let
-    inherit (secrets.hosts.euc-hel-0.links) public;
-    network = secrets.networks.${public.network};
-  in {
-    enabled = true;
-    mode = "static";
-    inherit (public) interface ipv4 ipv6;
-    gateway4 = network.ipv4.gateway;
-    # fe80::1 on Robot: link-local, bound to the interface by the shim.
-    gateway6 = network.ipv6.gateway;
+  hostSpec.networking = {
+    shim = let
+      inherit (secrets.hosts.euc-hel-0.links) public;
+      network = secrets.networks.${public.network};
+    in {
+      enabled = true;
+      mode = "static";
+      inherit (public) interface ipv4 ipv6;
+      gateway4 = network.ipv4.gateway;
+      # fe80::1 on Robot: link-local, bound to the interface by the shim.
+      gateway6 = network.ipv6.gateway;
+    };
+    # 128 GiB of RAM: very generous socket buffer ceiling (module default
+    # 32 MiB). Covers 10 Gbit/s at ~200 ms RTT, so it already fits a
+    # future 10G uplink; today's igb NIC is 1 Gbit/s.
+    optimization.bufferMax = 268435456; # 256 MiB
   };
 
   boot = {

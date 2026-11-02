@@ -9,10 +9,13 @@
 # Two modes, matching what the fleet ran before the shim:
 # - static: fixed addresses + default routes on one wired interface
 #   (scripted networking).
-# - wifi: NetworkManager owns the link (DHCP + RA), with the TCP/WiFi
-#   tuning for lossy long-RTT links. No static route: the old `wan` tag
+# - wifi: NetworkManager owns the link (DHCP + RA). No static route: the old `wan` tag
 #   pinned gateways to an interface name that does not exist on
 #   kamrui-h1/beelink (NM ignored it), so it is dropped, not ported.
+#
+# TCP/Wi-Fi performance tuning is not here: it is the generic
+# external-systems/modules nixosModules.networking-optimization, enabled
+# fleet-wide by the machine-type service.
 {lib, ...}: {
   flake.nixosModules.networking-shim = {config, ...}: let
     cfg = config.hostSpec.networking.shim;
@@ -95,30 +98,7 @@
       })
 
       (lib.mkIf (cfg.mode == "wifi") {
-        networking.networkmanager = {
-          enable = lib.mkDefault true;
-          wifi.powersave = lib.mkDefault false;
-        };
-
-        # TCP + WiFi tuning for lossy, long-RTT WAN links (e.g. Dallas ->
-        # Helsinki): CUBIC collapses to ~300 KB/s under ~2% loss at 160 ms
-        # RTT while BBR holds the uplink cap.
-        boot = {
-          kernel.sysctl = {
-            "net.ipv4.tcp_congestion_control" = "bbr";
-            "net.core.default_qdisc" = "fq";
-            "net.core.wmem_max" = 16777216;
-            "net.ipv4.tcp_wmem" = "4096 65536 16777216";
-          };
-          kernelModules = ["tcp_bbr"];
-          # rtw89_core.disable_ps_mode + rtw89_pci.{disable_clkreq,
-          # disable_aspm_l1}: no WiFi power-save / PCIe PM latency
-          # spikes; inert on machines without the rtw89 driver.
-          extraModprobeConfig = ''
-            options rtw89_core disable_ps_mode=Y
-            options rtw89_pci disable_clkreq=Y disable_aspm_l1=Y
-          '';
-        };
+        networking.networkmanager.enable = lib.mkDefault true;
       })
     ]);
   };

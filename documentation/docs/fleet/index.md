@@ -30,8 +30,18 @@ through `hostSpec.networking.shim` (`flake-parts/nixosModules/networking-shim.ni
 
 | Mode | What it does | Machines |
 | ---- | ------------ | -------- |
-| `wifi` | NetworkManager with DHCP/RA, WiFi power-save off, BBR + `fq`, rtw89 PM quirks | kamrui-h1, beelink, ghost, hp-notebook |
+| `wifi` | NetworkManager with DHCP/RA | kamrui-h1, beelink, ghost, hp-notebook |
 | `static` | Fixed addresses and default routes on one interface, from `secrets.hosts.<m>.links.<link>` and `secrets.networks.<network>` | nixos, euc-hel-0 |
 
 The option names mirror the values schema, so moving a machine to netif is a
 rewrite of that one attrset.
+
+## Network tuning
+
+Performance tuning is separate from the shim: every machine gets
+`hostSpec.networking.optimization` from external-systems/modules, enabled by
+the machine-type service. It sets BBR + `fq`, socket buffer ceilings,
+`tcp_notsent_lowat`, TCP Fast Open, irqbalance and Wi-Fi power-save off, all
+as `mkDefault`. The buffer ceiling (`optimization.bufferMax`) is 32 MiB by
+default, 128 MiB on kamrui-h1 and beelink, and 256 MiB on euc-hel-0. kamrui-h1 also sets
+the rtw89 power-management quirks in its own `configuration.nix`.
