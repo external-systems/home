@@ -27,17 +27,17 @@
             repoName = "home";
             repoPath = "external-systems/home";
           };
-          skills = {
-            enabled = true;
-            preset = "base";
-            extraSources = inputs.modules.inputs.skills.lib.selections.own-all;
-          };
+          skills.preset = "full";
           # GitHub MCP via the local stdio server + the per-user clan-var
           # PAT ("github-netsa", generator declared by nixosModules/git.nix
           # for any user with a token consumer). The default "oauth" only
           # works for opencode's browser flow and — worse — pi/kimi/claude's
           # PAT wrapper has no token at all under "oauth".
-          mcp.github.auth = "pat";
+          mcp = {
+            github.auth = "pat";
+            artifacthub.enable = true;
+            varlock-docs.enable = true;
+          };
         };
         programs = {
           # Headroom context-compression proxy (systemd user service on

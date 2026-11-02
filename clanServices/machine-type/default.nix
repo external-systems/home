@@ -46,6 +46,7 @@
       hostSpec = {
         clan.enable = true;
         services = {
+          nix.enable = true;
           motd.enable = true;
           openssh.enable = true;
         };
@@ -74,7 +75,7 @@
 
       # Hardware
       hardware = {
-        enableRedistributableFirmware = true;
+        enableRedistributableFirmware = lib.mkDefault true;
         graphics.enable = lib.mkDefault true;
       };
 
