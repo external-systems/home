@@ -1,0 +1,66 @@
+# Build the MkDocs site (slide deck at /slides/) with Nix and publish it to
+# GitHub Pages at https://home.external.systems. Runs only for pushes to
+# main and manual runs; pull requests already build the docs through
+# `nix flake check` in check.yml.
+#
+# One-time setup:
+#   - Settings > Pages > Build and deployment > Source: "GitHub Actions".
+#   - Settings > Pages > Custom domain: home.external.systems. The DNS
+#     record is a CNAME to external-systems.github.io; keep it "DNS only"
+#     (grey cloud) in Cloudflare so GitHub can verify it and issue the
+#     HTTPS certificate.
+#   - NIX_GITHUB_TOKEN (same secret as check.yml): resolving the flake
+#     fetches the private secrets input even though the docs don't use it.
+name: pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# One deployment at a time; never cancel one that is already publishing.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v6
+      - uses: cachix/install-nix-action@v31
+        with:
+          extra_nix_config: |
+            access-tokens = github.com=${{ secrets.NIX_GITHUB_TOKEN }}
+      # Read-only use of check.yml's store cache; only check.yml saves it.
+      - uses: nix-community/cache-nix-action@v7
+        with:
+          primary-key: nix-${{ runner.os }}-${{ hashFiles('**/*.nix', '**/flake.lock') }}
+          restore-prefixes-first-match: nix-${{ runner.os }}-
+          save: false
+      - name: Build the site
+        run: |
+          nix build .#documentation --print-build-logs
+          # Copy out of the read-only Nix store for the Pages upload.
+          cp -rL result _site
+          chmod -R u+w _site
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          path: _site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
