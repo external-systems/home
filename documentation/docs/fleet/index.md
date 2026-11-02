@@ -43,5 +43,5 @@ Performance tuning is separate from the shim: every machine gets
 the machine-type service. It sets BBR + `fq`, socket buffer ceilings,
 `tcp_notsent_lowat`, TCP Fast Open, irqbalance and Wi-Fi power-save off, all
 as `mkDefault`. The buffer ceiling (`optimization.bufferMax`) is 32 MiB by
-default and 128 MiB on kamrui-h1, beelink and euc-hel-0. kamrui-h1 also sets
+default, 128 MiB on kamrui-h1 and beelink, and 256 MiB on euc-hel-0. kamrui-h1 also sets
 the rtw89 power-management quirks in its own `configuration.nix`.
