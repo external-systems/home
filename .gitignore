@@ -13,3 +13,5 @@ tmp/
 
 # mkdocs build output, never committed
 documentation/site/
+_site/
+site/

@@ -30,8 +30,11 @@ Put it in `.env` (gitignored) as `NIX_GITHUB_TOKEN=github_pat_…`, or have
 varlock resolve it from 1Password. Builds then never depend on the
 `github-<user>` PAT.
 
-The same token, saved as the repository secret `NIX_GITHUB_TOKEN`, lets the
-`check` workflow fetch the private inputs.
+CI does not use this token. The org CI (`.github/workflows/ci.yml`)
+mints a one-hour token from the `external-systems-nix-ci` GitHub App
+(org secrets `NIX_APP_ID` and `NIX_APP_PRIVATE_KEY`, `private-repos:
+secrets`), so the repository secret `NIX_GITHUB_TOKEN` is no longer needed
+and can be deleted.
 
 ## Runbook: rotate `github-<user>`
 
