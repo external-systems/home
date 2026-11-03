@@ -62,27 +62,12 @@
       systems = ["x86_64-linux"];
 
       imports = [
-        inputs.flake-parts.flakeModules.partitions
+        # treefmt, docs and slides, lock-sync (checks, formatter, apps).
+        inputs.org-pkgs.flakeModules.dev
         inputs.clan-core.flakeModules.default
         # Declares flake.homeModules (the user profiles merge into it).
         inputs.modules.inputs.home-manager.flakeModules.home-manager
         (inputs.import-tree ./flake-parts)
       ];
-
-      # Apps, checks, the formatter and docs are evaluated only on demand;
-      # machine evaluation never fetches dev/flake.nix's inputs. The dev
-      # shell is devenv (devenv.yaml), not a flake output.
-      partitionedAttrs = {
-        apps = "dev";
-        checks = "dev";
-        formatter = "dev";
-        # Docs/slides: `nix build .#documentation` (pkgs flakeModules.dev).
-        legacyPackages = "dev";
-      };
-
-      partitions.dev = {
-        module = ./dev/flake-module.nix;
-        extraInputsFlake = ./dev;
-      };
     };
 }

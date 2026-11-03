@@ -532,14 +532,16 @@
         "import-tree": "import-tree_2",
         "moscripts": "moscripts",
         "nixpkgs": "nixpkgs_2",
+        "reveal-js": "reveal-js",
+        "treefmt-nix": "treefmt-nix_3",
         "zen-browser": "zen-browser"
       },
       "locked": {
-        "lastModified": 1793637589,
-        "narHash": "sha256-cwc0dYP5UCbxsN1ch1UL9idj2eNy3acw/faG5vH3fM4=",
+        "lastModified": 1793720023,
+        "narHash": "sha256-ChXA0PZ5uyirmiTi5s4bbimrKOlNWHzBbLQx6PkSjCg=",
         "owner": "external-systems",
         "repo": "pkgs",
-        "rev": "2233570fec6aa89fd6305d318f0107d363571b3f",
+        "rev": "07be67f2a80bcd9cc669e4a7102fa49a8255917e",
         "type": "github"
       },
       "original": {
@@ -624,6 +626,23 @@
       "original": {
         "owner": "pyproject-nix",
         "repo": "pyproject.nix",
+        "type": "github"
+      }
+    },
+    "reveal-js": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1789052901,
+        "narHash": "sha256-yh9Fwp8PT6fFrbSsih7cD9EzH2wbfd3idjyemOQTqF8=",
+        "owner": "hakimel",
+        "repo": "reveal.js",
+        "rev": "75dff6f515d2d08df0c32cf2b7328b89425c6f25",
+        "type": "github"
+      },
+      "original": {
+        "owner": "hakimel",
+        "ref": "6.0.2",
+        "repo": "reveal.js",
         "type": "github"
       }
     },
@@ -973,6 +992,27 @@
       "inputs": {
         "nixpkgs": [
           "clanServices",
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1791885023,
+        "narHash": "sha256-C3alQ2MEt0zVrUSho5NUDo3jmhbff72++bfwoqT9Omo=",
+        "owner": "numtide",
+        "repo": "treefmt-nix",
+        "rev": "0d6d739a833ba9a9c93034862e4a7b061a062a1c",
+        "type": "github"
+      },
+      "original": {
+        "owner": "numtide",
+        "repo": "treefmt-nix",
+        "type": "github"
+      }
+    },
+    "treefmt-nix_3": {
+      "inputs": {
+        "nixpkgs": [
+          "org-pkgs",
           "nixpkgs"
         ]
       },

@@ -37,9 +37,9 @@ stay private in git (they still land in each machine's world-readable
 
 ## Development
 
-The repo follows the org flake standard: machines at the root, formatter,
-checks and docs in the `dev` partition (`dev/flake.nix`, locked in
-`dev/flake.lock`), and the devenv CLI shell. Needs Nix and devenv.
+The repo follows the org flake standard: machines at the root, the formatter,
+checks, docs and lock-sync from `org-pkgs.flakeModules.dev` (no dev
+partition, no dev-only inputs), and the devenv CLI shell. Needs Nix and devenv.
 
 ```sh
 fmt              # nix fmt: treefmt with the org linters

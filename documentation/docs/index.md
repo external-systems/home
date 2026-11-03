@@ -50,13 +50,12 @@ See [Fleet](fleet/index.md) for networking and
 
 ## Project layout
 
-    flake.nix        # inputs (org-pkgs, clan-core, modules, secrets) + the dev partition
+    flake.nix        # inputs (org-pkgs, clan-core, modules, secrets); org-pkgs.flakeModules.dev
     inventory.nix    # clan inventory: machines, tags, service instances
     machines/        # per-machine configuration.nix, disko.nix, facter.json
     clanServices/    # home's clan services: machine-type, tags (remote-builder: external-systems/clanServices)
     users/           # user accounts (home-manager profiles in flake-parts/)
-    flake-parts/     # import-tree: clan wiring, nixpkgs, the networking shim, profiles
-    dev/             # dev partition: formatter, checks, docs (own flake.lock)
+    flake-parts/     # import-tree: clan wiring, nixpkgs, the networking shim, profiles, docs settings
     devenv.yaml      # the org devenv shell (devenv.nix: home's additions)
     documentation/   # this site and the slides
     sops/ vars/      # clan vars (sops-encrypted)

@@ -11,14 +11,13 @@ needs a GitHub token to fetch it). Public repo: no secrets and no IP
 literals in git.
 
 ## Layout
-- `flake.nix`: inputs (all follow `org-pkgs` where they can) and the dev partition wiring.
+- `flake.nix`: inputs (all follow `org-pkgs` where they can) and the imports (`org-pkgs.flakeModules.dev`: treefmt, docs and slides, lock-sync).
 - `inventory.nix`: machines, tags, service instances. Deploy targets come from `secrets.hosts.<machine>.targetHost`.
 - `machines/<name>/`: `configuration.nix` (incl. networking, see below), `disko.nix` (install-time truth: editing it means a wipe), `facter.json` (hardware scan). `inventory.json` is clan-managed.
 - `clanServices/`: `machine-type` (shared base + `pc`/`server` roles), `tags` (amd, intel, dev, virt). `remote-builder` (nixbuild.net-style builds on euc-hel-0) comes from external-systems/clanServices (`clanServices` input).
-- `flake-parts/` (import-tree, no import list): `clan.nix` (inventory, specialArgs incl. `secrets`), `nixpkgs.nix` (`nixosModules.nixpkgs`: org overlay), `nixosModules/networking-shim.nix`, `homeModules/profiles/` (per-user profiles, wired in `users/<user>/`), `packages.nix` (`clan-cli` re-export).
-- `dev/flake.nix` + `dev/flake.lock`: dev-only inputs. `dev/flake-module.nix`: formatter, checks, docs.
+- `flake-parts/` (import-tree, no import list): `clan.nix` (inventory, specialArgs incl. `secrets`), `nixpkgs.nix` (`nixosModules.nixpkgs`: org overlay), `nixosModules/networking-shim.nix`, `homeModules/profiles/` (per-user profiles, wired in `users/<user>/`), `packages.nix` (`clan-cli` re-export), `docs.nix` (`docs.*` settings), `formatter.nix` (sizelint excludes).
 - `devenv.yaml` + `devenv.lock` + `devenv.nix`: the shell (org shell from `org-pkgs/devenv`, plus `clan` and varlock-loaded `.env`).
-- `documentation/`: MkDocs site and reveal.js deck.
+- `documentation/`: MkDocs site (`docs/`) and reveal.js deck (`slides/slides.md`), built by `org-pkgs.flakeModules.docs`.
 - `sops/`, `vars/`: clan vars. Use the `clan` CLI; never hand-edit encrypted files.
 
 ## Networking
@@ -36,6 +35,6 @@ literals in git.
 - Load the `nix-style` skill before editing any `.nix` file.
 - One nixpkgs: never add a second nixpkgs input or `pkgs.unstable`.
 - New packages go to external-systems/pkgs, new reusable modules to external-systems/modules; this repo only wires them.
-- Dev-only inputs go in `dev/flake.nix`, never `flake.nix`.
+- No dev-only inputs: formatting and docs come from org-pkgs (nix-style skill).
 - kamrui-h1 and beelink are deployed: keep changes to their hardware, disks and users updatable in place (no wipe).
 - Work on a branch and open a PR. Never push to `main`.
