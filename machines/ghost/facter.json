@@ -2,6 +2,10 @@
   "version": 1,
   "system": "x86_64-linux",
   "virtualisation": "none",
+  "uefi": {
+    "supported": true,
+    "platform_size": 64
+  },
   "hardware": {
     "bios": {
       "apm_info": {
@@ -107,7 +111,7 @@
         "module_alias": "usb:v8087p0026d0002dcE0dsc01dp01icE0isc01ip01in00"
       },
       {
-        "index": 45,
+        "index": 46,
         "attached_to": 39,
         "class_list": [
           "usb",
@@ -631,7 +635,7 @@
         "module_alias": "usb:v0BDAp5538d8179dcEFdsc02dp01ic0Eisc02ip00in01"
       },
       {
-        "index": 46,
+        "index": 47,
         "attached_to": 39,
         "class_list": [
           "camera",
@@ -916,7 +920,7 @@
         "fpu_exception": false,
         "cpuid_level": 27,
         "write_protect": false,
-        "tlb_size": 32767,
+        "tlb_size": 31920,
         "clflush_size": 64,
         "cache_alignment": 64,
         "address_sizes": {
@@ -1283,7 +1287,7 @@
         },
         "vendor": {
           "hex": "1d6b",
-          "name": "Linux 7.0.9 xhci-hcd",
+          "name": "Linux 7.2.9 xhci-hcd",
           "value": 7531
         },
         "device": {
@@ -1293,11 +1297,11 @@
         },
         "revision": {
           "hex": "0000",
-          "name": "7.00",
+          "name": "7.02",
           "value": 0
         },
         "serial": "0000:00:14.0",
-        "model": "Linux 7.0.9 xhci-hcd xHCI Host Controller",
+        "model": "Linux 7.2.9 xhci-hcd xHCI Host Controller",
         "sysfs_id": "/devices/pci0000:00/0000:00:14.0/usb3/3-0:1.0",
         "sysfs_bus_id": "3-0:1.0",
         "resources": [
@@ -1345,10 +1349,10 @@
         "driver_modules": [
           "usbcore"
         ],
-        "module_alias": "usb:v1D6Bp0002d0700dc09dsc00dp01ic09isc00ip00in00"
+        "module_alias": "usb:v1D6Bp0002d0702dc09dsc00dp01ic09isc00ip00in00"
       },
       {
-        "index": 42,
+        "index": 43,
         "attached_to": 30,
         "class_list": [
           "usb",
@@ -1370,7 +1374,7 @@
         },
         "vendor": {
           "hex": "1d6b",
-          "name": "Linux 7.0.9 xhci-hcd",
+          "name": "Linux 7.2.9 xhci-hcd",
           "value": 7531
         },
         "device": {
@@ -1380,11 +1384,11 @@
         },
         "revision": {
           "hex": "0000",
-          "name": "7.00",
+          "name": "7.02",
           "value": 0
         },
         "serial": "0000:00:14.0",
-        "model": "Linux 7.0.9 xhci-hcd xHCI Host Controller",
+        "model": "Linux 7.2.9 xhci-hcd xHCI Host Controller",
         "sysfs_id": "/devices/pci0000:00/0000:00:14.0/usb4/4-0:1.0",
         "sysfs_bus_id": "4-0:1.0",
         "detail": {
@@ -1422,10 +1426,10 @@
         "driver_modules": [
           "usbcore"
         ],
-        "module_alias": "usb:v1D6Bp0003d0700dc09dsc00dp03ic09isc00ip00in00"
+        "module_alias": "usb:v1D6Bp0003d0702dc09dsc00dp03ic09isc00ip00in00"
       },
       {
-        "index": 44,
+        "index": 45,
         "attached_to": 12,
         "class_list": [
           "usb",
@@ -1447,7 +1451,7 @@
         },
         "vendor": {
           "hex": "1d6b",
-          "name": "Linux 7.0.9 xhci-hcd",
+          "name": "Linux 7.2.9 xhci-hcd",
           "value": 7531
         },
         "device": {
@@ -1457,11 +1461,11 @@
         },
         "revision": {
           "hex": "0000",
-          "name": "7.00",
+          "name": "7.02",
           "value": 0
         },
         "serial": "0000:00:0d.0",
-        "model": "Linux 7.0.9 xhci-hcd xHCI Host Controller",
+        "model": "Linux 7.2.9 xhci-hcd xHCI Host Controller",
         "sysfs_id": "/devices/pci0000:00/0000:00:0d.0/usb1/1-0:1.0",
         "sysfs_bus_id": "1-0:1.0",
         "resources": [
@@ -1509,10 +1513,10 @@
         "driver_modules": [
           "usbcore"
         ],
-        "module_alias": "usb:v1D6Bp0002d0700dc09dsc00dp01ic09isc00ip00in00"
+        "module_alias": "usb:v1D6Bp0002d0702dc09dsc00dp01ic09isc00ip00in00"
       },
       {
-        "index": 47,
+        "index": 49,
         "attached_to": 12,
         "class_list": [
           "usb",
@@ -1534,7 +1538,7 @@
         },
         "vendor": {
           "hex": "1d6b",
-          "name": "Linux 7.0.9 xhci-hcd",
+          "name": "Linux 7.2.9 xhci-hcd",
           "value": 7531
         },
         "device": {
@@ -1544,11 +1548,11 @@
         },
         "revision": {
           "hex": "0000",
-          "name": "7.00",
+          "name": "7.02",
           "value": 0
         },
         "serial": "0000:00:0d.0",
-        "model": "Linux 7.0.9 xhci-hcd xHCI Host Controller",
+        "model": "Linux 7.2.9 xhci-hcd xHCI Host Controller",
         "sysfs_id": "/devices/pci0000:00/0000:00:0d.0/usb2/2-0:1.0",
         "sysfs_bus_id": "2-0:1.0",
         "detail": {
@@ -1586,7 +1590,7 @@
         "driver_modules": [
           "usbcore"
         ],
-        "module_alias": "usb:v1D6Bp0003d0700dc09dsc00dp03ic09isc00ip00in00"
+        "module_alias": "usb:v1D6Bp0003d0702dc09dsc00dp03ic09isc00ip00in00"
       }
     ],
     "memory": [
@@ -1695,7 +1699,7 @@
     ],
     "mouse": [
       {
-        "index": 50,
+        "index": 53,
         "attached_to": 0,
         "bus_type": {
           "hex": "0081",
@@ -1786,7 +1790,7 @@
         "resources": [
           {
             "type": "hwaddr",
-            "address": 100
+            "address": 49
           },
           {
             "type": "phwaddr",
@@ -1892,11 +1896,147 @@
           "iwlwifi"
         ],
         "module_alias": "pci:v00008086d0000A0F0sv00008086sd00004070bc02sc80i00"
+      },
+      {
+        "index": 48,
+        "attached_to": 49,
+        "class_list": [
+          "network_controller",
+          "usb"
+        ],
+        "bus_type": {
+          "hex": "0086",
+          "name": "USB",
+          "value": 134
+        },
+        "slot": {
+          "bus": 0,
+          "number": 0
+        },
+        "base_class": {
+          "hex": "0002",
+          "name": "Network controller",
+          "value": 2
+        },
+        "sub_class": {
+          "hex": "0000",
+          "name": "Ethernet controller",
+          "value": 0
+        },
+        "vendor": {
+          "hex": "0b95",
+          "name": "ASIX",
+          "value": 2965
+        },
+        "device": {
+          "hex": "1790",
+          "name": "AX88179B",
+          "value": 6032
+        },
+        "revision": {
+          "hex": "0000",
+          "name": "2.00",
+          "value": 0
+        },
+        "serial": "0000051B6642C2",
+        "model": "ASIX AX88179B",
+        "sysfs_id": "/devices/pci0000:00/0000:00:0d.0/usb2/2-1/2-1:2.0",
+        "sysfs_bus_id": "2-1:2.0",
+        "unix_device_names": [
+          "enp0s13f0u1c2"
+        ],
+        "resources": [
+          {
+            "type": "hwaddr",
+            "address": 48
+          },
+          {
+            "type": "phwaddr",
+            "address": 48
+          }
+        ],
+        "detail": {
+          "device_class": {
+            "hex": "0000",
+            "name": "per_interface",
+            "value": 0
+          },
+          "device_subclass": {
+            "hex": "0000",
+            "name": "per_interface",
+            "value": 0
+          },
+          "device_protocol": 0,
+          "interface_class": {
+            "hex": "0002",
+            "name": "comm",
+            "value": 2
+          },
+          "interface_subclass": {
+            "hex": "000d",
+            "name": "content_security",
+            "value": 13
+          },
+          "interface_protocol": 0,
+          "interface_number": 0,
+          "interface_alternate_setting": 0
+        },
+        "hotplug": "usb",
+        "driver": "cdc_ncm",
+        "driver_module": "cdc_ncm",
+        "drivers": [
+          "cdc_ncm"
+        ],
+        "driver_modules": [
+          "cdc_ncm"
+        ],
+        "module_alias": "usb:v0B95p1790d0200dc00dsc00dp00ic02isc0Dip00in00"
       }
     ],
     "network_interface": [
       {
-        "index": 48,
+        "index": 50,
+        "attached_to": 48,
+        "class_list": [
+          "network_interface"
+        ],
+        "base_class": {
+          "hex": "0107",
+          "name": "Network Interface",
+          "value": 263
+        },
+        "sub_class": {
+          "hex": "0001",
+          "name": "Ethernet",
+          "value": 1
+        },
+        "model": "Ethernet network interface",
+        "sysfs_id": "/class/net/enp0s13f0u1c2",
+        "sysfs_device_link": "/devices/pci0000:00/0000:00:0d.0/usb2/2-1/2-1:2.0",
+        "unix_device_names": [
+          "enp0s13f0u1c2"
+        ],
+        "resources": [
+          {
+            "type": "hwaddr",
+            "address": 48
+          },
+          {
+            "type": "phwaddr",
+            "address": 48
+          }
+        ],
+        "driver": "cdc_ncm",
+        "driver_module": "cdc_ncm",
+        "drivers": [
+          "cdc_ncm"
+        ],
+        "driver_modules": [
+          "cdc_ncm"
+        ]
+      },
+      {
+        "index": 51,
         "attached_to": 0,
         "class_list": [
           "network_interface"
@@ -1918,7 +2058,7 @@
         ]
       },
       {
-        "index": 49,
+        "index": 52,
         "attached_to": 16,
         "class_list": [
           "network_interface"
@@ -1942,7 +2082,7 @@
         "resources": [
           {
             "type": "hwaddr",
-            "address": 100
+            "address": 49
           },
           {
             "type": "phwaddr",
@@ -2781,7 +2921,89 @@
     },
     "usb": [
       {
-        "index": 43,
+        "index": 42,
+        "attached_to": 49,
+        "class_list": [
+          "usb",
+          "unknown"
+        ],
+        "bus_type": {
+          "hex": "0086",
+          "name": "USB",
+          "value": 134
+        },
+        "slot": {
+          "bus": 0,
+          "number": 0
+        },
+        "base_class": {
+          "hex": "0000",
+          "name": "Unclassified device",
+          "value": 0
+        },
+        "sub_class": {
+          "hex": "0000",
+          "name": "Unclassified device",
+          "value": 0
+        },
+        "vendor": {
+          "hex": "0b95",
+          "name": "ASIX",
+          "value": 2965
+        },
+        "device": {
+          "hex": "1790",
+          "name": "AX88179B",
+          "value": 6032
+        },
+        "revision": {
+          "hex": "0000",
+          "name": "2.00",
+          "value": 0
+        },
+        "serial": "0000051B6642C2",
+        "model": "ASIX AX88179B",
+        "sysfs_id": "/devices/pci0000:00/0000:00:0d.0/usb2/2-1/2-1:2.1",
+        "sysfs_bus_id": "2-1:2.1",
+        "detail": {
+          "device_class": {
+            "hex": "0000",
+            "name": "per_interface",
+            "value": 0
+          },
+          "device_subclass": {
+            "hex": "0000",
+            "name": "per_interface",
+            "value": 0
+          },
+          "device_protocol": 0,
+          "interface_class": {
+            "hex": "000a",
+            "name": "data",
+            "value": 10
+          },
+          "interface_subclass": {
+            "hex": "0000",
+            "name": "per_interface",
+            "value": 0
+          },
+          "interface_protocol": 1,
+          "interface_number": 1,
+          "interface_alternate_setting": 1
+        },
+        "hotplug": "usb",
+        "driver": "cdc_ncm",
+        "driver_module": "cdc_ncm",
+        "drivers": [
+          "cdc_ncm"
+        ],
+        "driver_modules": [
+          "cdc_ncm"
+        ],
+        "module_alias": "usb:v0B95p1790d0200dc00dsc00dp00ic0Aisc00ip01in01"
+      },
+      {
+        "index": 44,
         "attached_to": 39,
         "class_list": [
           "usb",
@@ -3863,9 +4085,9 @@
       "product": "Inspiron 7506 2n1",
       "version": "",
       "wake_up": {
-        "hex": "0001",
-        "name": "Other",
-        "value": 1
+        "hex": "0006",
+        "name": "Power Switch",
+        "value": 6
       }
     }
   }
