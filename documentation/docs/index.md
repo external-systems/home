@@ -5,12 +5,11 @@
 </div>
 
 <p align="center">
-  <a href="https://github.com/andrewthomaslee/home/releases"><img src="https://img.shields.io/github/v/release/andrewthomaslee/home?include_prereleases&style=for-the-badge" alt="Latest Release"></a>
-  <a href="https://github.com/andrewthomaslee/home/blob/main/LICENSE"><img src="https://img.shields.io/github/license/andrewthomaslee/home?style=for-the-badge&color=blue" alt="License"></a>
-</p>
-
-<p align="center">
-  <a href="https://github.com/andrewthomaslee/home"><img src="https://img.shields.io/badge/github-repo-24292e?logo=github&style=for-the-badge" alt="GitHub Repo"></a>
+  <a href="https://github.com/external-systems/home/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/external-systems/home/ci.yml?branch=main&amp;label=ci&amp;logo=github" alt="ci"></a>
+  <a href="https://github.com/external-systems/home/releases/latest"><img src="https://img.shields.io/github/v/release/external-systems/home?label=release&amp;color=d97757" alt="release"></a>
+  <a href="https://home.external.systems/"><img src="https://img.shields.io/website?url=https%3A%2F%2Fhome.external.systems%2F&amp;label=docs&amp;up_message=online&amp;down_message=offline" alt="docs"></a>
+  <a href="https://github.com/external-systems/home/blob/main/LICENSE"><img src="https://img.shields.io/github/license/external-systems/home" alt="license"></a>
+  <a href="https://nixos.org"><img src="https://img.shields.io/badge/built_with-Nix-5277C3?logo=nixos&amp;logoColor=white" alt="built with Nix"></a>
 </p>
 
 
@@ -50,13 +49,12 @@ See [Fleet](fleet/index.md) for networking and
 
 ## Project layout
 
-    flake.nix        # inputs (org-pkgs, clan-core, modules, secrets) + the dev partition
+    flake.nix        # inputs (org-pkgs, clan-core, modules, secrets); org-pkgs.flakeModules.default
     inventory.nix    # clan inventory: machines, tags, service instances
     machines/        # per-machine configuration.nix, disko.nix, facter.json
     clanServices/    # home's clan services: machine-type, tags (remote-builder: external-systems/clanServices)
     users/           # user accounts (home-manager profiles in flake-parts/)
-    flake-parts/     # import-tree: clan wiring, nixpkgs, the networking shim, profiles
-    dev/             # dev partition: formatter, checks, docs (own flake.lock)
+    flake-parts/     # import-tree: clan wiring, nixpkgs, the networking shim, profiles, docs settings
     devenv.yaml      # the org devenv shell (devenv.nix: home's additions)
     documentation/   # this site and the slides
     sops/ vars/      # clan vars (sops-encrypted)

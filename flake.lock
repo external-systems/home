@@ -368,11 +368,11 @@
         "whisper-dictation": "whisper-dictation"
       },
       "locked": {
-        "lastModified": 1793715217,
-        "narHash": "sha256-90lYMd+vRZ9PjHcnJS/XHKol+oNQxQibqHX7VKg5IBE=",
+        "lastModified": 1793755435,
+        "narHash": "sha256-VLxt6ucVpLX69O0kUTh91IRWBGhBcfwaAZFIDdwAR7o=",
         "owner": "external-systems",
         "repo": "modules",
-        "rev": "65b2b2d6dec3cbe2c04ba7bba0c2ce076b74f6a1",
+        "rev": "436e8aa17e89426fdf6699c67a8097e84fc2af6b",
         "type": "github"
       },
       "original": {
@@ -513,11 +513,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1793636676,
-        "narHash": "sha256-wYI3eu3HTUZXyDYk0UyfYzR0vX/5+G/tQ2EB7EO0zbc=",
+        "lastModified": 1793755214,
+        "narHash": "sha256-LIr6Bwi+8d5rzzeDkvA38Wcmd9WXrTfKCZ6q+tB//Ck=",
         "owner": "external-systems",
         "repo": "not-secrets",
-        "rev": "28c929e93c039138c8691a3db931a2f9f6cd9e9a",
+        "rev": "fa1fd3442dfae4cd316f081cb065e331cd356404",
         "type": "github"
       },
       "original": {
@@ -532,14 +532,16 @@
         "import-tree": "import-tree_2",
         "moscripts": "moscripts",
         "nixpkgs": "nixpkgs_2",
+        "reveal-js": "reveal-js",
+        "treefmt-nix": "treefmt-nix_3",
         "zen-browser": "zen-browser"
       },
       "locked": {
-        "lastModified": 1793637589,
-        "narHash": "sha256-cwc0dYP5UCbxsN1ch1UL9idj2eNy3acw/faG5vH3fM4=",
+        "lastModified": 1793754834,
+        "narHash": "sha256-q4BP36GkmHK6S+BNicICNcSZS68k2vA2AbBhrx4kwx4=",
         "owner": "external-systems",
         "repo": "pkgs",
-        "rev": "2233570fec6aa89fd6305d318f0107d363571b3f",
+        "rev": "af32ce7f303a93e7ca340f738f93fc39cc00c9ac",
         "type": "github"
       },
       "original": {
@@ -627,6 +629,23 @@
         "type": "github"
       }
     },
+    "reveal-js": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1789052901,
+        "narHash": "sha256-yh9Fwp8PT6fFrbSsih7cD9EzH2wbfd3idjyemOQTqF8=",
+        "owner": "hakimel",
+        "repo": "reveal.js",
+        "rev": "75dff6f515d2d08df0c32cf2b7328b89425c6f25",
+        "type": "github"
+      },
+      "original": {
+        "owner": "hakimel",
+        "ref": "6.0.2",
+        "repo": "reveal.js",
+        "type": "github"
+      }
+    },
     "root": {
       "inputs": {
         "clan-core": "clan-core",
@@ -666,11 +685,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1793637095,
-        "narHash": "sha256-lZ2qBzioaZHMMUqk/6dRoiMi3FsoxKfd467Hn7/17m4=",
+        "lastModified": 1793755829,
+        "narHash": "sha256-2dShih/3KyWYcRAhE6HlwFp3m5dqtxHVXWgkVKQQAJo=",
         "owner": "external-systems",
         "repo": "secrets",
-        "rev": "523857cb45d215ff5437d161552c349664047bf9",
+        "rev": "fba013294e649c9fc991666e22921b2b131a03a9",
         "type": "github"
       },
       "original": {
@@ -708,11 +727,11 @@
         "skills-terraform": "skills-terraform"
       },
       "locked": {
-        "lastModified": 1793714890,
-        "narHash": "sha256-pWS331VTmkSB7zCO9wMQzc5HQIpUkwNsjxQzU4yhokk=",
+        "lastModified": 1793755265,
+        "narHash": "sha256-rrlcHHZDeivwJ0BUe4YWSDp6XC4RbcGQzED5T6Lak7E=",
         "owner": "external-systems",
         "repo": "skills",
-        "rev": "9cbb9f72577fac117964c1584b1bdb20cc8444be",
+        "rev": "0221bfec32dbc981a1902560ecc248dc974de5ae",
         "type": "github"
       },
       "original": {
@@ -973,6 +992,27 @@
       "inputs": {
         "nixpkgs": [
           "clanServices",
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1791885023,
+        "narHash": "sha256-C3alQ2MEt0zVrUSho5NUDo3jmhbff72++bfwoqT9Omo=",
+        "owner": "numtide",
+        "repo": "treefmt-nix",
+        "rev": "0d6d739a833ba9a9c93034862e4a7b061a062a1c",
+        "type": "github"
+      },
+      "original": {
+        "owner": "numtide",
+        "repo": "treefmt-nix",
+        "type": "github"
+      }
+    },
+    "treefmt-nix_3": {
+      "inputs": {
+        "nixpkgs": [
+          "org-pkgs",
           "nixpkgs"
         ]
       },

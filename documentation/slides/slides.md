@@ -19,14 +19,14 @@ Note: dendritic = the flake is composed from a tree of small modules, not one bi
 
 ## This site, these slides
 
-- Docs: MkDocs + Material via `inputs.presenting` (dev partition)
-- Slides: reveal.js via `inputs.presenting` — zero npm, zero Python installs
+- Docs: MkDocs + Material from `org-pkgs.flakeModules.default`
+- Slides: reveal.js from the same module, zero npm, zero Python installs
 
 ```nix
-presenting.slides.dir = ./slides;
+imports = [inputs.org-pkgs.flakeModules.default];
 ```
 
-One line → `packages.slides`, `apps.serve-slides`, and this deck embedded at `/slides/`.
+One import → `packages.documentation`, `packages.slides`, the live previews, and this deck embedded at `/slides/`.
 
 --
 
