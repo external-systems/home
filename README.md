@@ -1,5 +1,11 @@
 # home
 
+[![ci](https://img.shields.io/github/actions/workflow/status/external-systems/home/ci.yml?branch=main&label=ci&logo=github)](https://github.com/external-systems/home/actions/workflows/ci.yml)
+[![release](https://img.shields.io/github/v/release/external-systems/home?label=release&color=d97757)](https://github.com/external-systems/home/releases/latest)
+[![docs](https://img.shields.io/website?url=https%3A%2F%2Fhome.external.systems%2F&label=docs&up_message=online&down_message=offline)](https://home.external.systems/)
+[![license](https://img.shields.io/github/license/external-systems/home)](https://github.com/external-systems/home/blob/main/LICENSE)
+[![built with Nix](https://img.shields.io/badge/built_with-Nix-5277C3?logo=nixos&logoColor=white)](https://nixos.org)
+
 The external-systems home fleet: clan machines on top of the org flakes.
 
 | Flake | Provides |
