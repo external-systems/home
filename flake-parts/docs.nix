@@ -1,5 +1,5 @@
 # Docs settings that differ from the org defaults (pkgs flakeModules.docs,
-# via org-pkgs.flakeModules.dev in flake.nix). Build: nix build
+# via org-pkgs.flakeModules.default in flake.nix). Build: nix build
 # .#documentation (deck at slides/), then open result/index.html.
 {
   perSystem.docs = {

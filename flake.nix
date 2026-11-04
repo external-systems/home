@@ -63,7 +63,7 @@
 
       imports = [
         # treefmt, docs and slides, lock-sync (checks, formatter, apps).
-        inputs.org-pkgs.flakeModules.dev
+        inputs.org-pkgs.flakeModules.default
         inputs.clan-core.flakeModules.default
         # Declares flake.homeModules (the user profiles merge into it).
         inputs.modules.inputs.home-manager.flakeModules.home-manager

@@ -49,7 +49,7 @@ See [Fleet](fleet/index.md) for networking and
 
 ## Project layout
 
-    flake.nix        # inputs (org-pkgs, clan-core, modules, secrets); org-pkgs.flakeModules.dev
+    flake.nix        # inputs (org-pkgs, clan-core, modules, secrets); org-pkgs.flakeModules.default
     inventory.nix    # clan inventory: machines, tags, service instances
     machines/        # per-machine configuration.nix, disko.nix, facter.json
     clanServices/    # home's clan services: machine-type, tags (remote-builder: external-systems/clanServices)

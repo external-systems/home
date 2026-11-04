@@ -44,7 +44,7 @@ stay private in git (they still land in each machine's world-readable
 ## Development
 
 The repo follows the org flake standard: machines at the root, the formatter,
-checks, docs and lock-sync from `org-pkgs.flakeModules.dev` (no dev
+checks, docs and lock-sync from `org-pkgs.flakeModules.default` (no dev
 partition, no dev-only inputs), and the devenv CLI shell. Needs Nix and devenv.
 
 ```sh
