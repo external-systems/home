@@ -26,10 +26,10 @@
       - **Users** (`netsa`, `wife`, `matt`; the users instances): which
         accounts exist on the machine.
 
-      Hardware is not a tag: the machine-type base sets
-      `hostSpec.hardware.gpu.fromFacter`, so the AMD, Intel and NVIDIA GPU
-      modules follow each machine's facter.json. Microcode, firmware and
-      KVM modules already come from nixos-facter.
+      Hardware is not a tag: the AMD, Intel and NVIDIA GPU modules
+      (external-systems/modules) set themselves up from each machine's
+      facter.json, and nixos-facter handles microcode, firmware and the
+      KVM modules.
     '';
     categories = ["System"];
   };

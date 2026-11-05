@@ -33,7 +33,7 @@ literals in git.
 
 ## Tags
 - A trait two or more machines share is a tag (`inventory.nix`); `configuration.nix` keeps only what that one machine has. Per-machine values for a tag are role settings (`roles.<tag>.machines.<m>.settings`).
-- Hardware is not a tag: GPU modules follow `facter.json` (`hostSpec.hardware.gpu.fromFacter` in the machine-type base).
+- Hardware is not a tag: the modules' GPU modules set themselves up from `facter.json`. Override in `configuration.nix` only when detection is wrong.
 
 ## Rules
 - Load the `nix-style` skill before editing any `.nix` file.

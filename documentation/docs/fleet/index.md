@@ -62,7 +62,7 @@ kinds:
 A tag that needs a per-machine value takes it as a role setting, for
 example `gaming.machines.<m>.settings.diskSwap` in the `tags` instance.
 
-Hardware is not a tag. The machine-type base sets
-`hostSpec.hardware.gpu.fromFacter`, so the AMD, Intel and NVIDIA GPU modules
-follow each machine's `facter.json`; nixos-facter already handles microcode,
-firmware and the KVM modules.
+Hardware is not a tag. The AMD, Intel and NVIDIA GPU modules from
+external-systems/modules set themselves up from each machine's `facter.json`
+(for NVIDIA, including the kernel module and driver branch the card needs);
+nixos-facter handles microcode, firmware and the KVM modules.

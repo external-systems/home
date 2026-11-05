@@ -44,15 +44,10 @@
     sharedModules = [{nixpkgs.overlays = [inputs.org-pkgs.overlays.default];}];
   };
 
-  # GTX 1070 Ti (Pascal). The driver, modesetting, the container toolkit
-  # and nvtop come from hostSpec.hardware.gpu.nvidia, which facter.json
-  # turns on; only what is about this card is set here. Pascal has no open
-  # kernel module and its last driver branch is legacy_580.
-  hardware.nvidia = {
-    open = false;
-    powerManagement.enable = true;
-    branch = "legacy_580";
-  };
+  # GTX 1070 Ti (Pascal): modules' hostSpec.hardware.gpu.nvidia sets
+  # itself up from facter.json (driver, closed kernel module, legacy_580,
+  # container toolkit, nvtop).
+  hardware.nvidia.powerManagement.enable = true;
 
   boot = {
     # LTS kernel instead of jovian's Valve kernel: Valve only tests that on
