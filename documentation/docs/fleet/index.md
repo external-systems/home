@@ -30,7 +30,7 @@ is ready, networking goes through `hostSpec.networking.shim`
 
 | Mode | What it does | Set by | Machines |
 | ---- | ------------ | ------ | -------- |
-| `wifi` | NetworkManager with DHCP/RA | the `wifi` tag | kamrui-h1, beelink, ghost, hp-notebook |
+| `wifi` | NetworkManager with DHCP/RA | the default when `facter.json` has a WLAN controller | kamrui-h1, beelink, ghost, hp-notebook |
 | `static` | Fixed addresses and default routes on one interface, from `secrets.hosts.<m>.links.<link>` and `secrets.networks.<network>` | the machine's `configuration.nix` | nixos, euc-hel-0 |
 
 The option names mirror the values schema, so moving a machine to netif is a
@@ -56,13 +56,17 @@ kinds:
 | Kind | Tags | Service |
 | ---- | ---- | ------- |
 | Machine type | `pc`, `server` (one per machine; a server with `pc` or `gaming` fails to evaluate) | `machine-type` |
-| Purpose and connectivity | `dev`, `gaming`, `virt`, `wifi` | `tags` |
+| Purpose | `dev`, `gaming` | `tags` |
 | Users | `netsa`, `wife`, `matt` | `users` instances |
 
 A tag that needs a per-machine value takes it as a role setting, for
 example `gaming.machines.<m>.settings.diskSwap` in the `tags` instance.
 
-Hardware is not a tag. The AMD, Intel and NVIDIA GPU modules from
-external-systems/modules set themselves up from each machine's `facter.json`
-(for NVIDIA, including the kernel module and driver branch the card needs);
-nixos-facter handles microcode, firmware and the KVM modules.
+Hardware is not a tag. It comes from each machine's `facter.json`:
+
+- The AMD, Intel and NVIDIA GPU modules and Bluetooth from
+  external-systems/modules set themselves up (for NVIDIA, including the
+  kernel module and driver branch the card needs).
+- The networking shim defaults to Wi-Fi on machines with a WLAN controller.
+- nixos-facter handles microcode, firmware and the KVM modules; nested KVM
+  is the kernel default.

@@ -8,10 +8,8 @@
     # --- hostSpec options --- #
     hostSpec = {
       networking.tailscale.systray = true;
-      hardware = {
-        bluetooth.enable = true;
-        sound.enable = true;
-      };
+      # Bluetooth comes from facter.json (modules' hostSpec.hardware.bluetooth).
+      hardware.sound.enable = true;
       services = {
         kde.enable = true;
         onepassword = {

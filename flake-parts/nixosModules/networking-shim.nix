@@ -1,8 +1,9 @@
 # TEMPORARY networking shim, until the IfState-based netif clan service
-# (external-systems/clanServices) is ready. Each machine's
-# configuration.nix sets hostSpec.networking.shim from the values flake
-# (`secrets`, the private external-systems/secrets),
-# so no address literal lives in this repo. The option shapes mirror the
+# (external-systems/clanServices) is ready. A machine whose facter.json
+# has a WLAN controller gets wifi mode by default; a wired machine's
+# configuration.nix sets static mode from the values flake (`secrets`, the
+# private external-systems/secrets), so no address literal lives in this
+# repo. The option shapes mirror the
 # values schema (links.<name>.{interface,ipv4,ipv6}, CIDR strings), so
 # the switch to netif is a per-machine rewrite of one attrset.
 #
@@ -19,6 +20,10 @@
 {lib, ...}: {
   flake.nixosModules.networking-shim = {config, ...}: let
     cfg = config.hostSpec.networking.shim;
+
+    # A Wi-Fi card in the machine's nixos-facter report: such machines
+    # default to wifi mode, wired ones set static mode themselves.
+    hasWlan = lib.any (controller: (controller.sub_class.name or null) == "WLAN controller") (config.hardware.facter.report.hardware.network_controller or []);
     inherit (lib) mkOption types;
 
     # "192.0.2.10/24" -> {address = "192.0.2.10"; prefixLength = 24;}
@@ -30,11 +35,20 @@
     };
   in {
     options.hostSpec.networking.shim = {
-      enabled = lib.mkEnableOption "the temporary networking shim (replaced by netif)";
+      enabled =
+        lib.mkEnableOption "the temporary networking shim (replaced by netif)"
+        // {
+          default = hasWlan;
+          defaultText = lib.literalMD "a WLAN controller in `hardware.facter.report`";
+        };
 
       mode = mkOption {
         type = types.enum ["static" "wifi"];
-        default = "static";
+        default =
+          if hasWlan
+          then "wifi"
+          else "static";
+        defaultText = lib.literalMD ''"wifi" with a WLAN controller in `hardware.facter.report`, else "static"'';
         description = "static: fixed addresses on a wired link; wifi: NetworkManager with DHCP.";
       };
 

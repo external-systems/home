@@ -2,7 +2,7 @@
   _class = "clan.service";
   manifest = {
     name = "@andrewthomaslee/tags";
-    description = "Purpose and connectivity tags: each role switches on the matching hostSpec modules";
+    description = "Purpose tags: each role switches on the matching hostSpec modules";
     readme = ''
       A tag is a trait two or more machines share. What only one machine
       has (its disks, addresses, NVIDIA driver branch, monitors) stays in
@@ -12,7 +12,7 @@
 
       - **Machine type** (`pc`, `server`; the machine-type service): one
         per machine.
-      - **Purpose and connectivity** (this service):
+      - **Purpose** (this service):
         - `dev`: developer workstation (docker, nix, nix-ld,
           warp/tailscale specialisations). Storage Box mounts are per user
           (homeSpec.programs.storagebox in the profiles).
@@ -20,16 +20,14 @@
           system (hostSpec.system.gamingSpecialisation): jovian, Steam and
           the Valve kernel there, with HAProxy, k3s, rke2 and FRR stopped.
           Per machine: `gaming.machines.<m>.settings.diskSwap`.
-        - `virt`: nested virtualization.
-        - `wifi`: NetworkManager with DHCP (the networking shim's wifi
-          mode) until netif (external-systems/clanServices) replaces it.
       - **Users** (`netsa`, `wife`, `matt`; the users instances): which
         accounts exist on the machine.
 
-      Hardware is not a tag: the AMD, Intel and NVIDIA GPU modules
-      (external-systems/modules) set themselves up from each machine's
-      facter.json, and nixos-facter handles microcode, firmware and the
-      KVM modules.
+      Hardware is not a tag; it comes from each machine's facter.json:
+      the AMD, Intel and NVIDIA GPU modules and Bluetooth
+      (external-systems/modules), Wi-Fi via NetworkManager when there is a
+      WLAN controller (the networking shim), and microcode, firmware and
+      KVM from nixos-facter. Nested KVM is the kernel default.
     '';
     categories = ["System"];
   };
@@ -44,13 +42,5 @@
       // {
         description = "Gaming boot entry (jovian specialisation)";
       };
-    virt = {
-      perInstance.nixosModule = ./virt.nix;
-      description = "Virtualization host";
-    };
-    wifi = {
-      perInstance.nixosModule = ./wifi.nix;
-      description = "WiFi via NetworkManager (networking shim)";
-    };
   };
 }

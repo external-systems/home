@@ -13,33 +13,33 @@ in {
     domain = secrets.domains.primary;
   };
 
-  # Tags, in order: machine type (pc/server), purpose and connectivity
-  # (dev, gaming, virt, wifi), users (netsa, wife, matt). Hardware is not
-  # a tag: GPU modules follow each machine's facter.json
+  # Tags, in order: machine type (pc/server), purpose (dev, gaming), users
+  # (netsa, wife, matt). Hardware is not a tag: GPUs, Bluetooth and Wi-Fi
+  # set themselves up from each machine's facter.json
   # (clanServices/tags/default.nix).
   machines = {
     # Andrew's PCs
     nixos = {
       deploy.targetHost = hosts.nixos.targetHost;
-      tags = ["pc" "virt" "dev" "gaming" "netsa" "wife"];
+      tags = ["pc" "dev" "gaming" "netsa" "wife"];
     };
     kamrui-h1 = {
       deploy.targetHost = hosts.kamrui-h1.targetHost;
-      tags = ["pc" "virt" "dev" "gaming" "wifi" "netsa" "wife" "matt"];
+      tags = ["pc" "dev" "gaming" "netsa" "wife" "matt"];
     };
     ghost = {
       deploy.targetHost = hosts.ghost.targetHost;
-      tags = ["pc" "virt" "dev" "wifi" "netsa"];
+      tags = ["pc" "dev" "netsa"];
     };
     # Wife's PCs
     hp-notebook = {
       deploy.targetHost = hosts.hp-notebook.targetHost;
-      tags = ["pc" "wifi" "wife"];
+      tags = ["pc" "wife"];
     };
     # Shared PCs
     beelink = {
       deploy.targetHost = hosts.beelink.targetHost;
-      tags = ["pc" "virt" "dev" "wifi" "netsa" "matt"];
+      tags = ["pc" "dev" "netsa" "matt"];
     };
 
     # Servers
@@ -71,8 +71,6 @@ in {
       roles = {
         dev.tags.dev = {};
         gaming.tags.gaming = {};
-        virt.tags.virt = {};
-        wifi.tags.wifi = {};
       };
     };
 
