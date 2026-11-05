@@ -11,7 +11,9 @@
 
       - `pc`: KDE/Wayland desktop with sound, bluetooth and the desktop
         apps.
-      - `server`: headless; nix daemon defaults, no desktop.
+      - `server`: headless; nix daemon defaults, no desktop. A server
+        must not also be a `pc` or carry the `gaming` tag: evaluation
+        fails if it does.
     '';
     categories = ["System"];
   };
@@ -46,6 +48,9 @@
       # --- hostSpec options --- #
       hostSpec = {
         clan.enable = true;
+        # AMD, Intel and NVIDIA GPU modules from facter.json; card-specific
+        # settings stay in the machine's configuration.nix.
+        hardware.gpu.fromFacter = true;
         # BBR/fq, socket buffers, irqbalance, Wi-Fi power save off; each
         # value is mkDefault, so a machine can override any of them.
         networking.optimization.enable = true;

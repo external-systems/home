@@ -44,19 +44,15 @@
     sharedModules = [{nixpkgs.overlays = [inputs.org-pkgs.overlays.default];}];
   };
 
-  # Load nvidia driver for Xorg and Wayland
-  services.xserver.videoDrivers = ["nvidia"];
-  hardware = {
-    nvidia-container-toolkit.enable = true;
-    nvidia = {
-      modesetting.enable = true;
-      open = false;
-      powerManagement.enable = true;
-      branch = "legacy_580";
-    };
+  # GTX 1070 Ti (Pascal). The driver, modesetting, the container toolkit
+  # and nvtop come from hostSpec.hardware.gpu.nvidia, which facter.json
+  # turns on; only what is about this card is set here. Pascal has no open
+  # kernel module and its last driver branch is legacy_580.
+  hardware.nvidia = {
+    open = false;
+    powerManagement.enable = true;
+    branch = "legacy_580";
   };
-
-  environment.systemPackages = [pkgs.nvtopPackages.full];
 
   boot = {
     # LTS kernel instead of jovian's Valve kernel: Valve only tests that on

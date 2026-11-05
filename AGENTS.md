@@ -14,14 +14,14 @@ literals in git.
 - `flake.nix`: inputs (all follow `org-pkgs` where they can) and the imports (`org-pkgs.flakeModules.default`: treefmt, docs and slides, lock-sync).
 - `inventory.nix`: machines, tags, service instances. Deploy targets come from `secrets.hosts.<machine>.targetHost`.
 - `machines/<name>/`: `configuration.nix` (incl. networking, see below), `disko.nix` (install-time truth: editing it means a wipe), `facter.json` (hardware scan). `inventory.json` is clan-managed.
-- `clanServices/`: `machine-type` (shared base + `pc`/`server` roles), `tags` (amd, intel, dev, virt). `remote-builder` (nixbuild.net-style builds on euc-hel-0) comes from external-systems/clanServices (`clanServices` input).
+- `clanServices/`: `machine-type` (shared base + `pc`/`server` roles), `tags` (dev, gaming, virt, wifi). `remote-builder` (nixbuild.net-style builds on euc-hel-0) comes from external-systems/clanServices (`clanServices` input).
 - `flake-parts/` (import-tree, no import list): `clan.nix` (inventory, specialArgs incl. `secrets`), `nixpkgs.nix` (`nixosModules.nixpkgs`: org overlay), `nixosModules/networking-shim.nix`, `homeModules/profiles/` (per-user profiles, wired in `users/<user>/`), `packages.nix` (`clan-cli` re-export), `docs.nix` (`docs.*` settings), `formatter.nix` (sizelint excludes).
 - `devenv.yaml` + `devenv.lock` + `devenv.nix`: the shell (org shell from `org-pkgs/devenv`, plus `clan` and varlock-loaded `.env`).
 - `documentation/`: MkDocs site (`docs/`) and reveal.js deck (`slides/slides.md`), built by `org-pkgs.flakeModules.docs`.
 - `sops/`, `vars/`: clan vars. Use the `clan` CLI; never hand-edit encrypted files.
 
 ## Networking
-- `hostSpec.networking.shim` (temporary, until netif in external-systems/clanServices) is set per machine in `configuration.nix` from `secrets.hosts.<m>.links.<link>` and `secrets.networks.<network>`. Modes: `wifi` (NetworkManager) and `static`.
+- `hostSpec.networking.shim` (temporary, until netif in external-systems/clanServices): `wifi` mode (NetworkManager) comes from the `wifi` tag; `static` mode is set per machine in `configuration.nix` from `secrets.hosts.<m>.links.<link>` and `secrets.networks.<network>`.
 - Never write an address, interface or deploy target as a literal. A new machine's values go into not-secrets first (placeholders, which secrets' shape-parity check compares against), then secrets; then `nix flake update secrets` here.
 - Deploy: `clan machines update <m>` from the devenv shell (it provides the GitHub token nix needs for the private `secrets` input).
 
@@ -30,6 +30,10 @@ literals in git.
 - `git add` new files before any `nix` command.
 - `fmt`, then `check` (`nix flake check` also evaluates every machine). Both must pass before a change is done.
 - After `nix flake update org-pkgs`, run `sync-locks` in the same commit.
+
+## Tags
+- A trait two or more machines share is a tag (`inventory.nix`); `configuration.nix` keeps only what that one machine has. Per-machine values for a tag are role settings (`roles.<tag>.machines.<m>.settings`).
+- Hardware is not a tag: GPU modules follow `facter.json` (`hostSpec.hardware.gpu.fromFacter` in the machine-type base).
 
 ## Rules
 - Load the `nix-style` skill before editing any `.nix` file.
