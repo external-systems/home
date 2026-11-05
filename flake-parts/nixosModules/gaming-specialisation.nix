@@ -1,9 +1,11 @@
 # Gaming as a second boot entry. The default entry is the developer
-# system: the machine's own config, with the jovian module off and no disk
-# swap (kubelet wants swap off). The "gaming" specialisation turns jovian on
-# (Valve kernel unless the machine pins one, Steam, gamescope, zram, scx,
-# ntsync, the boot power profile), brings back the disko swap partition,
-# and stops the developer network services (k3s, FRR's bgpd). It only
+# system: the machine's own config with the jovian module off. The
+# "gaming" specialisation turns jovian on (Valve kernel unless the machine
+# pins one, Steam, gamescope, zram, scx, ntsync, the boot power profile)
+# and stops the services the Kubernetes clan services
+# (external-systems/clanServices k3s, rke2, routed-fabric) enable: HAProxy,
+# k3s, rke2 and every FRR daemon. Networking (netif/IfState, WireGuard,
+# dummy interfaces) stays as the machine defines it in both entries. It only
 # composes modules the fleet already has; pick the entry in the boot menu
 # (a kernel change needs a reboot).
 #
@@ -12,8 +14,23 @@
 # so the dev tag's warp/tailscale entries exist only for the developer
 # system.
 {lib, ...}: {
-  flake.nixosModules.gaming-specialisation = {config, ...}: let
+  flake.nixosModules.gaming-specialisation = {
+    config,
+    options,
+    ...
+  }: let
     cfg = config.hostSpec.system.gamingSpecialisation;
+
+    # Every FRR daemon the nixpkgs module offers (bgpd, bfdd, ospfd, ...),
+    # read from its options so new daemons are covered too. Removed options
+    # (zebra, always on with FRR) are invisible stubs that reject any
+    # definition, so they are skipped.
+    frrDaemons = lib.filter (
+      name: let
+        opt = options.services.frr.${name};
+      in
+        opt ? enable && (opt.enable.visible or true) != false
+    ) (lib.attrNames options.services.frr);
   in {
     options.hostSpec.system.gamingSpecialisation = {
       enable = lib.mkEnableOption ''
@@ -22,13 +39,13 @@
       '';
       diskSwap = lib.mkOption {
         type = lib.types.bool;
-        default = true;
-        example = false;
+        default = false;
+        example = true;
         description = ''
           Whether disk swap (the disko swap partition) is used only in the
-          gaming entry. The developer entry then runs without disk swap, as
-          kubelet wants. False leaves swap as the machine defines it in
-          both entries.
+          gaming entry, so the developer entry runs without it as kubelet
+          wants. Off by default: no machine runs Kubernetes yet, so swap
+          stays as the machine defines it in both entries.
         '';
       };
       active = lib.mkOption {
@@ -51,8 +68,10 @@
       })
       (lib.mkIf cfg.active {
         services = {
+          haproxy.enable = lib.mkForce false;
           k3s.enable = lib.mkForce false;
-          frr.bgpd.enable = lib.mkForce false;
+          rke2.enable = lib.mkForce false;
+          frr = lib.genAttrs frrDaemons (_: {enable = lib.mkForce false;});
         };
       })
     ]);
