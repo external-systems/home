@@ -60,11 +60,16 @@
 
   environment.systemPackages = [pkgs.nvtopPackages.full];
 
-  boot.kernelParams = [
-    "video=DP-2:3440x1440@165.00" # for ASUS ultra wide
-    "initcall_blacklist=simpledrm_platform_driver_init"
-    "nvidia_drm.fbdev=0"
-  ];
+  boot = {
+    # LTS kernel instead of jovian's Valve kernel: Valve only tests that on
+    # AMD, and NVIDIA's legacy_580 driver breaks most often on new kernels.
+    kernelPackages = pkgs.linuxPackages;
+    kernelParams = [
+      "video=DP-2:3440x1440@165.00" # for ASUS ultra wide
+      "initcall_blacklist=simpledrm_platform_driver_init"
+      "nvidia_drm.fbdev=0"
+    ];
+  };
 
   # Shared drives group for wife & netsa, on this machine only (gid kept
   # from the old storagebox module so existing files keep their group).

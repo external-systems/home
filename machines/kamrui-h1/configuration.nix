@@ -15,13 +15,14 @@ _: {
       optimization.bufferMax = 134217728; # 128 MiB
     };
 
-    # Push-to-talk speech-to-text (whisper.cpp, Vulkan on the AMD iGPU).
-    # Hotkey: hold Ctrl+Period. C270 webcam mic is the recording source.
-    # The push-to-talk keyboard is pinned in ~/.config/whisper-dictation/
-    # config.yaml (input_device: /dev/input/event1) — the module is minimal.
+    # Push-to-talk speech-to-text (whisper.cpp, Vulkan on the AMD iGPU)
+    # for netsa and matt. Hotkey, keyboard and model come from each
+    # profile's homeSpec.programs.whisper-dictation (hold Super+Semicolon,
+    # keyboard auto-picked). The default PipeWire input (the C270 webcam
+    # mic) is the recording source.
     services.whisper-dictation = {
       enable = true;
-      user = "netsa";
+      users = ["netsa" "matt"];
     };
   };
 

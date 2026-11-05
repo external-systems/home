@@ -23,19 +23,21 @@ NixOS-specific glue (everything else is upstream stock):
 
 - `programs.ydotool.enable` — system `ydotoold` (uinput text insertion,
   socket `/run/ydotoold/socket`)
-- `boot.kernelModules = ["uinput"]`
-- Adds the user to the `input` (evdev hotkey capture) and `ydotool` groups
-- Runs `whisper-dictation-vulkan` as a user service gated to the user
-  (`ConditionUser`) with `YDOTOOL_SOCKET=/run/ydotoold/socket`
+- `hardware.uinput.enable = true` (uinput module, group and udev rule)
+- Adds each listed user to the `input` (evdev hotkey capture) and `ydotool` groups
+- Runs `whisper-dictation-vulkan` as a user service gated to those users
+  (one triggering `ConditionUser=|<user>` line each) with
+  `YDOTOOL_SOCKET=/run/ydotoold/socket`
 - Re-wraps upstream's package with the full Gtk-4.0 typelib closure
   (`glib`, `graphene`, `pango`, `gdk-pixbuf`, `cairo`, `harfbuzz`) —
   upstream's wrapper omits `GI_TYPELIB_PATH` entirely, and
   `Gtk-4.0.typelib` resolves all of those namespaces; with glib alone the
   daemon crash-loops on `Typelib namespace Graphene not found`
 
-Options: `enable`, `user` (required when enabled). The NixOS service runs
-for one selected user; enabling the Home Manager configuration for another
-user only writes that user's `config.yaml`.
+Options: `enable`, `users` (a non-empty list, required when enabled). The
+service runs for every listed user (kamrui-h1: netsa and matt); each of
+them also enables the Home Manager configuration below, which writes their
+`config.yaml` and links their model.
 
 ## Configuration (`homeSpec.programs.whisper-dictation`)
 
@@ -119,15 +121,14 @@ hotkey:
 
 ## Model
 
-`~/.local/share/whisper/models/ggml-small.bin` is a symlink into the Nix
-store (provisioned during the initial deployment). To switch models:
-
-```console
-$ curl -L -o ~/.local/share/whisper/models/ggml-base.bin \
-    https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-base.bin
-```
-
-then set `whisper.model: base` in config.yaml.
+The Home Manager module provisions the model: with
+`whisper.provisionModel` (default on) it fetches `ggml-<model>.bin` from
+Hugging Face into the Nix store, pinned by hash and shared by every user,
+and links it to `~/.local/share/whisper/models/ggml-<model>.bin`. To switch
+models, set `whisper.model` (`tiny`, `base`, `small` or `medium`) in the
+user's profile and deploy; changing `config.yaml` restarts the daemon.
+`large` has no pinned hash (Hugging Face publishes no `ggml-large.bin`):
+set `provisionModel = false` and download a model by hand for it.
 
 | Model | Size | Accuracy | Notes |
 | --- | --- | --- | --- |
