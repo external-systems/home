@@ -17,11 +17,11 @@ in {
     # Andrew's PCs
     nixos = {
       deploy.targetHost = hosts.nixos.targetHost;
-      tags = ["pc" "intel" "virt" "dev" "netsa" "wife"];
+      tags = ["pc" "intel" "virt" "dev" "gaming" "netsa" "wife"];
     };
     kamrui-h1 = {
       deploy.targetHost = hosts.kamrui-h1.targetHost;
-      tags = ["pc" "amd" "virt" "dev" "netsa" "wife" "matt"];
+      tags = ["pc" "amd" "virt" "dev" "gaming" "netsa" "wife" "matt"];
     };
     ghost = {
       deploy.targetHost = hosts.ghost.targetHost;
@@ -68,6 +68,7 @@ in {
       roles = {
         amd.tags.amd = {};
         dev.tags.dev = {};
+        gaming.tags.gaming = {};
         intel.tags.intel = {};
         virt.tags.virt = {};
       };
