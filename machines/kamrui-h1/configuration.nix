@@ -1,8 +1,9 @@
 _: {
-  # Dev + gaming desktop: KDE/Wayland, Steam and the Valve jovian kernel are
-  # assumed with jovian (modules' nixosModules.jovian).
+  # Dev + gaming desktop: the default boot entry is the developer system;
+  # the "gaming" entry adds jovian (Steam, Valve kernel, disk swap) via
+  # nixosModules.gaming-specialisation.
   hostSpec = {
-    system.jovian.enable = true;
+    system.gamingSpecialisation.enable = true;
 
     networking = {
       # WiFi via NetworkManager (DHCP) until netif lands.

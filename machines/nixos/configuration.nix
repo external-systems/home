@@ -6,7 +6,9 @@
   ...
 }: {
   hostSpec = {
-    system.jovian.enable = true;
+    # Default boot entry: developer system; "gaming" entry: jovian, Steam,
+    # disk swap (nixosModules.gaming-specialisation).
+    system.gamingSpecialisation.enable = true;
 
     # Wired LAN with static addresses from the values flake until netif
     # lands.
