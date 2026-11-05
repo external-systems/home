@@ -6,8 +6,6 @@
   ...
 }: {
   hostSpec = {
-    system.jovian.enable = true;
-
     # Wired LAN with static addresses from the values flake until netif
     # lands.
     networking.shim = let

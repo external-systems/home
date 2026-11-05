@@ -18,7 +18,9 @@ transcribing / success states.
 
 ## What the module does
 
-`hostSpec.services.whisper-dictation.enable = true;` wires only the
+Hosts set nothing. The NixOS module scans `home-manager.users` and turns
+itself on for every user whose profile sets
+`homeSpec.programs.whisper-dictation.enable = true`. It then wires only the
 NixOS-specific glue (everything else is upstream stock):
 
 - `programs.ydotool.enable` — system `ydotoold` (uinput text insertion,
@@ -34,10 +36,11 @@ NixOS-specific glue (everything else is upstream stock):
   `Gtk-4.0.typelib` resolves all of those namespaces; with glib alone the
   daemon crash-loops on `Typelib namespace Graphene not found`
 
-Options: `enable`, `users` (a non-empty list, required when enabled). The
-service runs for every listed user (kamrui-h1: netsa and matt); each of
-them also enables the Home Manager configuration below, which writes their
-`config.yaml` and links their model.
+`hostSpec.services.whisper-dictation.users` is read-only: it lists the
+users found that way. With the netsa and matt profiles enabling dictation,
+it runs wherever those users exist (nixos, kamrui-h1, ghost and beelink).
+The Home Manager configuration below writes each user's `config.yaml` and
+links their model.
 
 ## Configuration (`homeSpec.programs.whisper-dictation`)
 

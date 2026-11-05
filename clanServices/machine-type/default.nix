@@ -39,6 +39,7 @@
       inputs.modules.nixosModules.default
       self.nixosModules.nixpkgs
       self.nixosModules.networking-shim
+      self.nixosModules.gaming-specialisation
     ];
 
     config = {
