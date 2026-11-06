@@ -4,7 +4,7 @@
   # stays off (the default) until Matt has a GitHub PAT to provision;
   # turning it on later is one line
   # (git.githubAuth.enabled = true) + `clan vars generate <machine>`.
-  flake.homeModules.profile-matt = {...}: {
+  flake.homeModules.profile-matt = {pkgs, ...}: {
     imports = [inputs.modules.homeModules.default];
     config = {
       # homeSpec options
@@ -47,6 +47,15 @@
           # (on by default), so the tooling it drives is all installed.
           vscodium = {
             enable = true;
+            # Only the extensions below: nothing installed by accident.
+            mutableExtensions = false;
+            # Large, very readable letters in the editor and terminal.
+            theme.font = {
+              family = "'Atkinson Hyperlegible Mono', monospace";
+              package = pkgs.atkinson-hyperlegible-mono;
+              size = 16;
+              lineHeight = 1.6;
+            };
             tweaks.enable = true;
             remoteSsh.enable = true;
             todoTree.enable = true;
