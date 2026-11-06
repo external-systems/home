@@ -28,7 +28,9 @@
           lists the shared Steam library roots (one per disk; game files
           downloaded once, Proton prefixes per user), `outputs` picks
           Gaming Mode's display by connector, `diskSwap = false` drops
-          disk swap in the developer entry.
+          disk swap in the developer entry, `defaultEntry = "gaming"`
+          boots Gaming Mode by default with the desktop as the "desktop"
+          entry (a Steam Deck).
       - **Users** (`netsa`, `wife`, `matt`; the users instances): which
         accounts exist on the machine.
 

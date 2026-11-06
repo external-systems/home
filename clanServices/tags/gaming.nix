@@ -11,6 +11,18 @@
         example = false;
         description = "Keep disk swap in the developer entry; false drops it there, as kubelet wants (hostSpec.system.developerSpecialisation.diskSwap).";
       };
+      defaultEntry = lib.mkOption {
+        type = lib.types.enum ["desktop" "gaming"];
+        default = "desktop";
+        example = "gaming";
+        description = ''
+          Default boot entry (hostSpec.system.gamingSpecialisation.defaultEntry):
+          "desktop" boots the KDE login screen with Gaming Mode as the
+          "gaming" entry; "gaming" boots Gaming Mode with the desktop as
+          the "desktop" entry, as on a Steam Deck. Gaming Mode itself
+          still needs gamingMode = true.
+        '';
+      };
       gamingMode = lib.mkOption {
         type = lib.types.bool;
         default = false;
@@ -59,7 +71,10 @@
   perInstance = {settings, ...}: {
     nixosModule = {lib, ...}: {
       hostSpec.system = {
-        gamingSpecialisation.enable = true;
+        gamingSpecialisation = {
+          enable = true;
+          inherit (settings) defaultEntry;
+        };
         # The Kubernetes clan services will plug into this entry's
         # configuration hook (developerSpecialisation.configuration).
         developerSpecialisation = {
