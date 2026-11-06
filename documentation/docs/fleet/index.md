@@ -60,8 +60,10 @@ kinds:
 | Users | `netsa`, `wife`, `matt` | `users` instances |
 
 A tag that needs a per-machine value takes it as a role setting, for
-example `gaming.machines.<m>.settings.user` (the Steam Gaming Mode user;
-unset boots the gaming entry to the KDE login screen) in the `tags` instance.
+example `gaming.machines.<m>.settings.gamingMode` (boot the gaming entry
+into Steam Gaming Mode as the locked `gamer` user; off boots it to the KDE
+login screen) or `.libraries` (shared Steam library roots, one per disk) in
+the `tags` instance.
 
 Hardware is not a tag. It comes from each machine's `facter.json`:
 

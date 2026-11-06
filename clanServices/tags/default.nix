@@ -13,16 +13,24 @@
       - **Machine type** (`pc`, `server`; the machine-type service): one
         per machine.
       - **Purpose** (this service):
-        - `dev`: developer workstation (docker, nix, nix-ld,
-          warp/tailscale specialisations). Storage Box mounts are per user
-          (homeSpec.programs.storagebox in the profiles).
-        - `gaming`: a "gaming" boot entry next to the default developer
-          system (hostSpec.system.gamingSpecialisation): jovian, Steam and
-          the Valve kernel there, with HAProxy, k3s, rke2 and FRR stopped.
-          Per machine (`gaming.machines.<m>.settings`): `user` boots the
-          gaming entry into Steam Gaming Mode as that user (null: KDE
-          login screen), `outputs` picks Gaming Mode's display by connector,
-          `diskSwap` keeps disk swap to the gaming entry.
+        - `dev`: developer workstation (docker, nix, nix-ld). Storage
+          Box mounts are per user (homeSpec.programs.storagebox in the
+          profiles).
+        - `gaming`: three boot entries. The default entry runs jovian
+          (Valve kernel, Steam on the KDE desktop, GE-Proton by default);
+          "gaming" (hostSpec.system.gamingSpecialisation) boots into Steam
+          Gaming Mode; "developer"
+          (hostSpec.system.developerSpecialisation) has the normal kernel
+          and no Steam, for Kubernetes and VPNs later.
+          Per machine (`gaming.machines.<m>.settings`): `gamingMode` boots
+          the gaming entry into Gaming Mode as the locked `gamer` user
+          (off: KDE login screen; `user` overrides who), `libraries`
+          lists the shared Steam library roots (one per disk; game files
+          downloaded once, Proton prefixes per user), `outputs` picks
+          Gaming Mode's display by connector, `diskSwap = false` drops
+          disk swap in the developer entry, `defaultEntry = "gaming"`
+          boots Gaming Mode by default with the desktop as the "desktop"
+          entry (a Steam Deck).
       - **Users** (`netsa`, `wife`, `matt`; the users instances): which
         accounts exist on the machine.
 

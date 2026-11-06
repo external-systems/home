@@ -1,14 +1,47 @@
-# The gaming boot entry. The module itself comes with every machine
-# (machine-type's base); the role switches it on and passes the
-# per-machine settings from the inventory.
+# The gaming boot entry. The modules come with every machine
+# (external-systems/modules nixosModules.default, through machine-type's
+# base); the role switches them on and passes the per-machine settings
+# from the inventory.
 {
   interface = {lib, ...}: {
     options = {
       diskSwap = lib.mkOption {
         type = lib.types.bool;
+        default = true;
+        example = false;
+        description = "Keep disk swap in the developer entry; false drops it there, as kubelet wants (hostSpec.system.developerSpecialisation.diskSwap).";
+      };
+      defaultEntry = lib.mkOption {
+        type = lib.types.enum ["desktop" "gaming"];
+        default = "desktop";
+        example = "gaming";
+        description = ''
+          Default boot entry (hostSpec.system.gamingSpecialisation.defaultEntry):
+          "desktop" boots the KDE login screen with Gaming Mode as the
+          "gaming" entry; "gaming" boots Gaming Mode with the desktop as
+          the "desktop" entry, as on a Steam Deck. Gaming Mode itself
+          still needs gamingMode = true.
+        '';
+      };
+      gamingMode = lib.mkOption {
+        type = lib.types.bool;
         default = false;
         example = true;
-        description = "Use disk swap only in the gaming entry (hostSpec.system.gamingSpecialisation.diskSwap).";
+        description = ''
+          Boot the gaming entry into Steam Gaming Mode
+          (hostSpec.system.jovian.gamingMode), logged in as `user`.
+          Off boots it to the KDE login screen.
+        '';
+      };
+      user = lib.mkOption {
+        type = lib.types.nullOr lib.types.str;
+        default = null;
+        example = "wife";
+        description = ''
+          Override for the user Gaming Mode logs in as. null uses the
+          dedicated, locked "gamer" user (hostSpec.system.gaming.user),
+          which is then declared automatically.
+        '';
       };
       outputs = lib.mkOption {
         type = lib.types.listOf lib.types.str;
@@ -20,27 +53,48 @@
           fallback. Find them with `kscreen-doctor -o`.
         '';
       };
-      user = lib.mkOption {
-        type = lib.types.nullOr lib.types.str;
-        default = null;
-        example = "wife";
+      libraries = lib.mkOption {
+        type = lib.types.listOf lib.types.str;
+        default = ["/srv/games"];
+        example = ["/mnt/steam" "/mnt/games2"];
         description = ''
-          The gaming entry boots into Steam Gaming Mode logged in as this
-          user (hostSpec.system.jovian.user). null boots it to the KDE
-          login screen. The user must exist on the machine.
+          Shared Steam library roots, one per disk
+          (hostSpec.system.gaming.sharedLibraries.paths): game files are
+          downloaded once and shared by every user, Proton prefixes stay
+          per user. Each path must sit under a mount point from the
+          machine's disko.nix; the default lives on the root filesystem.
         '';
       };
     };
   };
 
   perInstance = {settings, ...}: {
-    nixosModule.hostSpec.system = {
-      gamingSpecialisation = {
-        enable = true;
-        inherit (settings) diskSwap;
+    nixosModule = {lib, ...}: {
+      hostSpec.system = {
+        gamingSpecialisation = {
+          enable = true;
+          inherit (settings) defaultEntry;
+        };
+        # The Kubernetes clan services will plug into this entry's
+        # configuration hook (developerSpecialisation.configuration).
+        developerSpecialisation = {
+          enable = true;
+          inherit (settings) diskSwap;
+        };
+        # Steam's defaults (GE-Proton) for every user, wherever Steam
+        # runs: the default desktop and Gaming Mode.
+        gaming = {
+          steamConfig.enable = true;
+          sharedLibraries = {
+            enable = true;
+            paths = settings.libraries;
+          };
+        };
+        # gamingMode only boots Gaming Mode in the gaming entry.
+        jovian =
+          {inherit (settings) gamingMode outputs;}
+          // lib.optionalAttrs (settings.user != null) {inherit (settings) user;};
       };
-      # Only takes effect in the gaming entry, where jovian is on.
-      jovian = {inherit (settings) user outputs;};
     };
   };
 }
