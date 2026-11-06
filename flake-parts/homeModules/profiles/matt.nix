@@ -43,10 +43,22 @@
             clanKey.enabled = true;
           };
           starship.enable = true;
-          # VSCodium defaults (theme and layout), Claude, Nix support.
+          # VSCodium's default theme; matt works by talking to Claude
+          # (on by default), so the tooling it drives is all installed.
           vscodium = {
             enable = true;
-            languages.nix.enable = true;
+            tweaks.enable = true;
+            remoteSsh.enable = true;
+            todoTree.enable = true;
+            githubActions.enable = true;
+            languages = {
+              nix.enable = true;
+              yaml.enable = true;
+              web.enable = true;
+              markdown.enable = true;
+            };
+            kubernetes.enable = true;
+            containers.enable = true;
           };
           # Same push-to-talk dictation setup as netsa.
           whisper-dictation = {
