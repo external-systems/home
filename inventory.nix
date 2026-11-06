@@ -25,7 +25,7 @@ in {
     };
     kamrui-h1 = {
       deploy.targetHost = hosts.kamrui-h1.targetHost;
-      tags = ["pc" "dev" "gaming" "netsa" "wife" "matt"];
+      tags = ["pc" "dev" "gaming" "netsa" "wife"];
     };
     ghost = {
       deploy.targetHost = hosts.ghost.targetHost;
@@ -70,7 +70,12 @@ in {
       };
       roles = {
         dev.tags.dev = {};
-        gaming.tags.gaming = {};
+        gaming = {
+          tags.gaming = {};
+          # Gaming Mode user per machine; unset (nixos) boots the gaming
+          # entry to the KDE login screen.
+          machines.kamrui-h1.settings.user = "wife";
+        };
       };
     };
 

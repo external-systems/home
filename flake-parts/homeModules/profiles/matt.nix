@@ -44,8 +44,7 @@
           };
           starship.enable = true;
           vscode.enable = true;
-          # Same push-to-talk dictation setup as netsa (NixOS service runs
-          # on kamrui-h1).
+          # Same push-to-talk dictation setup as netsa.
           whisper-dictation = {
             enable = true;
             hotkey = {
