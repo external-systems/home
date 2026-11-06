@@ -44,11 +44,6 @@
     sharedModules = [{nixpkgs.overlays = [inputs.org-pkgs.overlays.default];}];
   };
 
-  # GTX 1070 Ti (Pascal): modules' hostSpec.hardware.gpu.nvidia sets
-  # itself up from facter.json (driver, closed kernel module, legacy_580,
-  # container toolkit, nvtop).
-  hardware.nvidia.powerManagement.enable = true;
-
   boot = {
     # LTS kernel instead of jovian's Valve kernel: Valve only tests that on
     # AMD, and NVIDIA's legacy_580 driver breaks most often on new kernels.
