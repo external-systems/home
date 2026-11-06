@@ -45,7 +45,7 @@ links their model.
 ## Configuration (`homeSpec.programs.whisper-dictation`)
 
 `config.yaml` is managed declaratively by the home-manager module
-`flake.homeModules.whisper-dictation` (enabled in `profile-netsa`), which
+`flake.homeModules.whisper-dictation` (enabled in `users/netsa/default.nix`), which
 writes `~/.config/whisper-dictation/config.yaml`. The daemon only reads
 it at startup — restart the unit after changes
 (`systemctl --user restart whisper-dictation`).

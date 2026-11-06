@@ -1,4 +1,4 @@
-{self, ...}: {
+{inputs, ...}: {
   nix.settings.allowed-users = ["wife"];
   users.users.wife = {
     isNormalUser = true;
@@ -20,5 +20,23 @@
     ];
   };
 
-  home-manager.users.wife = self.homeModules.profile-wife;
+  # home-manager: the user's own environment.
+  home-manager.users.wife = {...}: {
+    imports = [inputs.modules.homeModules.default];
+    config = {
+      # homeSpec options
+      homeSpec = {
+        xdg.enable = true;
+        programs = {
+          plasma-manager.enable = true;
+          firefox.enable = true;
+          media.enable = true;
+        };
+      };
+
+      # # Home Options
+      # home.packages = with pkgs; [
+      # ];
+    };
+  };
 }
