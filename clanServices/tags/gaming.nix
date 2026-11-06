@@ -10,6 +10,16 @@
         example = true;
         description = "Use disk swap only in the gaming entry (hostSpec.system.gamingSpecialisation.diskSwap).";
       };
+      outputs = lib.mkOption {
+        type = lib.types.listOf lib.types.str;
+        default = [];
+        example = ["DP-1"];
+        description = ''
+          Display connectors Gaming Mode prefers, in order
+          (hostSpec.system.jovian.outputs); any other output is the
+          fallback. Find them with `kscreen-doctor -o`.
+        '';
+      };
       user = lib.mkOption {
         type = lib.types.nullOr lib.types.str;
         default = null;
@@ -30,7 +40,7 @@
         inherit (settings) diskSwap;
       };
       # Only takes effect in the gaming entry, where jovian is on.
-      jovian.user = settings.user;
+      jovian = {inherit (settings) user outputs;};
     };
   };
 }

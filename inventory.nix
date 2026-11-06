@@ -74,7 +74,10 @@ in {
           tags.gaming = {};
           # Gaming Mode user per machine; unset (nixos) boots the gaming
           # entry to the KDE login screen.
-          machines.kamrui-h1.settings.user = "wife";
+          machines.kamrui-h1.settings = {
+            user = "wife";
+            outputs = ["DP-1"]; # the 3440x1440 ultrawide
+          };
         };
       };
     };

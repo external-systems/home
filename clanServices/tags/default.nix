@@ -21,7 +21,8 @@
           the Valve kernel there, with HAProxy, k3s, rke2 and FRR stopped.
           Per machine (`gaming.machines.<m>.settings`): `user` boots the
           gaming entry into Steam Gaming Mode as that user (null: KDE
-          login screen), `diskSwap` keeps disk swap to the gaming entry.
+          login screen), `outputs` picks Gaming Mode's display by connector,
+          `diskSwap` keeps disk swap to the gaming entry.
       - **Users** (`netsa`, `wife`, `matt`; the users instances): which
         accounts exist on the machine.
 
