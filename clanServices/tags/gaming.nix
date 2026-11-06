@@ -7,9 +7,9 @@
     options = {
       diskSwap = lib.mkOption {
         type = lib.types.bool;
-        default = false;
-        example = true;
-        description = "Use disk swap only in the gaming entry (hostSpec.system.gamingSpecialisation.diskSwap).";
+        default = true;
+        example = false;
+        description = "Keep disk swap in the developer entry; false drops it there, as kubelet wants (hostSpec.system.developerSpecialisation.diskSwap).";
       };
       gamingMode = lib.mkOption {
         type = lib.types.bool;
@@ -59,18 +59,23 @@
   perInstance = {settings, ...}: {
     nixosModule = {lib, ...}: {
       hostSpec.system = {
-        gamingSpecialisation = {
+        gamingSpecialisation.enable = true;
+        # The Kubernetes clan services will plug into this entry's
+        # configuration hook (developerSpecialisation.configuration).
+        developerSpecialisation = {
           enable = true;
           inherit (settings) diskSwap;
-          # Nothing to stop yet: the developer entry runs no Kubernetes
-          # services. When the Kubernetes clan services get their own
-          # off-switch, set it here (gamingSpecialisation.configuration).
         };
-        gaming.sharedLibraries = {
-          enable = true;
-          paths = settings.libraries;
+        # Steam's defaults (GE-Proton) for every user, wherever Steam
+        # runs: the default desktop and Gaming Mode.
+        gaming = {
+          steamConfig.enable = true;
+          sharedLibraries = {
+            enable = true;
+            paths = settings.libraries;
+          };
         };
-        # Only takes effect in the gaming entry, where jovian is on.
+        # gamingMode only boots Gaming Mode in the gaming entry.
         jovian =
           {inherit (settings) gamingMode outputs;}
           // lib.optionalAttrs (settings.user != null) {inherit (settings) user;};

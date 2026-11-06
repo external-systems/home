@@ -365,14 +365,15 @@
         ],
         "plasma-manager": "plasma-manager",
         "skills": "skills",
+        "steam-config-nix": "steam-config-nix",
         "whisper-dictation": "whisper-dictation"
       },
       "locked": {
-        "lastModified": 1793996228,
-        "narHash": "sha256-zcZisaHK+qm3nvQpS/rAKxbcx4odzmu5B9vMXSiw9fk=",
+        "lastModified": 1793997438,
+        "narHash": "sha256-bIUvcbzqBIhJ/XYKJUJR/awp0om723VOt+Z+8r1vJlE=",
         "owner": "external-systems",
         "repo": "modules",
-        "rev": "2b9b4efd70df2261e178efb99e78a29e9dce617b",
+        "rev": "87d4864bab3b8b371c32ac2a197f5a1adc846587",
         "type": "github"
       },
       "original": {
@@ -928,6 +929,32 @@
         "type": "github"
       }
     },
+    "steam-config-nix": {
+      "inputs": {
+        "flake-parts": [
+          "modules",
+          "flake-parts"
+        ],
+        "nixpkgs": [
+          "modules",
+          "nixpkgs"
+        ],
+        "systems": "systems_5"
+      },
+      "locked": {
+        "lastModified": 1792525131,
+        "narHash": "sha256-jdOJvBudkFKI0vY5n7xRk38RMNblvHLMyb7g31fKYNg=",
+        "owner": "different-name",
+        "repo": "steam-config-nix",
+        "rev": "64ed84993738d84cf10dfe6011bc85177414ac2d",
+        "type": "github"
+      },
+      "original": {
+        "owner": "different-name",
+        "repo": "steam-config-nix",
+        "type": "github"
+      }
+    },
     "systems": {
       "locked": {
         "lastModified": 1774449309,
@@ -986,6 +1013,21 @@
       "original": {
         "owner": "nix-systems",
         "repo": "default",
+        "type": "github"
+      }
+    },
+    "systems_5": {
+      "locked": {
+        "lastModified": 1680978846,
+        "narHash": "sha256-Gtqg8b/v49BFDpDetjclCYXm8mAnTrUzR0JnE2nv5aw=",
+        "owner": "nix-systems",
+        "repo": "x86_64-linux",
+        "rev": "2ecfcac5e15790ba6ce360ceccddb15ad16d08a8",
+        "type": "github"
+      },
+      "original": {
+        "owner": "nix-systems",
+        "repo": "x86_64-linux",
         "type": "github"
       }
     },
