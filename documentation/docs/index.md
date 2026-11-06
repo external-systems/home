@@ -53,8 +53,8 @@ See [Fleet](fleet/index.md) for networking and
     inventory.nix    # clan inventory: machines, tags, service instances
     machines/        # per-machine configuration.nix, disko.nix, facter.json
     clanServices/    # home's clan services: machine-type, tags (remote-builder: external-systems/clanServices)
-    users/           # user accounts (home-manager profiles in flake-parts/)
-    flake-parts/     # import-tree: clan wiring, nixpkgs, the networking shim, profiles, docs settings
+    users/           # one file per user: the account and its home-manager profile
+    flake-parts/     # import-tree: clan wiring, nixpkgs, the networking shim, docs settings
     devenv.yaml      # the org devenv shell (devenv.nix: home's additions)
     documentation/   # this site and the slides
     sops/ vars/      # clan vars (sops-encrypted)
