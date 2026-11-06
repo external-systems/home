@@ -95,11 +95,33 @@
               inherit (inputs.secrets.values.storageboxes.helsinki-box) user host port;
             };
           };
-          vscode = {
+          # VSCodium with every language and the cluster tooling, the
+          # built-in Red theme and the layout tweaks. Claude is on by
+          # default.
+          vscodium = {
             enable = true;
-            # nixd's user-wide option source; the repo's own
-            # .vscode/settings.json still wins inside it.
-            nixdFlake = "${config.home.homeDirectory}/external-systems/home";
+            theme.color = "Red";
+            tweaks.enable = true;
+            remoteSsh.enable = true;
+            envSpec.enable = true;
+            todoTree.enable = true;
+            languages = {
+              nix = {
+                enable = true;
+                # nixd's user-wide option source; the repo's own
+                # .vscode/settings.json still wins inside it.
+                flake = "${config.home.homeDirectory}/external-systems/home";
+              };
+              go.enable = true;
+              python.enable = true;
+              rust.enable = true;
+              gleam.enable = true;
+              zig.enable = true;
+              web.enable = true;
+              yaml.enable = true;
+            };
+            kubernetes.enable = true;
+            containers.enable = true;
           };
           # Pairs with the NixOS service (kamrui-h1); manages
           # ~/.config/whisper-dictation/config.yaml. The Samsers KT06

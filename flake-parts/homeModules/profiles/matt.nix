@@ -43,7 +43,11 @@
             clanKey.enabled = true;
           };
           starship.enable = true;
-          vscode.enable = true;
+          # VSCodium defaults (theme and layout), Claude, Nix support.
+          vscodium = {
+            enable = true;
+            languages.nix.enable = true;
+          };
           # Same push-to-talk dictation setup as netsa.
           whisper-dictation = {
             enable = true;
