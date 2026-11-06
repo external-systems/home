@@ -44,19 +44,10 @@
     sharedModules = [{nixpkgs.overlays = [inputs.org-pkgs.overlays.default];}];
   };
 
-  # Load nvidia driver for Xorg and Wayland
-  services.xserver.videoDrivers = ["nvidia"];
-  hardware = {
-    nvidia-container-toolkit.enable = true;
-    nvidia = {
-      modesetting.enable = true;
-      open = false;
-      powerManagement.enable = true;
-      branch = "legacy_580";
-    };
-  };
-
-  environment.systemPackages = [pkgs.nvtopPackages.full];
+  # GTX 1070 Ti (Pascal): modules' hostSpec.hardware.gpu.nvidia sets
+  # itself up from facter.json (driver, closed kernel module, legacy_580,
+  # container toolkit, nvtop).
+  hardware.nvidia.powerManagement.enable = true;
 
   boot = {
     # LTS kernel instead of jovian's Valve kernel: Valve only tests that on

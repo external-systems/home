@@ -11,7 +11,9 @@
 
       - `pc`: KDE/Wayland desktop with sound, bluetooth and the desktop
         apps.
-      - `server`: headless; nix daemon defaults, no desktop.
+      - `server`: headless; nix daemon defaults, no desktop. A server
+        must not also be a `pc` or carry the `gaming` tag: evaluation
+        fails if it does.
     '';
     categories = ["System"];
   };

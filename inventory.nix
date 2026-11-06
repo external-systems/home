@@ -13,36 +13,39 @@ in {
     domain = secrets.domains.primary;
   };
 
+  # Tags, in order: machine type (pc/server), purpose (dev, gaming), users
+  # (netsa, wife, matt). Hardware is not a tag: GPUs, Bluetooth and Wi-Fi
+  # set themselves up from each machine's facter.json
+  # (clanServices/tags/default.nix).
   machines = {
     # Andrew's PCs
     nixos = {
       deploy.targetHost = hosts.nixos.targetHost;
-      tags = ["pc" "intel" "virt" "dev" "gaming" "netsa" "wife"];
+      tags = ["pc" "dev" "gaming" "netsa" "wife"];
     };
     kamrui-h1 = {
       deploy.targetHost = hosts.kamrui-h1.targetHost;
-      tags = ["pc" "amd" "virt" "dev" "gaming" "netsa" "wife" "matt"];
+      tags = ["pc" "dev" "gaming" "netsa" "wife" "matt"];
     };
     ghost = {
       deploy.targetHost = hosts.ghost.targetHost;
-      tags = ["pc" "intel" "virt" "dev" "netsa"];
+      tags = ["pc" "dev" "netsa"];
     };
     # Wife's PCs
     hp-notebook = {
       deploy.targetHost = hosts.hp-notebook.targetHost;
-      tags = ["pc" "intel" "wife"];
+      tags = ["pc" "wife"];
     };
     # Shared PCs
     beelink = {
       deploy.targetHost = hosts.beelink.targetHost;
-      tags = ["pc" "amd" "virt" "dev" "netsa" "matt"];
+      tags = ["pc" "dev" "netsa" "matt"];
     };
 
     # Servers
     # Hetzner Robot (Xeon W-2295): remote builder and CI build box.
     euc-hel-0 = {
       deploy.targetHost = hosts.euc-hel-0.targetHost;
-      # Headless: the intel tag only adds GPU media drivers.
       tags = ["server"];
     };
   };
@@ -66,11 +69,8 @@ in {
         name = "@andrewthomaslee/tags";
       };
       roles = {
-        amd.tags.amd = {};
         dev.tags.dev = {};
         gaming.tags.gaming = {};
-        intel.tags.intel = {};
-        virt.tags.virt = {};
       };
     };
 
