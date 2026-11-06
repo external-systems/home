@@ -18,7 +18,7 @@
           (homeSpec.programs.storagebox in the profiles).
         - `gaming`: a "gaming" boot entry next to the default developer
           system (hostSpec.system.gamingSpecialisation): jovian, Steam and
-          the Valve kernel there, with HAProxy, k3s, rke2 and FRR stopped.
+          the Valve kernel there.
           Per machine (`gaming.machines.<m>.settings`): `gamingMode` boots
           the gaming entry into Steam Gaming Mode as the locked `gamer`
           user (off: KDE login screen; `user` overrides who),

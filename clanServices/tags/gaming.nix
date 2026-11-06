@@ -62,29 +62,9 @@
         gamingSpecialisation = {
           enable = true;
           inherit (settings) diskSwap;
-          # Stop what the Kubernetes clan services (external-systems/
-          # clanServices k3s, rke2, routed-fabric) enable: HAProxy, k3s,
-          # rke2 and every FRR daemon. Networking (netif/IfState,
-          # WireGuard, dummy interfaces) stays as the machine defines it.
-          configuration = {options, ...}: let
-            # Every FRR daemon the nixpkgs module offers, read from its
-            # options so new daemons are covered too. Removed options
-            # (zebra, always on with FRR) are invisible stubs that reject
-            # any definition, so they are skipped.
-            frrDaemons = lib.filter (
-              name: let
-                opt = options.services.frr.${name};
-              in
-                opt ? enable && (opt.enable.visible or true) != false
-            ) (lib.attrNames options.services.frr);
-          in {
-            services = {
-              haproxy.enable = lib.mkForce false;
-              k3s.enable = lib.mkForce false;
-              rke2.enable = lib.mkForce false;
-              frr = lib.genAttrs frrDaemons (_: {enable = lib.mkForce false;});
-            };
-          };
+          # Nothing to stop yet: the developer entry runs no Kubernetes
+          # services. When the Kubernetes clan services get their own
+          # off-switch, set it here (gamingSpecialisation.configuration).
         };
         gaming.sharedLibraries = {
           enable = true;
