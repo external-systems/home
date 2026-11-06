@@ -72,11 +72,12 @@ in {
         dev.tags.dev = {};
         gaming = {
           tags.gaming = {};
-          # Gaming Mode user per machine; unset (nixos) boots the gaming
-          # entry to the KDE login screen.
+          # Gaming Mode logs in as the locked "gamer" user; unset
+          # (nixos) boots the gaming entry to the KDE login screen.
           machines.kamrui-h1.settings = {
-            user = "wife";
+            gamingMode = true;
             outputs = ["DP-1"]; # the 3440x1440 ultrawide
+            libraries = ["/mnt/steam"]; # the @steam subvolume
           };
         };
       };

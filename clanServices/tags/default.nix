@@ -19,10 +19,13 @@
         - `gaming`: a "gaming" boot entry next to the default developer
           system (hostSpec.system.gamingSpecialisation): jovian, Steam and
           the Valve kernel there, with HAProxy, k3s, rke2 and FRR stopped.
-          Per machine (`gaming.machines.<m>.settings`): `user` boots the
-          gaming entry into Steam Gaming Mode as that user (null: KDE
-          login screen), `outputs` picks Gaming Mode's display by connector,
-          `diskSwap` keeps disk swap to the gaming entry.
+          Per machine (`gaming.machines.<m>.settings`): `gamingMode` boots
+          the gaming entry into Steam Gaming Mode as the locked `gamer`
+          user (off: KDE login screen; `user` overrides who),
+          `libraries` lists the shared Steam library roots (one per disk;
+          game files downloaded once, Proton prefixes per user),
+          `outputs` picks Gaming Mode's display by connector, `diskSwap`
+          keeps disk swap to the gaming entry.
       - **Users** (`netsa`, `wife`, `matt`; the users instances): which
         accounts exist on the machine.
 
