@@ -44,10 +44,10 @@
         # external-systems/skills (own-all). Add external picks from
         # skills.lib.selections here, e.g. `++ selections.anthropic`.
         agents = {
-          kimi.enabled = true;
-          pi.enabled = true;
-          claude.enabled = true;
-          opencode.enabled = true;
+          kimi.enable = true;
+          pi.enable = true;
+          claude.enable = true;
+          opencode.enable = true;
           machineContext = {
             repoOwner = "external-systems";
             repoName = "home";
