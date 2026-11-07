@@ -196,17 +196,17 @@
         "zen-browser": "zen-browser"
       },
       "locked": {
-        "lastModified": 1794077683,
+        "lastModified": 1794081938,
         "narHash": "sha256-JUiFDu0+/zcxRblQNhXUqL3rk6Hzq1aA8AzJdLWXfhM=",
         "owner": "external-systems",
         "repo": "pkgs",
-        "rev": "f81be909b29186ae1e8b72d479a7fc2e14cc784f",
+        "rev": "c56f3a953a108205f6e444cf4e610b35131accec",
         "type": "github"
       },
       "original": {
         "owner": "external-systems",
         "repo": "pkgs",
-        "rev": "f81be909b29186ae1e8b72d479a7fc2e14cc784f",
+        "rev": "c56f3a953a108205f6e444cf4e610b35131accec",
         "type": "github"
       }
     },

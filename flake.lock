@@ -438,11 +438,11 @@
         "whisper-dictation": "whisper-dictation"
       },
       "locked": {
-        "lastModified": 1794077603,
-        "narHash": "sha256-7TZe6piP99z5BR424TooAdcrwu6+z8/bc5ZNv3NlViw=",
+        "lastModified": 1794083143,
+        "narHash": "sha256-V/tkHoa+sjW67FJyzBpXc69+bOYxlrwC/9mFFcJniYw=",
         "owner": "external-systems",
         "repo": "modules",
-        "rev": "ab68826b347fabdcd3a71efb16e228604758c5e6",
+        "rev": "507a2b04909751bfef006abb9ca74b14ae0cc43f",
         "type": "github"
       },
       "original": {
@@ -630,11 +630,11 @@
         "zen-browser": "zen-browser"
       },
       "locked": {
-        "lastModified": 1794077683,
+        "lastModified": 1794081938,
         "narHash": "sha256-JUiFDu0+/zcxRblQNhXUqL3rk6Hzq1aA8AzJdLWXfhM=",
         "owner": "external-systems",
         "repo": "pkgs",
-        "rev": "f81be909b29186ae1e8b72d479a7fc2e14cc784f",
+        "rev": "c56f3a953a108205f6e444cf4e610b35131accec",
         "type": "github"
       },
       "original": {
