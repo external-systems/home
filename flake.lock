@@ -438,11 +438,11 @@
         "whisper-dictation": "whisper-dictation"
       },
       "locked": {
-        "lastModified": 1794083143,
-        "narHash": "sha256-V/tkHoa+sjW67FJyzBpXc69+bOYxlrwC/9mFFcJniYw=",
+        "lastModified": 1794089009,
+        "narHash": "sha256-JpD8Pp3mz2SPs/9qhhgl1FqMYWDL8dOlIcn/ZYBe+AY=",
         "owner": "external-systems",
         "repo": "modules",
-        "rev": "507a2b04909751bfef006abb9ca74b14ae0cc43f",
+        "rev": "2f1408086d7ca6f82b85b561d0efebe3a4015b37",
         "type": "github"
       },
       "original": {
@@ -630,11 +630,11 @@
         "zen-browser": "zen-browser"
       },
       "locked": {
-        "lastModified": 1794081938,
-        "narHash": "sha256-JUiFDu0+/zcxRblQNhXUqL3rk6Hzq1aA8AzJdLWXfhM=",
+        "lastModified": 1794088547,
+        "narHash": "sha256-1sOZhrqxMieYW7aoMhSsXMsIvA4dOCa2H2dQw1YCdyg=",
         "owner": "external-systems",
         "repo": "pkgs",
-        "rev": "c56f3a953a108205f6e444cf4e610b35131accec",
+        "rev": "417d13ed489e980c38ed2b77805ebd79eabadfd7",
         "type": "github"
       },
       "original": {
@@ -820,11 +820,11 @@
         "skills-terraform": "skills-terraform"
       },
       "locked": {
-        "lastModified": 1794076064,
-        "narHash": "sha256-BF2YAqXh8DAygsfnlx+EdBUQQPt9TncfQC0RJ/PXD4A=",
+        "lastModified": 1794088803,
+        "narHash": "sha256-qem8CdBKGor6mrYe0mIQrKr6W2nMl3AX9/GZ5mz73L0=",
         "owner": "external-systems",
         "repo": "skills",
-        "rev": "d6ffaf0e94eda8142a6208dae319a977665816cb",
+        "rev": "31efe24be3d79a275effbbd1e5dd5a7c95677d7d",
         "type": "github"
       },
       "original": {
