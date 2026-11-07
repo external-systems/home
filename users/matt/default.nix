@@ -33,8 +33,8 @@
         # token Matt doesn't have — enable mcp.github once he does.
         agents = {
           # Only the base AI skills (the core preset), no extra sources.
-          claude.enabled = true;
-          pi.enabled = true;
+          claude.enable = true;
+          pi.enable = true;
         };
         programs = {
           headroom = {

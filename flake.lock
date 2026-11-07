@@ -194,7 +194,7 @@
     },
     "flake-utils": {
       "inputs": {
-        "systems": "systems_3"
+        "systems": "systems_4"
       },
       "locked": {
         "lastModified": 1731533236,
@@ -369,11 +369,11 @@
         "whisper-dictation": "whisper-dictation"
       },
       "locked": {
-        "lastModified": 1793998379,
-        "narHash": "sha256-vpzb8m+hK8/nE8jpWuW4y7RPqMVWg0CgrF4u0pSo9R4=",
+        "lastModified": 1794075445,
+        "narHash": "sha256-Je4ST7ZSX7MH1mxPWaO332I0miPy2DpLT4sn6XGOcME=",
         "owner": "external-systems",
         "repo": "modules",
-        "rev": "e78b5b04a27f05f2bab33ed831b9cdfb986f7cf7",
+        "rev": "29b0d2cf51afc007e9e95ef6c0bf2a3a31c5a1ba",
         "type": "github"
       },
       "original": {
@@ -390,7 +390,7 @@
         ],
         "pyproject-build-systems": "pyproject-build-systems",
         "pyproject-nix": "pyproject-nix",
-        "systems": "systems_4",
+        "systems": "systems_5",
         "uv2nix": "uv2nix"
       },
       "locked": {
@@ -750,11 +750,11 @@
         "skills-terraform": "skills-terraform"
       },
       "locked": {
-        "lastModified": 1793755265,
-        "narHash": "sha256-rrlcHHZDeivwJ0BUe4YWSDp6XC4RbcGQzED5T6Lak7E=",
+        "lastModified": 1794075516,
+        "narHash": "sha256-BF2YAqXh8DAygsfnlx+EdBUQQPt9TncfQC0RJ/PXD4A=",
         "owner": "external-systems",
         "repo": "skills",
-        "rev": "0221bfec32dbc981a1902560ecc248dc974de5ae",
+        "rev": "9741da66fbcaa672e4e785c7a83e1c8c95ee021d",
         "type": "github"
       },
       "original": {
@@ -939,7 +939,7 @@
           "modules",
           "nixpkgs"
         ],
-        "systems": "systems_5"
+        "systems": "systems_3"
       },
       "locked": {
         "lastModified": 1792525131,
@@ -988,16 +988,16 @@
     },
     "systems_3": {
       "locked": {
-        "lastModified": 1681028828,
-        "narHash": "sha256-Vy1rq5AaRuLzOxct8nz4T6wlgyUR7zLU309k9mBC768=",
+        "lastModified": 1680978846,
+        "narHash": "sha256-Gtqg8b/v49BFDpDetjclCYXm8mAnTrUzR0JnE2nv5aw=",
         "owner": "nix-systems",
-        "repo": "default",
-        "rev": "da67096a3b9bf56a91d16901293e51ba5b49a27e",
+        "repo": "x86_64-linux",
+        "rev": "2ecfcac5e15790ba6ce360ceccddb15ad16d08a8",
         "type": "github"
       },
       "original": {
         "owner": "nix-systems",
-        "repo": "default",
+        "repo": "x86_64-linux",
         "type": "github"
       }
     },
@@ -1018,16 +1018,16 @@
     },
     "systems_5": {
       "locked": {
-        "lastModified": 1680978846,
-        "narHash": "sha256-Gtqg8b/v49BFDpDetjclCYXm8mAnTrUzR0JnE2nv5aw=",
+        "lastModified": 1681028828,
+        "narHash": "sha256-Vy1rq5AaRuLzOxct8nz4T6wlgyUR7zLU309k9mBC768=",
         "owner": "nix-systems",
-        "repo": "x86_64-linux",
-        "rev": "2ecfcac5e15790ba6ce360ceccddb15ad16d08a8",
+        "repo": "default",
+        "rev": "da67096a3b9bf56a91d16901293e51ba5b49a27e",
         "type": "github"
       },
       "original": {
         "owner": "nix-systems",
-        "repo": "x86_64-linux",
+        "repo": "default",
         "type": "github"
       }
     },
