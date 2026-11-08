@@ -63,6 +63,21 @@
           downloaded once and shared by every user, Proton prefixes stay
           per user. Each path must sit under a mount point from the
           machine's disko.nix; the default lives on the root filesystem.
+          Each user's Steam gets its library registered by itself, once
+          Steam has run for that user.
+        '';
+      };
+      defaultLibrary = lib.mkOption {
+        type = lib.types.bool;
+        default = true;
+        example = false;
+        description = ''
+          Make the shared library (the first of `libraries`) every
+          user's default install location in Steam, so games installed
+          from Gaming Mode or the desktop land in it
+          (hostSpec.system.gaming.sharedLibraries.makeDefault). A default
+          picked in Steam is set back on the next deploy or boot; false
+          leaves the choice to each user.
         '';
       };
     };
@@ -88,6 +103,7 @@
           sharedLibraries = {
             enable = true;
             paths = settings.libraries;
+            makeDefault = settings.defaultLibrary;
           };
         };
         # gamingMode only boots Gaming Mode in the gaming entry.
