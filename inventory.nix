@@ -78,6 +78,22 @@ in {
             gamingMode = true;
             outputs = ["DP-1"]; # the 3440x1440 ultrawide
             libraries = ["/mnt/steam"]; # the @steam subvolume
+            # Valve picks Proton Stable for these, which beats the
+            # global GE-Proton default; a per-game tool beats Valve's.
+            games = {
+              "2357570" = {
+                name = "Overwatch";
+                compatTool = "GE-Proton";
+                # Compiled shaders kept per game, with a 10 GB Mesa
+                # cache instead of the ~1 GB default.
+                env.PROTON_LOCAL_SHADER_CACHE = "1";
+                wrappers = ["gamemoderun"];
+              };
+              "632360" = {
+                name = "Risk of Rain 2";
+                compatTool = "GE-Proton";
+              };
+            };
           };
         };
       };

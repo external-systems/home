@@ -28,7 +28,9 @@
           lists the shared Steam library roots (one per disk; game files
           downloaded once, Proton prefixes per user; registered in every
           user's Steam and made its default install location unless
-          `defaultLibrary = false`), `outputs` picks
+          `defaultLibrary = false`), `games` sets per-game Steam settings
+          by App ID (compatibility tool, env, wrappers, args) for every
+          user, `outputs` picks
           Gaming Mode's display by connector, `diskSwap = false` drops
           disk swap in the developer entry, `defaultEntry = "gaming"`
           boots Gaming Mode by default with the desktop as the "desktop"

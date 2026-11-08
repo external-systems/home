@@ -80,6 +80,61 @@
           leaves the choice to each user.
         '';
       };
+      games = lib.mkOption {
+        type = lib.types.attrsOf (lib.types.submodule {
+          options = {
+            name = lib.mkOption {
+              type = lib.types.str;
+              example = "Overwatch";
+              description = "The game's name, for the launcher script's messages.";
+            };
+            compatTool = lib.mkOption {
+              type = lib.types.nullOr lib.types.str;
+              default = null;
+              example = "GE-Proton";
+              description = ''
+                Internal name of the compatibility tool for this game
+                ("GE-Proton", "proton_experimental", ...). It beats
+                Valve's own pick for the game, which the global default
+                does not. null keeps Steam's choice.
+              '';
+            };
+            env = lib.mkOption {
+              type = lib.types.attrsOf lib.types.str;
+              default = {};
+              example = {PROTON_LOCAL_SHADER_CACHE = "1";};
+              description = "Environment variables the game starts with.";
+            };
+            wrappers = lib.mkOption {
+              type = lib.types.listOf lib.types.str;
+              default = [];
+              example = ["gamemoderun"];
+              description = "Commands the game runs under, outermost first.";
+            };
+            args = lib.mkOption {
+              type = lib.types.listOf lib.types.str;
+              default = [];
+              example = ["-dx12"];
+              description = "Arguments after the game's own command.";
+            };
+          };
+        });
+        default = {};
+        example = {
+          "2357570" = {
+            name = "Overwatch";
+            compatTool = "GE-Proton";
+            wrappers = ["gamemoderun"];
+          };
+        };
+        description = ''
+          Per-game Steam settings, keyed by Steam App ID (the number in
+          the game's store URL), for every user on the machine
+          (programs.steam.config.apps, steam-config-nix). They replace
+          launch options typed in Steam for that game; a change applies
+          at the game's next start.
+        '';
+      };
     };
   };
 
@@ -111,6 +166,12 @@
           {inherit (settings) gamingMode outputs;}
           // lib.optionalAttrs (settings.user != null) {inherit (settings) user;};
       };
+      # Inventory settings are plain data: compatTool is a tool's
+      # internal name, never a package.
+      programs.steam.config.apps = lib.mapAttrs (_: game:
+        {inherit (game) name env wrappers args;}
+        // lib.optionalAttrs (game.compatTool != null) {inherit (game) compatTool;})
+      settings.games;
     };
   };
 }
