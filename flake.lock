@@ -438,11 +438,11 @@
         "whisper-dictation": "whisper-dictation"
       },
       "locked": {
-        "lastModified": 1794142793,
-        "narHash": "sha256-kGSOCn/uDWVG/21HxK6KWOOvGzG/yhkh5SCLMknLiOM=",
+        "lastModified": 1794152110,
+        "narHash": "sha256-B08nzMWITrfTSzwnpiANh6ODIqf9SdilJxW2S3af+M0=",
         "owner": "external-systems",
         "repo": "modules",
-        "rev": "6fb305859122d5edd8221f012897d6d6832a973a",
+        "rev": "672578b16ff8c777454ee42018c3d5791dbd8013",
         "type": "github"
       },
       "original": {
