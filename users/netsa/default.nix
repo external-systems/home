@@ -189,12 +189,6 @@
         "applications:zen.desktop"
         "applications:com.mitchellh.ghostty.desktop"
       ];
-      # Night Color always on, very warm.
-      programs.plasma.kwin.nightLight = {
-        enable = true;
-        mode = "constant";
-        temperature.night = 1300;
-      };
       # Personal aliases (modules' shell module ships none of these).
       programs.bash.shellAliases = {
         fabric-backup = "rsync -av --progress --delete kamrui-h1:/srv/minecraft/fabric/world/ ${box.mountPoint}/BACKUPS/minecraft/fabric/world/";
