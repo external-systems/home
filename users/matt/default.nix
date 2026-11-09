@@ -26,6 +26,7 @@
     imports = [
       inputs.modules.homeModules.default
       ../shared/office.nix
+      ../shared/plasma.nix
     ];
     config = {
       # homeSpec options

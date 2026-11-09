@@ -37,6 +37,7 @@
     imports = [
       inputs.modules.homeModules.default
       ../shared/office.nix
+      ../shared/plasma.nix
     ];
     config = {
       # homeSpec options
@@ -181,6 +182,18 @@
             };
           };
         };
+      };
+      # netsa's own pinned apps on the shared panel (users/shared/plasma.nix).
+      shared.plasma.launchers = [
+        "applications:com.anthropic.Claude.desktop"
+        "applications:zen.desktop"
+        "applications:com.mitchellh.ghostty.desktop"
+      ];
+      # Night Color always on, very warm.
+      programs.plasma.kwin.nightLight = {
+        enable = true;
+        mode = "constant";
+        temperature.night = 1300;
       };
       # Personal aliases (modules' shell module ships none of these).
       programs.bash.shellAliases = {
