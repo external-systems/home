@@ -18,10 +18,9 @@
 
   # home-manager: the user's own environment.
   # For Matt — netsa-lite: the desktop basics with claude+pi and the
-  # headroom proxy, without the rest of the dev-tooling stack. githubAuth
-  # stays off (the default) until Matt has a GitHub PAT to provision;
-  # turning it on later is one line
-  # (git.githubAuth.enabled = true) + `clan vars generate <machine>`.
+  # headroom proxy, without the rest of the dev-tooling stack. GitHub
+  # auth comes from the per-user "github-matt" PAT clan var
+  # (`clan vars generate <machine>` prompts for it).
   home-manager.users.matt = {pkgs, ...}: {
     imports = [
       inputs.modules.homeModules.default
@@ -32,14 +31,14 @@
       # homeSpec options
       homeSpec = {
         xdg.enable = true;
-        # Claude only (no opencode/pi/kimi). The github MCP is disabled: it
-        # would declare the "github-matt" PAT generator and prompt for a
-        # token Matt doesn't have — enable mcp.github once he does.
         agents = {
           claude.enable = true;
           pi.enable = true;
           # Every custom skill in external-systems/skills, like netsa.
           skills.preset = "full";
+          # GitHub MCP via the local stdio server and matt's PAT
+          # ("github-matt"), the same token git and gh use.
+          mcp.github.auth = "pat";
         };
         programs = {
           headroom = {
@@ -57,6 +56,9 @@
             # No signingKey here: ssh.clanKey makes the clan-generated
             # "user-ssh-matt" keypair the default signing key once
             # `clan vars generate` runs.
+            # github.com over HTTPS and GH_TOKEN from the "github-matt"
+            # PAT clan var.
+            githubAuth.enabled = true;
           };
           shell.enable = true;
           ssh = {
