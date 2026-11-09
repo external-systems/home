@@ -7,6 +7,8 @@
   fonts.fontconfig.enable = true;
   home.packages = with pkgs; [
     teams-for-linux # Microsoft Teams
+    # Zoom video calls (`zoom` is an unrelated text-adventure player).
+    zoom-us
     # Word/Excel/PowerPoint look-alike with the best .docx/.xlsx/.pptx
     # fidelity.
     onlyoffice-desktopeditors
