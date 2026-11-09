@@ -23,7 +23,10 @@
   # turning it on later is one line
   # (git.githubAuth.enabled = true) + `clan vars generate <machine>`.
   home-manager.users.matt = {pkgs, ...}: {
-    imports = [inputs.modules.homeModules.default];
+    imports = [
+      inputs.modules.homeModules.default
+      ../shared/office.nix
+    ];
     config = {
       # homeSpec options
       homeSpec = {
@@ -98,24 +101,13 @@
           };
         };
       };
-      # The Microsoft apps and fonts matt knows from Windows.
-      fonts.fontconfig.enable = true;
+      # Matt-only Microsoft apps; the rest is shared with netsa
+      # (users/shared/office.nix).
       home.packages = with pkgs; [
-        teams-for-linux # Microsoft Teams
         microsoft-edge
-        # Word/Excel/PowerPoint look-alike with the best .docx/.xlsx/.pptx
-        # fidelity.
-        onlyoffice-desktopeditors
         # OneDrive sync client and its tray GUI.
         onedrive
         onedrivegui
-        powershell
-        # Remote Desktop (RDP) to Windows machines.
-        remmina
-        # Arial, Times New Roman, Verdana, ... and Calibri, Cambria,
-        # Consolas, ...: Office documents render with their own fonts.
-        corefonts
-        vista-fonts
       ];
     };
   };

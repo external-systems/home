@@ -34,7 +34,10 @@
     # The Storage Box mount below; the aliases write into it.
     box = config.homeSpec.programs.storagebox.boxes.helsinki-box;
   in {
-    imports = [inputs.modules.homeModules.default];
+    imports = [
+      inputs.modules.homeModules.default
+      ../shared/office.nix
+    ];
     config = {
       # homeSpec options
       homeSpec = {
