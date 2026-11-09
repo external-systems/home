@@ -98,6 +98,23 @@
           };
         };
       };
+      # The Microsoft apps and fonts matt knows from Windows.
+      fonts.fontconfig.enable = true;
+      home.packages = with pkgs; [
+        teams-for-linux # Microsoft Teams
+        microsoft-edge
+        # Word/Excel/PowerPoint look-alike with the best .docx/.xlsx/.pptx
+        # fidelity.
+        onlyoffice-desktopeditors
+        # OneDrive sync client and its tray GUI.
+        onedrive
+        onedrivegui
+        powershell
+        # Arial, Times New Roman, Verdana, ... and Calibri, Cambria,
+        # Consolas, ...: Office documents render with their own fonts.
+        corefonts
+        vista-fonts
+      ];
     };
   };
 }
