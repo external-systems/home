@@ -73,7 +73,7 @@
           # service so the kimi reroute (KIMI_CODE_BASE_URL) lands on the
           # right upstream; Anthropic keeps the default api.anthropic.com.
           headroom = {
-            enable = false;
+            enable = true;
             proxy.openaiApiUrl = "https://api.kimi.ai/coding/v1";
           };
           plasma-manager.enable = true;
