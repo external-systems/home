@@ -42,9 +42,13 @@ in {
     # Default wallpaper; a user's profile sets its own to override it.
     workspace.wallpaper = lib.mkDefault "${pkgs.kdePackages.plasma-workspace-wallpapers}/share/wallpapers/Mountain/";
 
-    kwin.virtualDesktops = {
-      number = 3;
-      rows = 1;
+    kwin = {
+      virtualDesktops = {
+        number = 3;
+        rows = 1;
+      };
+      # Night Color off for everyone, also where it was turned on by hand.
+      nightLight.enable = false;
     };
 
     shortcuts = {
