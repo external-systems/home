@@ -22,7 +22,10 @@
 
   # home-manager: the user's own environment.
   home-manager.users.wife = {...}: {
-    imports = [inputs.modules.homeModules.default];
+    imports = [
+      inputs.modules.homeModules.default
+      ../shared/plasma.nix
+    ];
     config = {
       # homeSpec options
       homeSpec = {
