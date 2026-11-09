@@ -188,23 +188,13 @@
         obsidian-pull = "rsync -avz storagebox-helsinki-box:/home/PRIVATE/OBSIDIAN/Main/ ~/Desktop/Main/";
         kubefetch-latest = ''nix run "https://flakehub.com/f/andrewthomaslee/kubefetch/*"'';
       };
-      # Home Options
+      # Home Options. Personal tools only: the shared dev apps come from
+      # the dev tag (clanServices/tags/dev.nix), the nix toolchain from
+      # vscodium.languages.nix.
       home.packages = with pkgs; [
         moscripts
         asciinema
         kalker
-        python3Minimal
-        freelens-bin
-        nixd
-        alejandra
-        statix
-        deadnix
-        nixfmt-rs
-        argocd
-        flux9s
-        fluxcd
-        mongodb-compass
-        pgadmin4-desktopmode
       ];
     };
   };
