@@ -23,7 +23,10 @@
   # turning it on later is one line
   # (git.githubAuth.enabled = true) + `clan vars generate <machine>`.
   home-manager.users.matt = {pkgs, ...}: {
-    imports = [inputs.modules.homeModules.default];
+    imports = [
+      inputs.modules.homeModules.default
+      ../shared/office.nix
+    ];
     config = {
       # homeSpec options
       homeSpec = {
@@ -98,6 +101,14 @@
           };
         };
       };
+      # Matt-only Microsoft apps; the rest is shared with netsa
+      # (users/shared/office.nix).
+      home.packages = with pkgs; [
+        microsoft-edge
+        # OneDrive sync client and its tray GUI.
+        onedrive
+        onedrivegui
+      ];
     };
   };
 }

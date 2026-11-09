@@ -14,6 +14,7 @@ literals in git.
 - `flake.nix`: inputs (all follow `org-pkgs` where they can) and the imports (`org-pkgs.flakeModules.default`: treefmt, docs and slides, lock-sync).
 - `inventory.nix`: machines, tags, service instances. Deploy targets come from `secrets.hosts.<machine>.targetHost`.
 - `users/<user>/default.nix`: one file per user with the NixOS account and its home-manager profile (`home-manager.users.<user>`), wired by the `users` instances in `inventory.nix`.
+- `users/shared/`: home-manager modules two or more users share (one package list each), imported by those users' profiles. User preferences go here; machine traits are tags.
 - `machines/<name>/`: `configuration.nix` (incl. networking, see below), `disko.nix` (install-time truth: editing it means a wipe), `facter.json` (hardware scan). `inventory.json` is clan-managed.
 - `clanServices/`: `machine-type` (shared base + `pc`/`server` roles), `tags` (dev, gaming). `remote-builder` (nixbuild.net-style builds on euc-hel-0) comes from external-systems/clanServices (`clanServices` input).
 - `flake-parts/` (import-tree, no import list): `clan.nix` (inventory, specialArgs incl. `secrets`), `nixpkgs.nix` (`nixosModules.nixpkgs`: org overlay), `nixosModules/networking-shim.nix`, `packages.nix` (`clan-cli` re-export), `docs.nix` (`docs.*` settings), `formatter.nix` (sizelint excludes).
