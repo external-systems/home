@@ -110,6 +110,8 @@
         onedrive
         onedrivegui
         powershell
+        # Remote Desktop (RDP) to Windows machines.
+        remmina
         # Arial, Times New Roman, Verdana, ... and Calibri, Cambria,
         # Consolas, ...: Office documents render with their own fonts.
         corefonts
