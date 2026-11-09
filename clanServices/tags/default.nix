@@ -17,25 +17,25 @@
           dev apps: Kubernetes and database GUIs, python3). Storage
           Box mounts are per user (homeSpec.programs.storagebox in the
           profiles).
-        - `gaming`: three boot entries. The default entry runs jovian
-          (Valve kernel, Steam on the KDE desktop, GE-Proton by default);
-          "gaming" (hostSpec.system.gamingSpecialisation) boots into Steam
-          Gaming Mode; "developer"
+        - `gaming`: boot entries for gaming. The default entry runs
+          jovian (Valve kernel, Steam on the KDE desktop, GE-Proton by
+          default); "gaming" (hostSpec.system.gamingSpecialisation) boots
+          into Steam Gaming Mode; "developer"
           (hostSpec.system.developerSpecialisation) has the normal kernel
-          and no Steam, for Kubernetes and VPNs later.
-          Per machine (`gaming.machines.<m>.settings`): `gamingMode` boots
-          the gaming entry into Gaming Mode as the locked `gamer` user
-          (off: KDE login screen; `user` overrides who), `libraries`
-          lists the shared Steam library roots (one per disk; game files
-          downloaded once, Proton prefixes per user; registered in every
-          user's Steam and made its default install location unless
-          `defaultLibrary = false`), `games` sets per-game Steam settings
-          by App ID (compatibility tool, env, wrappers, args) for every
-          user, `outputs` picks
-          Gaming Mode's display by connector, `diskSwap = false` drops
-          disk swap in the developer entry, `defaultEntry = "gaming"`
-          boots Gaming Mode by default with the desktop as the "desktop"
-          entry (a Steam Deck).
+          and no Steam, for Kubernetes and VPNs later. Every user keeps a
+          Steam library of their own; `steam-copy-game` (sudo) copies a
+          game and its shader cache to another user, and shader caches
+          are synced between users, both as reflink copies.
+          Per machine (`gaming.machines.<m>.settings`): `gamingEntry =
+          false` drops the gaming entry (a desktop several people use),
+          `gamingMode` boots the gaming entry into Gaming Mode as the
+          locked `gamer` user (off: KDE login screen; `user` overrides
+          who), `games` sets per-game Steam settings by App ID
+          (compatibility tool, env, wrappers, args) for every user,
+          `outputs` picks Gaming Mode's display by connector, `diskSwap =
+          false` drops disk swap in the developer entry, `defaultEntry =
+          "gaming"` boots Gaming Mode by default with the desktop as the
+          "desktop" entry (a Steam Deck).
       - **Users** (`netsa`, `wife`, `matt`; the users instances): which
         accounts exist on the machine.
 

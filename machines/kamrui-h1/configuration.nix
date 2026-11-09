@@ -1,4 +1,12 @@
 _: {
+  # One btrfs filesystem (disko: --label root) holds every user's Steam
+  # library and shader caches: bees stores identical data once
+  # (hostSpec.system.btrfsDedup), whoever owns the files.
+  hostSpec.system.btrfsDedup = {
+    enable = true;
+    filesystems.root.spec = "LABEL=root";
+  };
+
   # Large hardware on fast, long paths: generous socket buffer ceiling
   # (module default 32 MiB).
   hostSpec.networking.optimization.bufferMax = 134217728; # 128 MiB

@@ -53,31 +53,16 @@
           fallback. Find them with `kscreen-doctor -o`.
         '';
       };
-      libraries = lib.mkOption {
-        type = lib.types.listOf lib.types.str;
-        default = ["/srv/games"];
-        example = ["/mnt/steam" "/mnt/games2"];
-        description = ''
-          Shared Steam library roots, one per disk
-          (hostSpec.system.gaming.sharedLibraries.paths): game files are
-          downloaded once and shared by every user, Proton prefixes stay
-          per user. Each path must sit under a mount point from the
-          machine's disko.nix; the default lives on the root filesystem.
-          Each user's Steam gets its library registered by itself, once
-          Steam has run for that user.
-        '';
-      };
-      defaultLibrary = lib.mkOption {
+      gamingEntry = lib.mkOption {
         type = lib.types.bool;
         default = true;
         example = false;
         description = ''
-          Make the shared library (the first of `libraries`) every
-          user's default install location in Steam, so games installed
-          from Gaming Mode or the desktop land in it
-          (hostSpec.system.gaming.sharedLibraries.makeDefault). A default
-          picked in Steam is set back on the next deploy or boot; false
-          leaves the choice to each user.
+          Whether the machine has the gaming entry
+          (hostSpec.system.gamingSpecialisation.gamingEntry). false
+          leaves the desktop and developer entries: one Steam client, no
+          Gaming Mode and no `gamer` user, for a desktop several people
+          use. Needs defaultEntry = "desktop".
         '';
       };
       games = lib.mkOption {
@@ -143,7 +128,7 @@
       hostSpec.system = {
         gamingSpecialisation = {
           enable = true;
-          inherit (settings) defaultEntry;
+          inherit (settings) defaultEntry gamingEntry;
         };
         # The Kubernetes clan services will plug into this entry's
         # configuration hook (developerSpecialisation.configuration).
@@ -152,14 +137,12 @@
           inherit (settings) diskSwap;
         };
         # Steam's defaults (GE-Proton) for every user, wherever Steam
-        # runs: the default desktop and Gaming Mode.
+        # runs: the default desktop and Gaming Mode. Every user keeps a
+        # Steam library of their own; games and shader caches are shared
+        # by reflink copies (steam-copy-game, steam-shader-sync).
         gaming = {
           steamConfig.enable = true;
-          sharedLibraries = {
-            enable = true;
-            paths = settings.libraries;
-            makeDefault = settings.defaultLibrary;
-          };
+          steamSharing.enable = true;
         };
         # gamingMode only boots Gaming Mode in the gaming entry.
         jovian =

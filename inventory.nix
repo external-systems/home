@@ -72,12 +72,11 @@ in {
         dev.tags.dev = {};
         gaming = {
           tags.gaming = {};
-          # Gaming Mode logs in as the locked "gamer" user; unset
-          # (nixos) boots the gaming entry to the KDE login screen.
+          # kamrui-h1 is a KDE desktop for netsa and wife: Steam in each
+          # one's own session, no Gaming Mode (that is for the Steam
+          # Deck), and the developer entry.
           machines.kamrui-h1.settings = {
-            gamingMode = true;
-            outputs = ["DP-1"]; # the 3440x1440 ultrawide
-            libraries = ["/mnt/steam"]; # the @steam subvolume
+            gamingEntry = false;
             # Valve picks Proton Stable for these, which beats the
             # global GE-Proton default; a per-game tool beats Valve's.
             games = {
