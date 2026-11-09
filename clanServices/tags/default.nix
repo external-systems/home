@@ -13,7 +13,8 @@
       - **Machine type** (`pc`, `server`; the machine-type service): one
         per machine.
       - **Purpose** (this service):
-        - `dev`: developer workstation (docker, nix, nix-ld). Storage
+        - `dev`: developer workstation (docker, nix, nix-ld, the shared
+          dev apps: Kubernetes and database GUIs, python3). Storage
           Box mounts are per user (homeSpec.programs.storagebox in the
           profiles).
         - `gaming`: three boot entries. The default entry runs jovian

@@ -32,9 +32,10 @@
         # would declare the "github-matt" PAT generator and prompt for a
         # token Matt doesn't have — enable mcp.github once he does.
         agents = {
-          # Only the base AI skills (the core preset), no extra sources.
           claude.enable = true;
           pi.enable = true;
+          # Every custom skill in external-systems/skills, like netsa.
+          skills.preset = "full";
         };
         programs = {
           headroom = {
