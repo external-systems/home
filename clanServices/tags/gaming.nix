@@ -138,8 +138,10 @@
         };
         # Steam's defaults (GE-Proton) for every user, wherever Steam
         # runs: the default desktop and Gaming Mode. Every user keeps a
-        # Steam library of their own; games and shader caches are shared
-        # by reflink copies (steam-copy-game, steam-shader-sync).
+        # Steam library of their own (/srv/steam/users/<user>); games and
+        # shader caches are shared by reflink copies (steam-copy-game,
+        # steam-shader-sync), and on a btrfs root bees deduplicates the
+        # rest, paused while a game runs (gaming.dedup, on by default).
         gaming = {
           steamConfig.enable = true;
           steamSharing.enable = true;
