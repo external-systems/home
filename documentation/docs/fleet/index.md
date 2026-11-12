@@ -1,5 +1,7 @@
 # Machines and networking
 
+What each machine is and what it runs: [Machines](../machines/index.md).
+
 ## Values, not literals
 
 No address, interface name or deploy target is written in this repo. They come
