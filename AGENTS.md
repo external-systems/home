@@ -19,7 +19,7 @@ literals in git.
 - `clanServices/`: `machine-type` (shared base + `pc`/`server` roles), `tags` (dev, gaming). `remote-builder` (nixbuild.net-style builds on euc-hel-0) comes from external-systems/clanServices (`clanServices` input).
 - `flake-parts/` (import-tree, no import list): `clan.nix` (inventory, specialArgs incl. `secrets`), `nixpkgs.nix` (`nixosModules.nixpkgs`: org overlay), `nixosModules/networking-shim.nix`, `packages.nix` (`clan-cli` re-export), `docs.nix` (`docs.*` settings), `formatter.nix` (sizelint excludes).
 - `devenv.yaml` + `devenv.lock` + `devenv.nix`: the shell (org shell from `org-pkgs/devenv`, plus `clan` and varlock-loaded `.env`).
-- `documentation/`: MkDocs site (`docs/`) and reveal.js deck (`slides/slides.md`), built by `org-pkgs.flakeModules.docs`.
+- `documentation/`: MkDocs site (`docs/`) and reveal.js deck (`slides/slides.md`), built by `org-pkgs.flakeModules.docs`. `docs/machines/<machine>.md` says what each machine is and runs.
 - `sops/`, `vars/`: clan vars. Use the `clan` CLI; never hand-edit encrypted files.
 
 ## Networking
@@ -43,4 +43,5 @@ literals in git.
 - New packages go to external-systems/pkgs, new reusable modules to external-systems/modules; this repo only wires them.
 - No dev-only inputs: formatting and docs come from org-pkgs (nix-style skill).
 - kamrui-h1 and beelink are deployed: keep changes to their hardware, disks and users updatable in place (no wipe).
+- A change to a machine's tags, users or `configuration.nix`, or a new machine, updates its page in `documentation/docs/machines/` (and the table in `index.md`) in the same PR.
 - Work on a branch and open a PR. Never push to `main`.

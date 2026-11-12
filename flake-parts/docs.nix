@@ -25,6 +25,17 @@
             {"GitHub token rotation" = "fleet/github-token-rotation.md";}
           ];
         }
+        {
+          Machines = [
+            {Overview = "machines/index.md";}
+            {beelink = "machines/beelink.md";}
+            {kamrui-h1 = "machines/kamrui-h1.md";}
+            {nixos = "machines/nixos.md";}
+            {ghost = "machines/ghost.md";}
+            {hp-notebook = "machines/hp-notebook.md";}
+            {euc-hel-0 = "machines/euc-hel-0.md";}
+          ];
+        }
         {"Whisper Dictation" = [{Overview = "whisper-dictation/index.md";}];}
         {
           Minecraft = [
