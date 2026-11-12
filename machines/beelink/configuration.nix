@@ -1,8 +1,4 @@
-{
-  lib,
-  secrets,
-  ...
-}: let
+{secrets, ...}: let
   wifi = secrets.hosts.beelink.links.wifi;
   lan = secrets.networks.${wifi.network};
 in {
@@ -14,16 +10,17 @@ in {
     # the internet): demo data at https://demo.odoo.localhost and
     # https://demo.odoo.beelink.home.arpa, an empty database at
     # https://blank.odoo.localhost and https://blank.odoo.beelink.home.arpa.
-    # LAN clients (a Windows laptop): `odoo-hosts` lines in the hosts file,
-    # http://odoo.beelink.home.arpa/ca.crt trusted once.
+    # Mail they send: https://mail.odoo.localhost (Mailpit).
+    # LAN clients (a Windows laptop): http://<beelink's IP>/hosts.txt into the
+    # hosts file, http://<beelink's IP>/ca.crt trusted once.
     # Login: admin / `clan vars get beelink odoo-passwords/admin-password`.
-    # Reset one to a fresh database: `sudo odoo-reset demo`.
+    # Reset one (seconds): `sudo odoo-reset demo`; save a state:
+    # `sudo odoo-snapshot save demo TAG`.
     services.odoo = {
       enable = true;
       lan = {
-        # The Wi-Fi address without its prefix length; the home LAN may
-        # connect, nothing else.
-        addresses = map (address: builtins.head (lib.splitString "/" address)) wifi.ipv4;
+        # Whatever address DHCP gives the Wi-Fi; the home LAN may connect,
+        # nothing else.
         interfaces = [wifi.interface];
         allowedClients = [lan.ipv4.cidr];
       };
