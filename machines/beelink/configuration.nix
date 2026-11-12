@@ -19,10 +19,10 @@ in {
     services.odoo = {
       enable = true;
       lan = {
-        # Whatever address DHCP gives the Wi-Fi; the home LAN may connect,
-        # nothing else.
+        # Whatever address DHCP gives the Wi-Fi; the home LAN may connect
+        # (IPv4 and IPv6), nothing else.
         interfaces = [wifi.interface];
-        allowedClients = [lan.ipv4.cidr];
+        allowedClients = [lan.ipv4.cidr lan.ipv6.cidr];
       };
       instances = {
         demo.expose.lan = true;
