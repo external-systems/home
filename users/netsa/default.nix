@@ -205,6 +205,10 @@
         moscripts
         asciinema
         kalker
+        # DualSense controller settings (lightbar, battery, triggers).
+        dualsensectl
+        # Only netsa gets Tor Browser; it left the pc role's system apps.
+        tor-browser
       ];
     };
   };

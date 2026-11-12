@@ -104,10 +104,11 @@
           };
         };
       };
-      # Matt-only Microsoft apps; the rest is shared with netsa
+      # Matt-only apps (Microsoft ones and Chromium); the rest is shared with netsa
       # (users/shared/office.nix).
       home.packages = with pkgs; [
         microsoft-edge
+        chromium
         # OneDrive sync client and its tray GUI.
         onedrive
         onedrivegui

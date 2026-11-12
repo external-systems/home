@@ -37,7 +37,6 @@
       discord
       spotify
       prismlauncher
-      tor-browser
       obsidian
       mediawriter
       # rewaita
