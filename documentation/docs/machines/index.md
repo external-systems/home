@@ -25,7 +25,7 @@ settings and trusted caches, OpenSSH, the login message, network tuning
 
 | Tag | Loads |
 | --- | --- |
-| `pc` | KDE Plasma on Wayland, sound, Bluetooth when present, 1Password (for the machine's desktop users), the Tailscale tray, the desktop apps (Zen browser, Discord, Spotify, Obsidian, Prism Launcher, Tor Browser, KDE utilities), and the remote-builder client: builds go to euc-hel-0 |
+| `pc` | KDE Plasma on Wayland, sound, Bluetooth when present, 1Password (for the machine's desktop users), the Tailscale tray, the desktop apps (Zen browser, Discord, Spotify, Obsidian, Prism Launcher, KDE utilities), and the remote-builder client: builds go to euc-hel-0 |
 | `server` | headless: no desktop or graphics; a `pc` or `gaming` tag on a server fails to evaluate |
 | `dev` | developer workstation: Docker, nix-ld, the shared dev apps (Kubernetes and database GUIs, python3) |
 | `gaming` | jovian: Steam on the KDE desktop with GE-Proton, a "gaming" boot entry into Steam Gaming Mode and a "developer" entry with the normal kernel; Steam sharing: every user keeps a Steam library of their own, `sudo steam-copy-game` copies a game to another user and shader caches are synced (per-machine settings in `inventory.nix`) |
