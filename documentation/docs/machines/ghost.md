@@ -15,7 +15,7 @@ i7-1165G7, 16 GiB, Intel graphics) on Wi-Fi.
 - **From the tags:** KDE Plasma, the desktop apps, 1Password, the
   remote-builder client (`pc`); Docker, nix-ld and the dev apps (`dev`).
 - **From the user:** netsa's full developer set: AI coding agents with
-  every skill, the headroom proxy, Docker, Ghostty, git with a
+  every skill, the headroom proxy, Docker, VSCodium, Ghostty, git with a
   clan-generated signing key, the Storage Box mount.
 - **Only here:** nothing; the Intel GPU, Wi-Fi and Bluetooth set
   themselves up from `facter.json`.

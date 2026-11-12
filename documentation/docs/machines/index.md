@@ -35,7 +35,7 @@ settings and trusted caches, OpenSSH, the login message, network tuning
 
 | User | Profile (`users/<user>/default.nix`) |
 | --- | --- |
-| netsa | the full developer set: AI coding agents (Claude Code, pi, kimi, opencode) with every skill, the headroom proxy, Docker, Ghostty, git with a clan-generated signing key, the Storage Box mount, media apps, office and Plasma settings |
+| netsa | the full developer set: AI coding agents (Claude Code, pi, kimi, opencode) with every skill, the headroom proxy, Docker, VSCodium with the nix language tooling, Ghostty, git with a clan-generated signing key, the Storage Box mount, media apps, office and Plasma settings |
 | matt | netsa-lite: Claude Code and pi with every skill, the headroom proxy, Docker, VSCodium with large, readable fonts, Ghostty, git, office and Plasma settings |
 | wife | a desktop: Firefox, media apps, Plasma settings |
 

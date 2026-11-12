@@ -34,4 +34,4 @@ desktop several people share, with Steam in each person's own session.
       latency spikes.
     - A 128 MiB socket buffer ceiling (network tuning).
 - **From the users:** netsa's full developer set (AI coding agents,
-  Docker, Ghostty, ...); wife's desktop profile.
+  Docker, VSCodium, Ghostty, ...); wife's desktop profile.

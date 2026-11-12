@@ -16,7 +16,7 @@ A **shared developer mini PC** for **matt and netsa**: a Beelink SER
   remote-builder client (`pc`); Docker, nix-ld and the dev apps (`dev`).
 - **From the users:** both get AI coding agents with every skill
   (netsa: Claude Code, pi, kimi, opencode; matt: Claude Code and pi),
-  the headroom proxy, Docker and Ghostty; matt also VSCodium.
+  the headroom proxy, Docker, VSCodium and Ghostty.
 - **Only here:**
     - **Odoo test instances** (`hostSpec.services.odoo`): throwaway Odoo
       databases for testing, never production, reset in seconds and
