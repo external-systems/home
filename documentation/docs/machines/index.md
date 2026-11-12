@@ -42,5 +42,16 @@ settings and trusted caches, OpenSSH, the login message, network tuning
 ## Deploying
 
 From the devenv shell (it provides the token for the private values
-flake): `clan machines update <machine>`. New clan vars first:
-`clan vars generate <machine>`. Builds run on euc-hel-0.
+flake): `clan machines update <machine>`. Builds run on euc-hel-0.
+
+New or changed clan vars come first, on a branch: `clan vars generate`
+commits to the current branch, and `main` takes PRs only.
+
+```sh
+git switch main && git pull
+git switch -c vars-<machine>-<topic>
+clan vars generate <machine>        # commits the new vars here
+git push -u origin HEAD             # then open a PR and merge it
+git switch main && git pull
+clan machines update <machine>      # vars are on main: nothing to commit
+```
