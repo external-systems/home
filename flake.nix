@@ -47,7 +47,7 @@
     clanServices = {
       url = "github:external-systems/clanServices";
       inputs = {
-        pkgs.follows = "org-pkgs";
+        org-pkgs.follows = "org-pkgs";
         clan-core.follows = "clan-core";
       };
     };
