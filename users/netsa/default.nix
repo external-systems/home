@@ -30,10 +30,7 @@
     config,
     pkgs,
     ...
-  }: let
-    # The Storage Box mount below; the aliases write into it.
-    box = config.homeSpec.programs.storagebox.boxes.helsinki-box;
-  in {
+  }: {
     imports = [
       inputs.modules.homeModules.default
       ../shared/office.nix
@@ -191,8 +188,6 @@
       ];
       # Personal aliases (modules' shell module ships none of these).
       programs.bash.shellAliases = {
-        fabric-backup = "rsync -av --progress --delete kamrui-h1:/srv/minecraft/fabric/world/ ${box.mountPoint}/BACKUPS/minecraft/fabric/world/";
-        fabric-backup-local = "rsync -av --progress --delete /srv/minecraft/fabric/world/ ${box.mountPoint}/Backups/fabric/world/";
         # Straight over ssh (the storagebox-helsinki-box alias), not the
         # mount.
         obsidian-pull = "rsync -avz storagebox-helsinki-box:/home/PRIVATE/OBSIDIAN/Main/ ~/Desktop/Main/";

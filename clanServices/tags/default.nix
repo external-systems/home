@@ -23,9 +23,11 @@
           into Steam Gaming Mode; "developer"
           (hostSpec.system.developerSpecialisation) has the normal kernel
           and no Steam, for Kubernetes and VPNs later. Every user keeps a
-          Steam library of their own; `steam-copy-game` (sudo) copies a
-          game and its shader cache to another user, and shader caches
-          are synced between users, both as reflink copies.
+          Steam library of their own in /srv/steam/users/<user>;
+          `steam-copy-game` (sudo) copies a game and its shader cache to
+          another user, and shader caches are synced between users, both
+          as reflink copies. On a btrfs root, bees deduplicates the
+          filesystem and pauses while a game runs.
           Per machine (`gaming.machines.<m>.settings`): `gamingEntry =
           false` drops the gaming entry (a desktop several people use),
           `gamingMode` boots the gaming entry into Gaming Mode as the

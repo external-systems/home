@@ -21,6 +21,7 @@
         {
           Fleet = [
             {"Machines and networking" = "fleet/index.md";}
+            {"kamrui-h1" = "fleet/kamrui-h1.md";}
             {"Remote builder (euc-hel-0)" = "fleet/remote-builder.md";}
             {"GitHub token rotation" = "fleet/github-token-rotation.md";}
           ];
