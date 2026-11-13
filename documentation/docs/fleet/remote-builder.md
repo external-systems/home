@@ -51,7 +51,10 @@ On a client:
 
 ```sh
 sudo nix store info --store ssh-ng://<server>    # as root, like nix-daemon
-nix build --max-jobs 0 --rebuild nixpkgs#hello   # local jobs off: must build remotely
+nix build --max-jobs 0 --option substituters '' --impure --expr \
+  'with import <nixpkgs> {}; runCommand "proof-${toString builtins.currentTime}" {} "echo ok > $out"'
+  # local jobs off and a fresh derivation: must build remotely
+  # (never --rebuild with --max-jobs 0: Nix runs check builds locally)
 ```
 
 ## In this fleet
