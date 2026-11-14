@@ -4,9 +4,10 @@
 #
 # Required status check for the ruleset: "ci / flake-check".
 #
-# Private flake inputs (e.g. external-systems/secrets): give the repo the
-# NIX_APP_ID + NIX_APP_PRIVATE_KEY org secrets and add
-# `private-repos: secrets` under `with:`.
+# Private flake inputs (e.g. external-systems/secrets): the
+# external-systems-nix-ci App, through the org variable NIX_APP_CLIENT_ID
+# and the org secret NIX_APP_PRIVATE_KEY, plus `private-repos: secrets`
+# under `with:`. No NIX_GITHUB_TOKEN PAT is needed.
 name: ci
 
 on:
@@ -31,6 +32,6 @@ jobs:
       # Release series x in 0.x.y. Earlier releases were v0.2.x.
       minor: 4
       # Private flake input external-systems/secrets, read through the
-      # external-systems-nix-ci App (NIX_APP_ID / NIX_APP_PRIVATE_KEY).
+      # external-systems-nix-ci App (NIX_APP_CLIENT_ID / NIX_APP_PRIVATE_KEY).
       private-repos: secrets
     secrets: inherit
