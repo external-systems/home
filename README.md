@@ -36,7 +36,8 @@ clan machines install euc-hel-0 --target-host root@<rescue-ip>   # first install
 
 The `secrets` input is the private external-systems/secrets, so evaluating the
 machines needs a GitHub token with read access to it. The devenv shell passes
-`GITHUB_TOKEN` from `.env` (or `gh auth token`) to nix as `access-tokens`.
+`GH_TOKEN` (the `github-<user>` clan-var PAT, or `gh auth token`) to nix as
+`access-tokens`.
 The public `flake.lock` records only that repo's name and revision; the values
 stay private in git (they still land in each machine's world-readable
 `/nix/store`, so no credentials go there).
