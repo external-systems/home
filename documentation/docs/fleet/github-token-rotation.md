@@ -17,8 +17,10 @@ The devenv shell builds nix's `access-tokens` from `GH_TOKEN`, then
 
 CI does not use this token. The org CI (`.github/workflows/ci.yml`)
 mints a one-hour token from the `external-systems-nix-ci` GitHub App
-(org secrets `NIX_APP_ID` and `NIX_APP_PRIVATE_KEY`, `private-repos:
-secrets`).
+(the org variable `NIX_APP_CLIENT_ID`, the org secret `NIX_APP_PRIVATE_KEY`
+and `private-repos: secrets`), so the repo needs no `NIX_GITHUB_TOKEN`
+secret. A new private repo CI must read goes into the App's selected
+repositories and the caller's `private-repos` list.
 
 ## Why rotation can lock you out
 
