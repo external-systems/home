@@ -17,6 +17,8 @@
           # Include each machine's desktop users without granting access to
           # accounts that only exist elsewhere in the fleet.
           polkitPolicyOwners = lib.attrNames (lib.filterAttrs (_: user: user.isNormalUser) config.users.users);
+          # Let the desktop app unlock the 1Password extension in Zen.
+          customAllowedBrowsers = ["zen"];
         };
         wayland.enable = true;
       };
