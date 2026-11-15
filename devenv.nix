@@ -35,13 +35,17 @@
 
     # clan-cli at the flake's clan-core pin (flake-parts/packages.nix),
     # run through the `clan` script above (not put on PATH, which would
-    # shadow it); its argcomplete completions still apply to `clan`.
-    # devenv modules can't read flake outputs, so build it here; the
-    # out-link keeps it from being garbage-collected.
+    # shadow it). devenv modules can't read flake outputs, so build it
+    # here; the out-link keeps it from being garbage-collected.
     if nix build "$DEVENV_ROOT#clan-cli" --out-link "$DEVENV_STATE/clan-cli"; then
       if [ -n "''${BASH_VERSION:-}" ] && [ -f "$DEVENV_STATE/clan-cli/share/bash-completion/completions/clan" ]; then
         # shellcheck disable=SC1091
         source "$DEVENV_STATE/clan-cli/share/bash-completion/completions/clan"
+        # Tab completes with the real binary, not the `clan` script:
+        # argcomplete answers on fd 8, which `varlock run` does not pass
+        # to its child, and the script would read 1Password on every Tab.
+        _clan_complete() { _python_argcomplete "$DEVENV_STATE/clan-cli/bin/clan" "$2" "$3"; }
+        complete -o nospace -o default -o bashdefault -F _clan_complete clan
       fi
     fi
 
