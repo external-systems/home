@@ -1,15 +1,20 @@
 # home's additions to the org shell (org-pkgs/devenv: fmt, check,
-# sync-locks, docs, slides). Secrets for clan vars (SOPS_AGE_KEY, ...)
-# come from the gitignored .env via varlock (.env.schema).
+# sync-locks, docs, slides, worktree). The clan admin key (SOPS_AGE_KEY)
+# comes from 1Password through varlock (.env.schema) for the `clan`
+# command only: the shell itself never holds it, and there is no .env.
 {pkgs, ...}: {
   packages = [pkgs.bun];
 
+  # `clan` with the key from 1Password (the app asks to approve the read).
+  # `check` runs `clan vars check` with the real binary: it needs no key.
+  scripts.clan = {
+    exec = ''exec bunx varlock@1.24.0 run -- "$DEVENV_STATE/clan-cli/bin/clan" "$@"'';
+    description = "The clan CLI with SOPS_AGE_KEY from 1Password (varlock run)";
+  };
+  org.check.extraCommands = [''"$DEVENV_STATE/clan-cli/bin/clan" vars check''];
+
   enterShell = ''
     export CLAN_DIR="$DEVENV_ROOT"
-
-    if [ -f "$DEVENV_ROOT/.env" ]; then
-      eval "$(bunx varlock@1.21.1 load --format shell)"
-    fi
 
     # The `secrets` input is the private external-systems/secrets. nix
     # fetches github: inputs through the GitHub API, which ignores git's
@@ -29,11 +34,11 @@
     unset gh_token
 
     # clan-cli at the flake's clan-core pin (flake-parts/packages.nix),
-    # put on PATH as the real binary so its argcomplete completions work.
+    # run through the `clan` script above (not put on PATH, which would
+    # shadow it); its argcomplete completions still apply to `clan`.
     # devenv modules can't read flake outputs, so build it here; the
     # out-link keeps it from being garbage-collected.
     if nix build "$DEVENV_ROOT#clan-cli" --out-link "$DEVENV_STATE/clan-cli"; then
-      export PATH="$DEVENV_STATE/clan-cli/bin:$PATH"
       if [ -n "''${BASH_VERSION:-}" ] && [ -f "$DEVENV_STATE/clan-cli/share/bash-completion/completions/clan" ]; then
         # shellcheck disable=SC1091
         source "$DEVENV_STATE/clan-cli/share/bash-completion/completions/clan"
@@ -42,6 +47,6 @@
 
   '';
 
-  # Secrets load through varlock above, not devenv's dotenv.
+  # Secrets load through varlock (the clan script), not devenv's dotenv.
   dotenv.disableHint = true;
 }

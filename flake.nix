@@ -33,7 +33,7 @@
     # external-systems/secrets, pinned directly because clan can't pass
     # --override-input. Evaluating the machines needs a GitHub token with
     # read access (the devenv shell sets NIX_CONFIG access-tokens from
-    # .env). The lock records only its name and revision, not the values.
+    # GH_TOKEN or `gh auth token`). The lock records only its name and revision, not the values.
     secrets = {
       url = "github:external-systems/secrets";
       inputs = {
