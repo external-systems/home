@@ -58,7 +58,13 @@
             # `clan vars generate` runs.
             # github.com over HTTPS and GH_TOKEN from the "github-matt"
             # PAT clan var.
-            githubAuth.enabled = true;
+            # githubAuth.nix: the same PAT as nix access-tokens, in this
+            # user's ~/.config/nix/nix.conf only (derived clan var
+            # "nix-access-tokens-matt"; the system nix.conf is untouched).
+            githubAuth = {
+              enabled = true;
+              nix.enable = true;
+            };
           };
           shell.enable = true;
           ssh = {
