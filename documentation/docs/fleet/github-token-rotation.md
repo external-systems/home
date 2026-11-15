@@ -12,7 +12,13 @@ your account or one org, so one can't reach both personal repos and
 external-systems. Scopes: `repo`, `workflow` (pushes that touch
 `.github/workflows/`) and `read:org`.
 
-The devenv shell builds nix's `access-tokens` from `GH_TOKEN`, then
+Outside the devenv shell, nix reads the same token from the derived clan
+var `nix-access-tokens-<user>` (one line, `access-tokens = github.com=…`),
+which modules' `githubAuth.nix.enable` `!include`s from the user's
+`~/.config/nix/nix.conf`. It never goes into the system `/etc/nix/nix.conf`:
+there an include that isn't `key = value` breaks the daemon and activation,
+and only a GRUB rollback gets you back. Inside the devenv shell, `NIX_CONFIG`
+takes precedence: it builds `access-tokens` from `GH_TOKEN`, then
 `GITHUB_TOKEN`, and finally `gh auth token`.
 
 CI does not use this token. The org CI (`.github/workflows/ci.yml`)
@@ -39,6 +45,7 @@ valid until every machine is deployed.
 
     ```bash
     clan vars generate <machine> --generator github-<user> --regenerate
+    clan vars generate <machine> --generator nix-access-tokens-<user> --regenerate
     git add vars && git commit -m "Rotate github-<user> PAT"
     ```
 

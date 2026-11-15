@@ -98,7 +98,13 @@
             # token feeds the github MCP wrapper. The deployed path is
             # supplied by nixosModules/git.nix; githubAuth is off by
             # default for every other user.
-            githubAuth.enabled = true;
+            # githubAuth.nix: the same PAT as nix access-tokens, in this
+            # user's ~/.config/nix/nix.conf only (derived clan var
+            # "nix-access-tokens-netsa"; the system nix.conf is untouched).
+            githubAuth = {
+              enabled = true;
+              nix.enable = true;
+            };
           };
           k9s.enable = true;
           ksshaskpass.enable = true;
