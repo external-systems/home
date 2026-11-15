@@ -34,8 +34,17 @@
         agents = {
           claude.enable = true;
           pi.enable = true;
-          # Every custom skill in external-systems/skills, like netsa.
-          skills.preset = "full";
+          # Who matt is, for every agent. matt does not work in the org's
+          # repos, so the org ground rules stay off and the skills stay
+          # at the small base preset (the default).
+          instructions.text = ''
+            Matt is not technical, is about 60, and is new to Linux.
+            Use plain words and explain any term you can't avoid.
+            Give one step at a time and say what each command does before running it.
+            Ask before anything that deletes, installs or changes settings.
+            Be patient and never assume prior knowledge.
+          '';
+          groundRules.enable = false;
           # GitHub MCP via the local stdio server and matt's PAT
           # ("github-matt"), the same token git and gh use.
           mcp.github.auth = "pat";

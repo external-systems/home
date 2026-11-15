@@ -35,23 +35,29 @@ settings and trusted caches, OpenSSH, the login message, network tuning
 
 | User | Profile (`users/<user>/default.nix`) |
 | --- | --- |
-| netsa | the full developer set: AI coding agents (Claude Code, pi, kimi, opencode) with every skill, the headroom proxy, Docker, VSCodium with every language and the cluster tooling, Ghostty, git with a clan-generated signing key, the Storage Box mount, media apps, office and Plasma settings |
-| matt | netsa-lite: Claude Code and pi with every skill, the headroom proxy, Docker, VSCodium with large, readable fonts, Ghostty, git, office and Plasma settings |
+| netsa | the full developer set: AI coding agents (Claude Code, pi, kimi, opencode) with every skill, the org ground rules and netsa's own instructions (owner, dyslexia-aware), the headroom proxy, Docker, VSCodium with every language and the cluster tooling, Ghostty, git with a clan-generated signing key, the Storage Box mount, media apps, office and Plasma settings |
+| matt | netsa-lite: Claude Code and pi with the base skills and plain-language instructions for a Linux newcomer, the headroom proxy, Docker, VSCodium with large, readable fonts, Ghostty, git, office and Plasma settings |
 | wife | a desktop: Firefox, media apps, Plasma settings |
 
 ## Deploying
 
 From the devenv shell (it provides the token for the private values
-flake): `clan machines update <machine>`. Builds run on euc-hel-0.
+flake): `clan machines update <machine>`. Builds run on euc-hel-0. The
+`clan` command reads the clan admin key from 1Password (item
+`clan-sops-age` in the personal account's `Personal` vault) through
+varlock; the 1Password app asks to approve each read.
 
-New or changed clan vars come first, on a branch: `clan vars generate`
-commits to the current branch, and `main` takes PRs only.
+New or changed clan vars come first, in their own worktree: `clan vars
+generate` commits to the current branch, and `main` takes PRs only.
+`check` (`clan vars check`) and CI (`checks.clan-vars-present`) fail
+while a machine's vars are missing, so a branch without them cannot
+merge.
 
 ```sh
-git switch main && git pull
-git switch -c vars-<machine>-<topic>
-clan vars generate <machine>        # commits the new vars here
-git push -u origin HEAD             # then open a PR and merge it
-git switch main && git pull
-clan machines update <machine>      # vars are on main: nothing to commit
+worktree new vars-<machine>-<topic>  # prints the worktree path; cd there
+clan vars generate <machine>         # commits the new vars on that branch
+git push -u origin HEAD              # then open a PR and merge it
+cd ~/external-systems/home && worktree prune   # back on an updated main
+clan vars check <machine>            # all present: update commits nothing
+clan machines update <machine>
 ```

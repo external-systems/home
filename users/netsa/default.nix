@@ -47,7 +47,15 @@
         # agent. The base preset (core) plus every custom skill in
         # external-systems/skills (own-all). Add external picks from
         # skills.lib.selections here, e.g. `++ selections.anthropic`.
+        # Every agent also gets the machine context, the org ground rules
+        # (modules' groundRules, on by default) and the text below.
         agents = {
+          instructions.text = ''
+            The user is andrewthomaslee, owner of the external-systems GitHub org, and technical.
+            They have dyslexia: read misspellings and typos by intent, never correct or comment on spelling, and ask only when a word is truly ambiguous.
+            Prefer short sentences and scannable lists.
+            Load the external-systems skill before any work in ~/external-systems.
+          '';
           kimi.enable = true;
           pi.enable = true;
           claude.enable = true;

@@ -10,7 +10,7 @@ from the values flake, input `secrets`:
 the private external-systems/secrets, pinned directly in `flake.nix`
 (clan can't pass `--override-input`). Evaluating the machines needs a
 GitHub token with read access to it; the devenv shell hands nix
-`GITHUB_TOKEN` from `.env` (or `gh auth token`) as `access-tokens`:
+`GH_TOKEN` (or `gh auth token`) as `access-tokens`:
 
 ```sh
 clan machines update kamrui-h1

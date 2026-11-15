@@ -18,7 +18,8 @@ literals in git.
 - `machines/<name>/`: `configuration.nix` (incl. networking, see below), `disko.nix` (install-time truth: editing it means a wipe), `facter.json` (hardware scan). `inventory.json` is clan-managed.
 - `clanServices/`: `machine-type` (shared base + `pc`/`server` roles), `tags` (dev, gaming). `remote-builder` (nixbuild.net-style builds on euc-hel-0) comes from external-systems/clanServices (`clanServices` input).
 - `flake-parts/` (import-tree, no import list): `clan.nix` (inventory, specialArgs incl. `secrets`), `nixpkgs.nix` (`nixosModules.nixpkgs`: org overlay), `nixosModules/networking-shim.nix`, `packages.nix` (`clan-cli` re-export), `docs.nix` (`docs.*` settings), `formatter.nix` (sizelint excludes).
-- `devenv.yaml` + `devenv.lock` + `devenv.nix`: the shell (org shell from `org-pkgs/devenv`, plus `clan` and varlock-loaded `.env`).
+- `devenv.yaml` + `devenv.lock` + `devenv.nix`: the shell (org shell from `org-pkgs/devenv`, plus `clan`, which loads `SOPS_AGE_KEY` from 1Password through varlock and `.env.schema` for that command only; there is no `.env`).
+- `flake-parts/clan-vars-check.nix`: `checks.clan-vars-present`, every machine's declared vars committed under `vars/` (CI); `check` also runs `clan vars check`.
 - `documentation/`: MkDocs site (`docs/`) and reveal.js deck (`slides/slides.md`), built by `org-pkgs.flakeModules.docs`. `docs/machines/<machine>.md` says what each machine is and runs.
 - `sops/`, `vars/`: clan vars. Use the `clan` CLI; never hand-edit encrypted files.
 
@@ -26,7 +27,7 @@ literals in git.
 - `hostSpec.networking.shim` (temporary, until netif in external-systems/clanServices): `wifi` mode (NetworkManager) is the default on machines whose `facter.json` has a WLAN controller; `static` mode is set per machine in `configuration.nix` from `secrets.hosts.<m>.links.<link>` and `secrets.networks.<network>`.
 - Never write an address, interface or deploy target as a literal. A new machine's values go into not-secrets first (placeholders, which secrets' shape-parity check compares against), then secrets; then `nix flake update secrets` here.
 - Deploy: `clan machines update <m>` from the devenv shell (it provides the GitHub token nix needs for the private `secrets` input).
-- New or changed clan vars: `clan vars generate <m>` commits to the current branch, and `main` takes PRs only. Run it on a branch: `git switch main && git pull`, `git switch -c vars-<m>-<topic>`, `clan vars generate <m>`, `git push -u origin HEAD`, open a PR; deploy from `main` after it merges. `clan machines update` generates missing vars too, so run it only once the vars are on `main`.
+- New or changed clan vars: `clan vars generate <m>` commits to the current branch, and `main` takes PRs only. Run it in a worktree: `worktree new vars-<m>-<topic>`, cd there, `clan vars generate <m>`, `git push -u origin HEAD`, open a PR; deploy from `main` after it merges. `clan machines update` generates missing vars too, so run it only once `clan vars check <m>` passes on `main`. `checks.clan-vars-present` fails CI on a branch with missing vars.
 
 ## Tool loop
 - The shell is devenv. If `DEVENV_ROOT` is unset, run commands with `devenv shell -- <cmd>`.
@@ -46,4 +47,5 @@ literals in git.
 - kamrui-h1 and beelink are deployed: keep changes to their hardware, disks and users updatable in place (no wipe).
 - A change to a machine's tags, users or `configuration.nix`, or a new machine, updates its page in `documentation/docs/machines/` (and the table in `index.md`) in the same PR.
 - Work on a branch and open a PR. Never push to `main`.
-- Never suggest running `clan vars generate` (or a `clan machines update` that would generate vars) on `main`: it commits there. Give the branch steps above.
+- Never suggest running `clan vars generate` (or a `clan machines update` that would generate vars) on `main`: it commits there. Give the worktree steps above.
+- Secrets: the org standard (external-systems skill, `references/secrets.md`). Tooling secrets come from 1Password through varlock (`.env.schema`); never create a `.env` or print a secret. Machine secrets are clan vars.
