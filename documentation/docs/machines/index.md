@@ -44,7 +44,7 @@ settings and trusted caches, OpenSSH, the login message, network tuning
 From the devenv shell (it provides the token for the private values
 flake): `clan machines update <machine>`. Builds run on euc-hel-0. The
 `clan` command reads the clan admin key from 1Password (item
-`clan-sops-age` in the personal account's `Personal` vault) through
+`clan-sops-age` in the Family account's `Private` vault) through
 varlock; the 1Password app asks to approve each read.
 
 New or changed clan vars come first, in their own worktree: `clan vars
