@@ -49,9 +49,9 @@ varlock; the 1Password app asks to approve each read.
 
 New or changed clan vars come first, in their own worktree: `clan vars
 generate` commits to the current branch, and `main` takes PRs only.
-`check` (`clan vars check`) and CI (`checks.clan-vars-present`) fail
-while a machine's vars are missing, so a branch without them cannot
-merge.
+`check` and the `pre-push` git hook (`clan vars check`) and CI
+(`checks.clan-vars-present`) fail while a machine's vars are missing, so
+a branch without them cannot be pushed or merged.
 
 ```sh
 worktree new vars-<machine>-<topic>  # prints the worktree path; cd there

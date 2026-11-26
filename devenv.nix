@@ -2,7 +2,15 @@
 # sync-locks, docs, slides, worktree). The clan admin key (SOPS_AGE_KEY)
 # comes from 1Password through varlock (.env.schema) for the `clan`
 # command only: the shell itself never holds it, and there is no .env.
-{pkgs, ...}: {
+{
+  config,
+  pkgs,
+  ...
+}: let
+  # The real clan binary (no key needed for `vars check`), built by
+  # enterShell below.
+  clanCli = "${config.devenv.state}/clan-cli/bin/clan";
+in {
   packages = [pkgs.bun];
 
   # `clan` with the key from 1Password (the app asks to approve the read).
@@ -12,6 +20,18 @@
     description = "The clan CLI with SOPS_AGE_KEY from 1Password (varlock run)";
   };
   org.check.extraCommands = [''"$DEVENV_STATE/clan-cli/bin/clan" vars check''];
+
+  # On top of the org shell's fmt hook: no push with missing or stale
+  # clan vars (CI only checks that the files exist). An absolute path,
+  # not $DEVENV_STATE: agents push from a plain shell. Each worktree's
+  # own hook config carries its own path.
+  git-hooks.hooks.clan-vars-check = {
+    enable = true;
+    name = "clan vars check";
+    entry = "${clanCli} vars check";
+    pass_filenames = false;
+    stages = ["pre-push"];
+  };
 
   enterShell = ''
     export CLAN_DIR="$DEVENV_ROOT"
