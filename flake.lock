@@ -455,11 +455,11 @@
         "whisper-dictation": "whisper-dictation"
       },
       "locked": {
-        "lastModified": 1795692410,
-        "narHash": "sha256-65wG1Sc68vEl2VElvLWxCoiY3+7lp5f3Tb3xGH1PwKk=",
+        "lastModified": 1795696004,
+        "narHash": "sha256-O28tyS9IDL3LJcMmpd93MXqMGJRc/o/WgBWwBrpq2Pc=",
         "owner": "external-systems",
         "repo": "modules",
-        "rev": "dd52b6609d6146065d37c41d0901a0afa058a49e",
+        "rev": "74e8dc6a298be1f7cf918bd1e9228a964580cfa9",
         "type": "github"
       },
       "original": {
@@ -636,11 +636,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1794598036,
-        "narHash": "sha256-rodS9WnbIjpTKJ71ruQGBUMRth5dpgwhoOgtcsVFpXE=",
+        "lastModified": 1795693995,
+        "narHash": "sha256-egK6Zcul7s6Oq/axRETgN1EM9UrTpYFW2W38ElRWylw=",
         "owner": "external-systems",
         "repo": "not-secrets",
-        "rev": "ddcd9b206bbc318dcdc33e0af5425e3f960c54ec",
+        "rev": "687d4cd2059e1250a734d704eab753ff02958c75",
         "type": "github"
       },
       "original": {
@@ -666,11 +666,11 @@
         "zen-browser": "zen-browser"
       },
       "locked": {
-        "lastModified": 1795691814,
-        "narHash": "sha256-AwEuB0gohCMXSpSYwykwwRLbi02B7hegbshQihbtF54=",
+        "lastModified": 1795693652,
+        "narHash": "sha256-YJZmrexBsJ0FCYwn0dcw/9Nc1uVZq8cL03+4pNoq1hY=",
         "owner": "external-systems",
         "repo": "pkgs",
-        "rev": "36cc52f2599b2415f726b82f35745ac15ed6fd6e",
+        "rev": "0347d95155ef9fc62c044a62f9587b1c84913f6c",
         "type": "github"
       },
       "original": {
@@ -810,11 +810,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1794599899,
-        "narHash": "sha256-3eU57sASwX751nlA8UKu0B+ioH/iIdpPjAoCpGJ0/8s=",
+        "lastModified": 1795696024,
+        "narHash": "sha256-iyXmweuOt2Yjok+kg3IC4xMk0+CzauMnSB0qVVFlol8=",
         "owner": "external-systems",
         "repo": "secrets",
-        "rev": "3f35d58938e78006476e42b7f22a00e0c19d509a",
+        "rev": "a3aa0f80526576a20824dedeaf8f92ec224648bd",
         "type": "github"
       },
       "original": {
@@ -851,11 +851,11 @@
         "skills-terraform": "skills-terraform"
       },
       "locked": {
-        "lastModified": 1795692051,
-        "narHash": "sha256-N5Rk6VAmDyGZNlCsuCbyTdiCDCvYw8b2TVEmTrxYF7c=",
+        "lastModified": 1795694046,
+        "narHash": "sha256-ERJcaNP3H3BzcPsTbJqHEaN7SJ6s//kgFwsnzH/xLos=",
         "owner": "external-systems",
         "repo": "skills",
-        "rev": "ec7cff722867607b77ed7b6887aff22bf9089bd5",
+        "rev": "babaef4d2d30a32551a9aebecc2f59d22fdddf21",
         "type": "github"
       },
       "original": {
