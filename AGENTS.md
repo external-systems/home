@@ -19,7 +19,8 @@ literals in git.
 - `clanServices/`: `machine-type` (shared base + `pc`/`server` roles), `tags` (dev, gaming). `remote-builder` (nixbuild.net-style builds on euc-hel-0) comes from external-systems/clanServices (`clanServices` input).
 - `flake-parts/` (import-tree, no import list): `clan.nix` (inventory, specialArgs incl. `secrets`), `nixpkgs.nix` (`nixosModules.nixpkgs`: org overlay), `nixosModules/networking-shim.nix`, `packages.nix` (`clan-cli` re-export), `docs.nix` (`docs.*` settings), `formatter.nix` (sizelint excludes).
 - `devenv.yaml` + `devenv.lock` + `devenv.nix`: the shell (org shell from `org-pkgs/devenv`, plus `clan`, which loads `SOPS_AGE_KEY` from 1Password through varlock and `.env.schema` for that command only; there is no `.env`).
-- `flake-parts/clan-vars-check.nix`: `checks.clan-vars-present`, every machine's declared vars committed under `vars/` (CI); `check` also runs `clan vars check`.
+- `flake-parts/clan-vars-check.nix`: `checks.clan-vars-present`, every machine's declared vars committed under `vars/` (CI); `check` and the `pre-push` git hook (`devenv.nix`) also run `clan vars check`.
+- Git hooks: the org shell's `fmt` on commit, plus `clan vars check` on push. A new worktree needs one `devenv shell -- true` before its first commit; never skip a hook.
 - `documentation/`: MkDocs site (`docs/`) and reveal.js deck (`slides/slides.md`), built by `org-pkgs.flakeModules.docs`. `docs/machines/<machine>.md` says what each machine is and runs.
 - `sops/`, `vars/`: clan vars. Use the `clan` CLI; never hand-edit encrypted files.
 
